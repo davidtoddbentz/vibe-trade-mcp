@@ -1,3 +1,1 @@
-"""Package marker for the Dedalus MCP server source code."""
-
-
+"""Vibe Trade MCP Server"""

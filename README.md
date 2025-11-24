@@ -1,50 +1,125 @@
-# OpenMCP Documentation Server
+# Vibe Trade MCP Server
 
-An MCP server built using our open-source MCP framework (OpenMCP).
+MCP server for creating and managing trading strategies.
 
-## Quick Start (Local Development)
+## Setup
 
 ```bash
-# Install uv package manager (same as Dedalus uses)
+# Install uv (if not already installed)
 brew install uv  # or pip install uv
 
 # Install dependencies
-uv sync --no-dev
+uv sync
 
-# Configure API keys for AI features
-cp config/.env.example .env.local
-# Edit .env.local and add your OpenAI API key
-
-# Test
-uv run python tests/test_server.py
-
-# Run
+# Run the server
 uv run main
 ```
 
-## Deploy to Dedalus
+## Development Commands
 
-### What Dedalus Needs
-- `pyproject.toml` - Package configuration with dependencies
-- `main.py` (root) - Entry point that Dedalus expects
-- `src/main.py` - The actual MCP server code
-- `docs/` - Your documentation files
+Use the Makefile for common tasks:
 
-### Deployment Steps
-
-1. **Set Environment Variables in Dedalus UI:**
-   - `OPENAI_API_KEY` - Your OpenAI API key (required for AI features)
-
-2. **Deploy:**
 ```bash
-dedalus deploy . --name "your-docs-server"
+# Install dependencies
+make install
+
+# Run tests
+make test
+
+# Run tests with coverage (requires 60%)
+make test-cov
+
+# Lint code
+make lint
+
+# Auto-fix linting issues
+make lint-fix
+
+# Format code
+make format
+
+# Check formatting
+make format-check
+
+# Run all CI checks locally
+make ci
+
+# Clean build artifacts
+make clean
 ```
 
-### How Dedalus Runs Your Server
-1. Installs dependencies using `uv sync` from `pyproject.toml`
-2. Runs `uv run main` to start the server
-3. Server runs in `/app` directory in container
-4. Docs are served from `/app/docs`
+Or use `uv run` directly:
+```bash
+uv run pytest tests/ -v
+uv run ruff check .
+uv run ruff format .
+```
 
-## License
-MIT
+## Development
+
+The server uses FastMCP from the `mcp` package. Tools are defined in `src/tools/`.
+
+### Adding New Tools
+
+1. Create a new file in `src/tools/` (e.g., `trading_tools.py`)
+2. Define Pydantic models for request/response types
+3. Register tools with the `@mcp.tool()` decorator
+4. Import and register in `src/main.py`
+
+Example:
+```python
+# src/tools/trading_tools.py
+from mcp.server.fastmcp import FastMCP
+from pydantic import BaseModel, Field
+
+class TradeResult(BaseModel):
+    success: bool
+    message: str
+
+def register_trading_tools(mcp: FastMCP) -> None:
+    @mcp.tool()
+    def create_strategy(name: str) -> TradeResult:
+        """Create a new trading strategy."""
+        return TradeResult(success=True, message=f"Strategy {name} created")
+```
+
+### Current Tools (Example/Demo)
+
+- `add` - Add two numbers
+- `multiply` - Multiply two numbers
+- `subtract` - Subtract two numbers
+- `divide` - Divide two numbers
+- `power` - Calculate power
+- `calculate` - Evaluate mathematical expression
+
+## Project Structure
+
+```
+vibe-trade-mcp/
+├── pyproject.toml          # Project config
+├── README.md               # This file
+├── src/
+│   ├── __init__.py
+│   ├── main.py             # MCP server entry point
+│   └── tools/
+│       ├── __init__.py
+│       └── math_tools.py  # Math tools (for testing)
+└── tests/
+    └── test_tools.py       # Tests
+```
+
+## Architecture
+
+- **FastMCP**: MCP server framework
+- **Pydantic**: Type-safe models for tool inputs/outputs
+- **HTTP Transport**: Ready for Cloud Run deployment
+- **Type Safety**: Strong typing throughout with Pydantic models
+
+## Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for Cloud Run deployment instructions.
+
+The server automatically:
+- Uses HTTP transport for Cloud Run (reads `PORT` env var)
+- Exposes tools at `/mcp` endpoint
+- Validates all inputs/outputs with Pydantic
