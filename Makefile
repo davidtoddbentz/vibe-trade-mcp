@@ -1,4 +1,4 @@
-.PHONY: install test lint format check ci clean
+.PHONY: install test lint format format-check check ci clean terraform-init terraform-plan terraform-apply terraform-destroy terraform-output
 
 install:
 	uv sync --all-groups
@@ -33,3 +33,18 @@ clean:
 	rm -rf .pytest_cache .coverage htmlcov/ coverage.xml
 	rm -rf *.egg-info build/ dist/
 
+# Terraform commands
+terraform-init:
+	cd terraform && terraform init
+
+terraform-plan:
+	cd terraform && terraform plan
+
+terraform-apply:
+	cd terraform && terraform apply
+
+terraform-destroy:
+	cd terraform && terraform destroy
+
+terraform-output:
+	cd terraform && terraform output
