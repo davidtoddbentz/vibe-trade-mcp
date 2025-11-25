@@ -54,6 +54,8 @@ gcloud config set project vibe-trade-475704
    ```bash
    terraform apply
    ```
+   
+   **Note**: The Cloud Run service will be created but won't be ready until you build and push the Docker image (see "Building and Deploying" below).
 
 ## What Gets Created
 
