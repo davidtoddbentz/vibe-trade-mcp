@@ -2,17 +2,17 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install uv
+# Install uv for linux/amd64
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+RUN chmod +x /usr/local/bin/uv
 
-# Copy dependency files
+# Copy dependency files and source code (needed for package installation)
 COPY pyproject.toml ./
+COPY uv.lock ./
+COPY src/ ./src/
 
 # Install dependencies
 RUN uv sync --no-dev --frozen
-
-# Copy application code
-COPY src/ ./src/
 
 # Expose port (Cloud Run uses PORT env var, default to 8080)
 ENV PORT=8080

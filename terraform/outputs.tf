@@ -23,3 +23,13 @@ output "service_location" {
   value       = google_cloud_run_v2_service.mcp_server.location
 }
 
+output "project_id" {
+  description = "GCP Project ID"
+  value       = var.project_id
+}
+
+output "region" {
+  description = "GCP Region"
+  value       = var.region
+}
+

@@ -93,16 +93,19 @@ Once deployed, get the service URL:
 terraform output mcp_endpoint
 ```
 
-To invoke the service, you need to authenticate:
+To invoke the service, you need to authenticate and use the correct headers:
 
 ```bash
 # Get an identity token
 gcloud auth print-identity-token
 
-# Use it in requests
+# Use it in requests (MCP uses Server-Sent Events)
 curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
-  https://vibe-trade-mcp-xxxxx.run.app/mcp
+     -H "Accept: text/event-stream" \
+     https://vibe-trade-mcp-xxxxx.run.app/mcp
 ```
+
+**Note**: The MCP endpoint uses Server-Sent Events (SSE), so you must include `Accept: text/event-stream` header. For actual MCP client connections, use an MCP client library that handles SSE properly.
 
 ## Adding More Users
 

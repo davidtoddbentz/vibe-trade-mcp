@@ -66,11 +66,6 @@ resource "google_cloud_run_v2_service" "mcp_server" {
           memory = "512Mi"
         }
       }
-
-      env {
-        name  = "PORT"
-        value = "8080"
-      }
     }
 
     scaling {
