@@ -117,9 +117,22 @@ vibe-trade-mcp/
 
 ## Deployment
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for Cloud Run deployment instructions.
+See [terraform/README.md](terraform/README.md) for Cloud Run deployment instructions.
 
 The server automatically:
 - Uses HTTP transport for Cloud Run (reads `PORT` env var)
 - Exposes tools at `/mcp` endpoint
 - Validates all inputs/outputs with Pydantic
+
+## Authentication
+
+See [AUTHENTICATION.md](AUTHENTICATION.md) for detailed authentication instructions.
+
+**Quick auth:**
+```bash
+# Get identity token
+gcloud auth print-identity-token
+
+# Use in MCP client with header:
+# Authorization: Bearer <token>
+```

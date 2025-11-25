@@ -11,7 +11,8 @@ from src.tools.math_tools import register_math_tools
 port = int(os.getenv("PORT", "8080"))
 
 # Create MCP server instance with port configuration
-mcp = FastMCP("vibe-trade-server", port=port)
+# For Cloud Run, we need to bind to 0.0.0.0 to accept external connections
+mcp = FastMCP("vibe-trade-server", port=port, host="0.0.0.0")
 
 # Register tools
 register_math_tools(mcp)
@@ -19,13 +20,19 @@ register_math_tools(mcp)
 
 def main():
     """Run the MCP server."""
-    print("🚀 Starting Vibe Trade MCP Server...")
-    print(f"📡 Server running on port {port}")
-    print(f"🔗 MCP endpoint: http://0.0.0.0:{port}/mcp")
-    print("✅ Ready for agent connections")
+    import sys
+
+    print("🚀 Starting Vibe Trade MCP Server...", file=sys.stderr, flush=True)
+    print(f"📡 Server running on port {port}", file=sys.stderr, flush=True)
+    print(f"🔗 MCP endpoint: http://0.0.0.0:{port}/mcp", file=sys.stderr, flush=True)
+    print("✅ Ready for agent connections", file=sys.stderr, flush=True)
 
     # Use streamable-http for Cloud Run deployment
-    mcp.run(transport="streamable-http")
+    try:
+        mcp.run(transport="streamable-http")
+    except Exception as e:
+        print(f"❌ Error starting server: {e}", file=sys.stderr, flush=True)
+        raise
 
 
 if __name__ == "__main__":

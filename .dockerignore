@@ -17,6 +17,6 @@ venv
 README.md
 tests/
 examples/
-uv.lock
+# uv.lock is needed for Docker builds
 *.log
 

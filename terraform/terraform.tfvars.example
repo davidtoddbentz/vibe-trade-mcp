@@ -1,0 +1,12 @@
+# Copy this file to terraform.tfvars and update with your values
+# terraform.tfvars is gitignored for security
+
+project_id = "vibe-trade-475704"
+region     = "us-central1"
+
+# Add your email or service accounts that should have access
+# Format: "user:your-email@gmail.com" or "serviceAccount:sa@project.iam.gserviceaccount.com"
+allowed_invokers = [
+  # "user:your-email@gmail.com",
+]
+
