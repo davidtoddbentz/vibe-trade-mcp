@@ -8,7 +8,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
-from src.db.firestore_client import FirestoreClient
+from src.db.archetype_repository import ArchetypeRepository
+from src.db.archetype_schema_repository import ArchetypeSchemaRepository
 from src.tools.trading_tools import register_trading_tools
 
 # Load .env file if it exists (for local development)
@@ -16,14 +17,9 @@ env_path = Path(__file__).parent.parent / ".env"
 if env_path.exists():
     load_dotenv(env_path)
 
-# Initialize Firestore client with project from environment
-project = os.getenv("GOOGLE_CLOUD_PROJECT")
-if not project:
-    raise ValueError(
-        "GOOGLE_CLOUD_PROJECT environment variable must be set. "
-        "For local dev: export GOOGLE_CLOUD_PROJECT=demo-project"
-    )
-FirestoreClient.get_client(project=project)
+# Initialize repositories (read from JSON files)
+archetype_repo = ArchetypeRepository()
+schema_repo = ArchetypeSchemaRepository()
 
 # Cloud Run sets PORT environment variable (defaults to 8080)
 port = int(os.getenv("PORT", "8080"))
@@ -32,8 +28,8 @@ port = int(os.getenv("PORT", "8080"))
 # For Cloud Run, we need to bind to 0.0.0.0 to accept external connections
 mcp = FastMCP("vibe-trade-server", port=port, host="0.0.0.0")
 
-# Register tools
-register_trading_tools(mcp)
+# Register tools with injected repositories
+register_trading_tools(mcp, archetype_repo, schema_repo)
 
 
 def main():

@@ -1,4 +1,4 @@
-.PHONY: install run emulator seed seed-dry-run test lint format format-check check ci clean \
+.PHONY: install run emulator test lint format format-check check ci clean \
 	terraform-init terraform-plan terraform-apply terraform-apply-auto terraform-destroy terraform-output terraform-validate terraform-fmt \
 	docker-build docker-push docker-build-push deploy deploy-image deploy-info force-revision
 
@@ -54,27 +54,6 @@ run:
 	fi; \
 	echo "   Endpoint: http://localhost:8080/mcp"; \
 	uv run main'
-
-# Seed archetypes into database
-seed:
-	@echo "🌱 Seeding archetypes..."
-	uv run python -m src.scripts.seed_archetypes
-
-# Dry run seed (see what would be done)
-seed-dry-run:
-	@echo "🌱 [DRY RUN] Seeding archetypes..."
-	uv run python -m src.scripts.seed_archetypes --dry-run
-
-# Seed to production (forces production parameters)
-seed-prod:
-	@echo "🌱 Seeding archetypes to production..."
-	@echo "   Project: vibe-trade-475704"
-	@echo "   Database: strategy"
-	@bash -c '\
-	FIRESTORE_EMULATOR_HOST="" \
-	GOOGLE_CLOUD_PROJECT=vibe-trade-475704 \
-	FIRESTORE_DATABASE=strategy \
-	uv run python -m src.scripts.seed_archetypes'
 
 test:
 	uv run pytest tests/ -v

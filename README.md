@@ -50,12 +50,7 @@ Local development uses the **Firestore Emulator** via Docker - no connection to 
 
    **Note**: The `.env` file is automatically loaded by `python-dotenv` - no code changes needed!
 
-4. **Seed local data** (optional, but recommended for testing):
-   ```bash
-   make seed
-   ```
-
-5. **Run the server**:
+4. **Run the server**:
    ```bash
    # Option 1: Using Makefile
    make run
@@ -82,10 +77,6 @@ make install
 
 # Start Firestore emulator (in separate terminal)
 make emulator
-
-# Seed database with archetypes
-make seed              # Seed local emulator
-make seed-dry-run      # See what would be done
 
 # Run tests
 make test
@@ -150,6 +141,7 @@ def register_trading_tools(mcp: FastMCP) -> None:
 ### Current Tools
 
 - `get_archetypes` - Fetch the catalog of available trading strategy archetypes
+- `get_archetype_schema` - Fetch the JSON Schema for a specific archetype
 
 ## Project Structure
 
@@ -158,7 +150,8 @@ vibe-trade-mcp/
 ├── pyproject.toml          # Project config
 ├── README.md               # This file
 ├── data/
-│   └── archetypes.json     # Seed data for archetypes
+│   ├── archetypes.json          # Archetype definitions
+│   └── archetype_schema.json   # Archetype JSON schemas
 ├── src/
 │   ├── __init__.py
 │   ├── main.py             # MCP server entry point
@@ -170,15 +163,16 @@ vibe-trade-mcp/
 │   │   ├── __init__.py
 │   │   └── archetype.py            # Pydantic models for Archetype
 │   ├── scripts/
-│   │   ├── __init__.py
-│   │   └── seed_archetypes.py      # Script to seed Firestore
+│   │   └── __init__.py
 │   └── tools/
 │       ├── __init__.py
 │       └── trading_tools.py        # Trading strategy tools
 └── tests/
-    ├── conftest.py                 # Pytest fixtures for Firestore
+    ├── conftest.py                      # Pytest fixtures
+    ├── test_helpers.py                  # Shared test utilities
     ├── test_main.py
-    └── test_trading_tools.py       # Tests for trading tools
+    ├── test_get_archetypes.py           # Tests for get_archetypes tool
+    └── test_get_archetype_schema.py     # Tests for get_archetype_schema tool
 ```
 
 ## Architecture
@@ -186,14 +180,16 @@ vibe-trade-mcp/
 - **FastMCP**: MCP server framework
 - **Pydantic**: Type-safe models for tool inputs/outputs
 - **HTTP Transport**: Ready for Cloud Run deployment
-- **Firestore**: NoSQL database for strategy data (local and production)
+- **File-based Data**: Archetypes and schemas read from JSON files (no seeding required)
+- **Firestore**: Available for future use (infrastructure ready)
 - **Type Safety**: Strong typing throughout with Pydantic models
 
 ### Local vs Production
 
-- **Local**: Uses Firestore Emulator via Docker (no GCP connection needed). Set `FIRESTORE_EMULATOR_HOST=localhost:8081`
+- **Archetypes & Schemas**: Read directly from JSON files in `data/` directory (no database needed)
+- **Firestore**: Available for future use - infrastructure ready when needed
+- **Local Development**: No Firestore emulator needed for archetypes/schemas (but available for future features)
 - **Production**: Uses Cloud Run service account credentials (automatically configured)
-- The code is identical - environment variables control which backend is used
 
 ## Deployment
 
