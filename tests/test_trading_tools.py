@@ -166,7 +166,7 @@ def test_get_archetypes_filters_deprecated(archetype_repository):
     asyncio.run(test_filtering())
 
     # Cleanup
-    archetype_repository.collection.document("signal.deprecated").delete()
+    archetype_repository.delete("signal.deprecated")
 
 
 def test_get_archetypes_empty_database(archetype_repository):
@@ -175,9 +175,7 @@ def test_get_archetypes_empty_database(archetype_repository):
     register_trading_tools(mcp)
 
     # Delete all archetypes
-    docs = archetype_repository.collection.stream()
-    for doc in docs:
-        doc.reference.delete()
+    archetype_repository.delete_all()
 
     async def test_empty():
         result = await mcp.call_tool("get_archetypes", {})

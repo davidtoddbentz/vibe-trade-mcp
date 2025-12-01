@@ -11,68 +11,51 @@ MCP server for creating and managing trading strategies.
    brew install uv  # or pip install uv
    ```
 
-2. **Install gcloud CLI** (for Firestore emulator):
+2. **Install Docker** (for running Firestore emulator locally):
    ```bash
-   brew install google-cloud-sdk  # or follow https://cloud.google.com/sdk/docs/install
+   brew install docker # or follow https://docs.docker.com/get-docker/
    ```
 
 ### Local Development
 
-Local development uses the **Firestore Emulator** - no connection to production GCP.
+Local development uses the **Firestore Emulator** via Docker - no connection to production GCP needed.
 
 1. **Install dependencies**:
    ```bash
    uv sync
    ```
 
-2. **Choose your Firestore setup**:
-
-   **Option A: Use Emulator** (Docker-based, no Java/Xcode needed):
+2. **Start Firestore Emulator** (in a separate terminal):
    ```bash
-   # Start emulator (runs in background, requires Docker)
    make emulator
-   
-   # Stop emulator
-   make emulator-stop
    ```
-   
-   **Option B: Use Real Firestore** (simpler, no Java needed):
-   ```bash
-   # Authenticate with GCP
-   gcloud auth application-default login
-   gcloud config set project vibe-trade-475704
-   ```
-   Then skip step 3 and just set `GOOGLE_CLOUD_PROJECT` in `.env`
+   This will start the Docker-based emulator in the background.
 
 3. **Set environment variables** (recommended: use `.env` file):
    
    Create a `.env` file in the project root (automatically loaded):
-   
-   **For Emulator:**
    ```bash
    # .env (not committed to git)
    FIRESTORE_EMULATOR_HOST=localhost:8081
    GOOGLE_CLOUD_PROJECT=demo-project
    FIRESTORE_DATABASE=(default)  # Required - emulator only supports "(default)"
    ```
-   
-   **For Real Firestore:**
-   ```bash
-   # .env (not committed to git)
-   GOOGLE_CLOUD_PROJECT=vibe-trade-475704
-   FIRESTORE_DATABASE=strategy  # Required
-   # (no FIRESTORE_EMULATOR_HOST)
-   ```
 
    Or export them manually:
    ```bash
    export FIRESTORE_EMULATOR_HOST=localhost:8081
    export GOOGLE_CLOUD_PROJECT=demo-project
+   export FIRESTORE_DATABASE=(default)
    ```
 
    **Note**: The `.env` file is automatically loaded by `python-dotenv` - no code changes needed!
 
-4. **Run the server**:
+4. **Seed local data** (optional, but recommended for testing):
+   ```bash
+   make seed
+   ```
+
+5. **Run the server**:
    ```bash
    # Option 1: Using Makefile
    make run
@@ -83,18 +66,11 @@ Local development uses the **Firestore Emulator** - no connection to production 
 
    The server will start on `http://localhost:8080` and expose the MCP endpoint at `http://localhost:8080/mcp`
 
-5. **Seed the database** (optional):
+6. **Stop the emulator** (when done):
    ```bash
-   # Seed local emulator
-   make seed
-
-   # Or see what would be done first
-   make seed-dry-run
+   make emulator-stop
    ```
 
-**Note**: 
-- **With Emulator**: Starts with empty database. Seed it with `make seed`.
-- **With Real Firestore**: Uses your actual Firestore database. Be careful with `make seed` - it will write to your real database!
 
 ## Development Commands
 
@@ -110,7 +86,6 @@ make emulator
 # Seed database with archetypes
 make seed              # Seed local emulator
 make seed-dry-run      # See what would be done
-make seed-prod         # Seed production (requires GOOGLE_CLOUD_PROJECT)
 
 # Run tests
 make test
@@ -216,9 +191,8 @@ vibe-trade-mcp/
 
 ### Local vs Production
 
-- **Local**: Uses Firestore Emulator (no GCP connection needed). Set `FIRESTORE_EMULATOR_HOST=localhost:8081`
+- **Local**: Uses Firestore Emulator via Docker (no GCP connection needed). Set `FIRESTORE_EMULATOR_HOST=localhost:8081`
 - **Production**: Uses Cloud Run service account credentials (automatically configured)
-- Both environments use the "strategy" database - emulator for local, real Firestore for production
 - The code is identical - environment variables control which backend is used
 
 ## Deployment

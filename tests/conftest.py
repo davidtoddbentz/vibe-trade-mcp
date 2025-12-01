@@ -81,4 +81,4 @@ def sample_archetype(archetype_repository, sample_archetype_data):
     archetype_repository.create_or_update(arch_id, sample_archetype_data)
     yield arch_id
     # Cleanup: delete the test archetype
-    archetype_repository.collection.document(arch_id).delete()
+    archetype_repository.delete(arch_id)

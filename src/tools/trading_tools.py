@@ -6,7 +6,6 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
 from src.db.archetype_repository import ArchetypeRepository
-from src.models.archetype import Archetype
 
 
 class ArchetypeInfo(BaseModel):
@@ -54,13 +53,10 @@ def register_trading_tools(mcp: FastMCP) -> None:
         Returns:
             GetArchetypesResponse containing a list of archetypes with metadata
         """
-        # 1. Fetch raw data from Firestore (data layer)
-        archetypes_data = archetype_repo.get_non_deprecated()
+        # 1. Fetch domain models from repository (repository handles DB conversion)
+        archetypes = archetype_repo.get_non_deprecated()
 
-        # 2. Convert to domain models (validation & type safety)
-        archetypes = [Archetype.from_dict(arch.copy()) for arch in archetypes_data]
-
-        # 3. Convert to API response models (only expose what's needed)
+        # 2. Convert to API response models (only expose what's needed)
         archetype_infos = [
             ArchetypeInfo(
                 id=arch.id,
