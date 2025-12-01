@@ -10,6 +10,7 @@ RUN chmod +x /usr/local/bin/uv
 COPY pyproject.toml ./
 COPY uv.lock ./
 COPY src/ ./src/
+COPY data/ ./data/
 
 # Install dependencies
 RUN uv sync --no-dev --frozen
