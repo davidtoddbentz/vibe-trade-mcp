@@ -20,6 +20,7 @@ resource "google_project_service" "required_apis" {
     "run.googleapis.com",
     "artifactregistry.googleapis.com",
     "cloudbuild.googleapis.com",
+    "firestore.googleapis.com",
   ])
 
   project = var.project_id
@@ -45,6 +46,25 @@ resource "google_service_account" "cloud_run_sa" {
   description  = "Service account for running the MCP server on Cloud Run"
 }
 
+# Firestore database (Native mode)
+resource "google_firestore_database" "strategy" {
+  project     = var.project_id
+  name        = "strategy"
+  location_id = var.firestore_location
+  type        = "FIRESTORE_NATIVE"
+
+  depends_on = [google_project_service.required_apis]
+}
+
+# Grant Firestore access to Cloud Run service account
+resource "google_project_iam_member" "firestore_user" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+
+  depends_on = [google_service_account.cloud_run_sa]
+}
+
 # Cloud Run service
 resource "google_cloud_run_v2_service" "mcp_server" {
   name     = "vibe-trade-mcp"
@@ -58,6 +78,15 @@ resource "google_cloud_run_v2_service" "mcp_server" {
 
       ports {
         container_port = 8080
+      }
+
+      env {
+        name  = "GOOGLE_CLOUD_PROJECT"
+        value = var.project_id
+      }
+      env {
+        name  = "FIRESTORE_DATABASE"
+        value = google_firestore_database.strategy.name
       }
 
       resources {
@@ -82,6 +111,7 @@ resource "google_cloud_run_v2_service" "mcp_server" {
   depends_on = [
     google_project_service.required_apis,
     google_artifact_registry_repository.docker_repo,
+    google_firestore_database.strategy,
   ]
 }
 

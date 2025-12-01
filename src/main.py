@@ -2,10 +2,28 @@
 """Main MCP server entry point."""
 
 import os
+import sys
+from pathlib import Path
 
+from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
-from src.tools.math_tools import register_math_tools
+from src.db.firestore_client import FirestoreClient
+from src.tools.trading_tools import register_trading_tools
+
+# Load .env file if it exists (for local development)
+env_path = Path(__file__).parent.parent / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
+
+# Initialize Firestore client with project from environment
+project = os.getenv("GOOGLE_CLOUD_PROJECT")
+if not project:
+    raise ValueError(
+        "GOOGLE_CLOUD_PROJECT environment variable must be set. "
+        "For local dev: export GOOGLE_CLOUD_PROJECT=demo-project"
+    )
+FirestoreClient.get_client(project=project)
 
 # Cloud Run sets PORT environment variable (defaults to 8080)
 port = int(os.getenv("PORT", "8080"))
@@ -15,13 +33,11 @@ port = int(os.getenv("PORT", "8080"))
 mcp = FastMCP("vibe-trade-server", port=port, host="0.0.0.0")
 
 # Register tools
-register_math_tools(mcp)
+register_trading_tools(mcp)
 
 
 def main():
     """Run the MCP server."""
-    import sys
-
     print("🚀 Starting Vibe Trade MCP Server...", file=sys.stderr, flush=True)
     print(f"📡 Server running on port {port}", file=sys.stderr, flush=True)
     print(f"🔗 MCP endpoint: http://0.0.0.0:{port}/mcp", file=sys.stderr, flush=True)

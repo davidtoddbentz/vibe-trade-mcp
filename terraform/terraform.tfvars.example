@@ -4,6 +4,10 @@
 project_id = "vibe-trade-475704"
 region     = "us-central1"
 
+# Firestore location (optional, defaults to us-central)
+# Valid values: us-central, us-east1, us-west1, europe-west1, asia-northeast1
+# firestore_location = "us-central"
+
 # Add your email or service accounts that should have access
 # Format: "user:your-email@gmail.com" or "serviceAccount:sa@project.iam.gserviceaccount.com"
 allowed_invokers = [

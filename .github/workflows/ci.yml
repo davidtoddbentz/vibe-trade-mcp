@@ -53,8 +53,26 @@ jobs:
     - name: Install dependencies
       run: uv sync --all-groups
     
+    - name: Start Firestore Emulator
+      run: |
+        docker run -d --name firestore-emulator -p 8081:8080 \
+          -e FIRESTORE_PROJECT_ID=test-project \
+          mtlynch/firestore-emulator-docker
+        sleep 5
+        echo "✅ Firestore emulator started"
+    
     - name: Run tests with coverage
+      env:
+        FIRESTORE_EMULATOR_HOST: localhost:8081
+        GOOGLE_CLOUD_PROJECT: test-project
+        FIRESTORE_DATABASE: "(default)"
       run: uv run pytest tests/ --cov=src --cov-report=term-missing --cov-report=xml --cov-fail-under=60 -v
+    
+    - name: Stop Firestore Emulator
+      if: always()
+      run: |
+        docker stop firestore-emulator || true
+        docker rm firestore-emulator || true
     
     - name: Upload coverage artifacts
       uses: actions/upload-artifact@v4

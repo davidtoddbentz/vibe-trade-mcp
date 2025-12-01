@@ -21,3 +21,14 @@ variable "allowed_invokers" {
   }
 }
 
+variable "firestore_location" {
+  description = "Firestore location (e.g., us-central, us-east1). Must be a multi-region location for Firestore Native mode."
+  type        = string
+  default     = "us-central"
+
+  validation {
+    condition     = can(regex("^(us-central|us-east1|us-west1|europe-west1|asia-northeast1)$", var.firestore_location))
+    error_message = "Firestore location must be a valid multi-region location: us-central, us-east1, us-west1, europe-west1, or asia-northeast1"
+  }
+}
+
