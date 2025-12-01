@@ -55,25 +55,6 @@ run:
 	echo "   Endpoint: http://localhost:8080/mcp"; \
 	uv run main'
 
-# Start emulator in background and run server (all-in-one for local dev)
-dev:
-	@echo "🚀 Starting local development environment..."
-	@if [ -z "$$FIRESTORE_EMULATOR_HOST" ]; then \
-		export FIRESTORE_EMULATOR_HOST=localhost:8081; \
-	fi
-	@if [ -z "$$GOOGLE_CLOUD_PROJECT" ]; then \
-		export GOOGLE_CLOUD_PROJECT=demo-project; \
-	fi
-	@echo "   Starting Firestore emulator in background..."
-	@gcloud emulators firestore start --host-port=localhost:8081 > /tmp/firestore-emulator.log 2>&1 & \
-		echo $$! > /tmp/firestore-emulator.pid
-	@sleep 3
-	@echo "   ✅ Emulator started (PID: $$(cat /tmp/firestore-emulator.pid))"
-	@echo "   Starting MCP server..."
-	@echo "   Endpoint: http://localhost:8080/mcp"
-	@trap 'kill $$(cat /tmp/firestore-emulator.pid) 2>/dev/null; rm -f /tmp/firestore-emulator.pid' EXIT; \
-		uv run main
-
 # Seed archetypes into database
 seed:
 	@echo "🌱 Seeding archetypes..."
