@@ -155,7 +155,8 @@ def register_card_tools(
         type: str = Field(..., description="Archetype identifier (e.g., 'signal.trend_pullback')"),
         slots: dict[str, Any] = Field(..., description="Slot values to validate and store"),  # noqa: B008
         schema_etag: str = Field(
-            ..., description="ETag of the schema used for validation (must match current schema)"
+            ...,
+            description="ETag of the schema used for validation (must match current schema). Get this from get_archetype_schema.",
         ),
     ) -> CreateCardResponse:
         """
@@ -165,21 +166,30 @@ def register_card_tools(
         the card in Firestore. The schema_etag must match the current schema version
         to ensure the card was validated against the correct schema.
 
+        Recommended workflow:
+        1. Use get_archetypes to find available archetypes
+        2. Use get_archetype_schema(type) to get the schema, constraints, examples, and schema_etag
+        3. Use the examples in the schema as a reference for valid slot values
+        4. Use the schema_etag from step 2 when creating the card
+
         Args:
-            type: Archetype identifier
-            slots: Slot values to validate and store
-            schema_etag: ETag of the schema used for validation (must match current schema)
+            type: Archetype identifier (e.g., 'signal.trend_pullback')
+            slots: Slot values to validate and store. Must match the archetype's JSON schema.
+            schema_etag: ETag from get_archetype_schema (proves you validated against the correct schema version)
 
         Returns:
             CreateCardResponse with generated card_id and validated data
 
         Raises:
-            ToolError: If validation fails or schema_etag doesn't match
+            ToolError: If archetype not found, validation fails, or schema_etag doesn't match
         """
         # Fetch schema for validation
         schema = schema_repo.get_by_type_id(type)
         if schema is None:
-            raise ToolError(f"Archetype schema not found: {type}")
+            raise ToolError(
+                f"Archetype schema not found: {type}. "
+                f"Use get_archetypes to see available archetypes."
+            )
 
         # Verify schema_etag matches current schema
         if schema_etag != schema.etag:
@@ -192,7 +202,10 @@ def register_card_tools(
         validation_errors = _validate_slots_against_schema(slots, schema.json_schema, schema_repo)
         if validation_errors:
             error_details = "\n".join(f"  - {err}" for err in validation_errors)
-            raise ToolError(f"Slot validation failed for archetype '{type}':\n{error_details}")
+            raise ToolError(
+                f"Slot validation failed for archetype '{type}':\n{error_details}\n"
+                f"Use get_archetype_schema('{type}') to see valid values, constraints, and examples."
+            )
 
         # Create card
         card = Card(
@@ -230,7 +243,9 @@ def register_card_tools(
         """
         card = card_repo.get_by_id(card_id)
         if card is None:
-            raise ToolError(f"Card not found: {card_id}")
+            raise ToolError(
+                f"Card not found: {card_id}. Use list_cards to see all available cards."
+            )
 
         return GetCardResponse(
             card_id=card.id,
@@ -269,7 +284,8 @@ def register_card_tools(
         card_id: str = Field(..., description="Card identifier"),
         slots: dict[str, Any] = Field(..., description="Updated slot values"),  # noqa: B008
         schema_etag: str = Field(
-            ..., description="ETag of the schema used for validation (must match current schema)"
+            ...,
+            description="ETag of the schema used for validation (must match current schema). Get this from get_archetype_schema.",
         ),
     ) -> UpdateCardResponse:
         """
@@ -278,10 +294,16 @@ def register_card_tools(
         Validates the updated slots against the archetype's JSON schema. The schema_etag
         must match the current schema version.
 
+        Recommended workflow:
+        1. Use get_card(card_id) to get the current card and its type
+        2. Use get_archetype_schema(type) to get the schema, constraints, examples, and schema_etag
+        3. Use the examples in the schema as a reference for valid slot values
+        4. Use the schema_etag from step 2 when updating the card
+
         Args:
             card_id: Card identifier
-            slots: Updated slot values
-            schema_etag: ETag of the schema used for validation (must match current schema)
+            slots: Updated slot values. Must match the archetype's JSON schema.
+            schema_etag: ETag from get_archetype_schema (proves you validated against the correct schema version)
 
         Returns:
             UpdateCardResponse with updated card data
@@ -292,12 +314,17 @@ def register_card_tools(
         # Get existing card to get the type
         existing_card = card_repo.get_by_id(card_id)
         if existing_card is None:
-            raise ToolError(f"Card not found: {card_id}")
+            raise ToolError(
+                f"Card not found: {card_id}. Use list_cards to see all available cards."
+            )
 
         # Fetch schema for validation
         schema = schema_repo.get_by_type_id(existing_card.type)
         if schema is None:
-            raise ToolError(f"Archetype schema not found: {existing_card.type}")
+            raise ToolError(
+                f"Archetype schema not found: {existing_card.type}. "
+                f"Use get_archetypes to see available archetypes."
+            )
 
         # Verify schema_etag matches current schema
         if schema_etag != schema.etag:
@@ -311,7 +338,8 @@ def register_card_tools(
         if validation_errors:
             error_details = "\n".join(f"  - {err}" for err in validation_errors)
             raise ToolError(
-                f"Slot validation failed for archetype '{existing_card.type}':\n{error_details}"
+                f"Slot validation failed for archetype '{existing_card.type}':\n{error_details}\n"
+                f"Use get_archetype_schema('{existing_card.type}') to see valid values, constraints, and examples."
             )
 
         # Update card

@@ -503,6 +503,126 @@ def test_update_card(card_tools_mcp, schema_repository):
     assert response.updated_at is not None
 
 
+def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repository):
+    """Test that error messages include helpful guidance for agents."""
+    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    assert schema is not None
+
+    # Test: schema not found error includes guidance
+    with pytest.raises(ToolError) as exc_info:
+        run_async(
+            call_tool(
+                card_tools_mcp,
+                "create_card",
+                {
+                    "type": "signal.nonexistent",
+                    "slots": {"tf": "1h"},
+                    "schema_etag": "invalid",
+                },
+            )
+        )
+    error_msg = str(exc_info.value)
+    assert "get_archetypes" in error_msg.lower()
+
+    # Test: validation error includes guidance to fetch schema
+    with pytest.raises(ToolError) as exc_info:
+        run_async(
+            call_tool(
+                card_tools_mcp,
+                "create_card",
+                {
+                    "type": "signal.trend_pullback",
+                    "slots": {
+                        "tf": "1h",
+                        "symbol": "BTC-USD",
+                        "direction": "long",
+                        "dip_trigger": "keltner",
+                        "dip_threshold": 6.0,  # Invalid: above max
+                    },
+                    "schema_etag": schema.etag,
+                },
+            )
+        )
+    error_msg = str(exc_info.value)
+    assert "get_archetype_schema" in error_msg.lower()
+    assert "signal.trend_pullback" in error_msg
+
+
+def test_update_card_error_messages_include_guidance(card_tools_mcp, schema_repository):
+    """Test that update_card error messages include helpful guidance."""
+    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    example_slots = (
+        schema.examples[0].slots
+        if schema.examples
+        else {
+            "tf": "1h",
+            "symbol": "BTC-USD",
+            "direction": "long",
+            "dip_trigger": "keltner",
+            "dip_threshold": 1.5,
+            "trend_gate": {"mode": "hard", "gate": {"kind": "preset", "name": "uptrend_basic"}},
+        }
+    )
+
+    # Create a card first
+    create_result = run_async(
+        call_tool(
+            card_tools_mcp,
+            "create_card",
+            {
+                "type": "signal.trend_pullback",
+                "slots": example_slots,
+                "schema_etag": schema.etag,
+            },
+        )
+    )
+    card_id = CreateCardResponse(**create_result).card_id
+
+    # Test: validation error includes guidance
+    updated_slots = example_slots.copy()
+    updated_slots["dip_threshold"] = 10.0  # Invalid
+
+    with pytest.raises(ToolError) as exc_info:
+        run_async(
+            call_tool(
+                card_tools_mcp,
+                "update_card",
+                {
+                    "card_id": card_id,
+                    "slots": updated_slots,
+                    "schema_etag": schema.etag,
+                },
+            )
+        )
+    error_msg = str(exc_info.value)
+    assert "get_archetype_schema" in error_msg.lower()
+    assert "signal.trend_pullback" in error_msg
+
+    # Test: card not found error includes guidance
+    with pytest.raises(ToolError) as exc_info:
+        run_async(
+            call_tool(
+                card_tools_mcp,
+                "update_card",
+                {
+                    "card_id": "nonexistent-id",
+                    "slots": example_slots,
+                    "schema_etag": schema.etag,
+                },
+            )
+        )
+    error_msg = str(exc_info.value)
+    assert "list_cards" in error_msg.lower()
+
+
+def test_get_card_error_includes_guidance(card_tools_mcp):
+    """Test that get_card error includes helpful guidance."""
+    with pytest.raises(ToolError) as exc_info:
+        run_async(call_tool(card_tools_mcp, "get_card", {"card_id": "nonexistent-id"}))
+    error_msg = str(exc_info.value)
+    assert "list_cards" in error_msg.lower()
+
+
 def test_delete_card(card_tools_mcp, schema_repository):
     """Test deleting a card."""
     # Setup: create a card first
