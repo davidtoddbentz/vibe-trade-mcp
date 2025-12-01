@@ -16,7 +16,7 @@ def test_get_archetype_schema_returns_schema(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"request": {"type": "signal.trend_pullback"}},
+            {"type": "signal.trend_pullback"},
         )
     )
 
@@ -47,7 +47,7 @@ def test_get_archetype_schema_with_etag(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"request": {"type": "signal.trend_pullback"}},
+            {"type": "signal.trend_pullback"},
         )
     )
     response1 = GetArchetypeSchemaResponse(**result1)
@@ -58,7 +58,7 @@ def test_get_archetype_schema_with_etag(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"request": {"type": "signal.trend_pullback", "if_none_match": etag}},
+            {"type": "signal.trend_pullback", "if_none_match": etag},
         )
     )
 
@@ -78,7 +78,7 @@ def test_get_archetype_schema_not_found(trading_tools_mcp):
             call_tool(
                 trading_tools_mcp,
                 "get_archetype_schema",
-                {"request": {"type": "signal.nonexistent"}},
+                {"type": "signal.nonexistent"},
             )
         )
 
@@ -92,7 +92,7 @@ def test_get_archetype_schema_response_structure(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"request": {"type": "signal.trend_pullback"}},
+            {"type": "signal.trend_pullback"},
         )
     )
 
@@ -127,7 +127,7 @@ def test_get_archetype_schema_constraints(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"request": {"type": "signal.trend_pullback"}},
+            {"type": "signal.trend_pullback"},
         )
     )
 
@@ -148,7 +148,7 @@ def test_get_archetype_schema_examples(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"request": {"type": "signal.trend_pullback"}},
+            {"type": "signal.trend_pullback"},
         )
     )
 

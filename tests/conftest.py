@@ -1,10 +1,16 @@
 """Pytest configuration and fixtures."""
 
+import os
+import socket
+
 import pytest
 from mcp.server.fastmcp import FastMCP
 
 from src.db.archetype_repository import ArchetypeRepository
 from src.db.archetype_schema_repository import ArchetypeSchemaRepository
+from src.db.card_repository import CardRepository
+from src.db.firestore_client import FirestoreClient
+from src.tools.card_tools import register_card_tools
 from src.tools.trading_tools import register_trading_tools
 
 
@@ -30,4 +36,60 @@ def trading_tools_mcp(archetype_repository, schema_repository):
     """
     mcp = FastMCP("test-server")
     register_trading_tools(mcp, archetype_repository, schema_repository)
+    return mcp
+
+
+@pytest.fixture
+def firestore_client(monkeypatch):
+    """Create a Firestore client for testing (uses emulator).
+
+    This fixture:
+    1. Sets up environment variables to point to the emulator
+    2. Fast-fails if emulator is not accessible
+    3. Resets the FirestoreClient singleton between tests
+    """
+    # Set environment variables for emulator
+    monkeypatch.setenv("FIRESTORE_EMULATOR_HOST", "localhost:8081")
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "test-project")
+    monkeypatch.setenv("FIRESTORE_DATABASE", "(default)")
+
+    # Fast-fail check: verify emulator is accessible
+    emulator_host = os.getenv("FIRESTORE_EMULATOR_HOST", "localhost:8081")
+    host, port = emulator_host.split(":")
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        result = sock.connect_ex((host, int(port)))
+        sock.close()
+        if result != 0:
+            pytest.fail(
+                f"Firestore emulator not accessible at {emulator_host}. "
+                "Start it with: make emulator"
+            )
+    except Exception as e:
+        pytest.fail(f"Could not check Firestore emulator accessibility: {e}")
+
+    # Reset client singleton
+    FirestoreClient.reset_client()
+
+    # Get client
+    client = FirestoreClient.get_client(project="test-project")
+
+    yield client
+
+    # Cleanup: reset client after test
+    FirestoreClient.reset_client()
+
+
+@pytest.fixture
+def card_repository(firestore_client):
+    """Create a CardRepository for testing."""
+    return CardRepository(client=firestore_client)
+
+
+@pytest.fixture
+def card_tools_mcp(card_repository, schema_repository):
+    """Create an MCP server instance with card tools registered."""
+    mcp = FastMCP("test-server")
+    register_card_tools(mcp, card_repository, schema_repository)
     return mcp

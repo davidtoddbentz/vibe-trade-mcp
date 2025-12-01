@@ -10,6 +10,8 @@ from mcp.server.fastmcp import FastMCP
 
 from src.db.archetype_repository import ArchetypeRepository
 from src.db.archetype_schema_repository import ArchetypeSchemaRepository
+from src.db.card_repository import CardRepository
+from src.tools.card_tools import register_card_tools
 from src.tools.trading_tools import register_trading_tools
 
 # Load .env file if it exists (for local development)
@@ -17,9 +19,12 @@ env_path = Path(__file__).parent.parent / ".env"
 if env_path.exists():
     load_dotenv(env_path)
 
-# Initialize repositories (read from JSON files)
+# Initialize repositories
 archetype_repo = ArchetypeRepository()
 schema_repo = ArchetypeSchemaRepository()
+
+# Initialize card repository (requires Firestore)
+card_repo = CardRepository()
 
 # Cloud Run sets PORT environment variable (defaults to 8080)
 port = int(os.getenv("PORT", "8080"))
@@ -30,6 +35,7 @@ mcp = FastMCP("vibe-trade-server", port=port, host="0.0.0.0")
 
 # Register tools with injected repositories
 register_trading_tools(mcp, archetype_repo, schema_repo)
+register_card_tools(mcp, card_repo, schema_repo)
 
 
 def main():

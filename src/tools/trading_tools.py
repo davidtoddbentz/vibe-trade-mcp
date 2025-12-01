@@ -110,7 +110,13 @@ def register_trading_tools(
         )
 
     @mcp.tool()
-    def get_archetype_schema(request: GetArchetypeSchemaRequest) -> GetArchetypeSchemaResponse:
+    def get_archetype_schema(
+        type: str = Field(..., description="Archetype identifier (e.g., 'signal.trend_pullback')"),
+        if_none_match: str | None = Field(
+            None,
+            description="Optional ETag for conditional requests. If provided and matches, indicates client already has this version.",
+        ),
+    ) -> GetArchetypeSchemaResponse:
         """
         Fetch the authoritative JSON Schema for a given archetype.
 
@@ -125,21 +131,22 @@ def register_trading_tools(
         you can skip fetching it again.
 
         Args:
-            request: GetArchetypeSchemaRequest with type (required) and optional if_none_match
+            type: Archetype identifier
+            if_none_match: Optional ETag for conditional requests
 
         Returns:
             GetArchetypeSchemaResponse containing the full schema definition
         """
         # Fetch schema from repository
-        schema = schema_repo.get_by_type_id(request.type)
+        schema = schema_repo.get_by_type_id(type)
 
         if schema is None:
-            raise ValueError(f"Archetype schema not found: {request.type}")
+            raise ValueError(f"Archetype schema not found: {type}")
 
         # Check if client already has this version (ETag matching)
         # Note: For MVP, we just return the schema. In the future, we could return
         # a 304 Not Modified response if if_none_match matches the etag.
-        if request.if_none_match and request.if_none_match == schema.etag:
+        if if_none_match and if_none_match == schema.etag:
             # Client already has this version - could return 304 in HTTP context
             # For MCP, we still return the schema but the client can check the etag
             pass
