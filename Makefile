@@ -65,20 +65,16 @@ seed-dry-run:
 	@echo "🌱 [DRY RUN] Seeding archetypes..."
 	uv run python -m src.scripts.seed_archetypes --dry-run
 
-# Seed to production (requires GOOGLE_CLOUD_PROJECT set)
+# Seed to production (forces production parameters)
 seed-prod:
 	@echo "🌱 Seeding archetypes to production..."
-	@if [ -z "$$GOOGLE_CLOUD_PROJECT" ]; then \
-		echo "❌ Error: GOOGLE_CLOUD_PROJECT not set"; \
-		echo "   Set it with: export GOOGLE_CLOUD_PROJECT=vibe-trade-475704"; \
-		exit 1; \
-	fi
-	@if [ -n "$$FIRESTORE_EMULATOR_HOST" ]; then \
-		echo "⚠️  Warning: FIRESTORE_EMULATOR_HOST is set - this will seed the emulator, not production!"; \
-		echo "   Unset it with: unset FIRESTORE_EMULATOR_HOST"; \
-		exit 1; \
-	fi
-	uv run python -m src.scripts.seed_archetypes
+	@echo "   Project: vibe-trade-475704"
+	@echo "   Database: strategy"
+	@bash -c '\
+	FIRESTORE_EMULATOR_HOST="" \
+	GOOGLE_CLOUD_PROJECT=vibe-trade-475704 \
+	FIRESTORE_DATABASE=strategy \
+	uv run python -m src.scripts.seed_archetypes'
 
 test:
 	uv run pytest tests/ -v

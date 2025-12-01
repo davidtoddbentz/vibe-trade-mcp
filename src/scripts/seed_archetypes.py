@@ -32,9 +32,24 @@ from dotenv import load_dotenv
 from google.cloud import firestore
 
 # Load .env file if it exists (for local development)
+# Preserve explicitly set environment variables before loading .env
 env_path = Path(__file__).parent.parent.parent / ".env"
+explicit_project = os.getenv("GOOGLE_CLOUD_PROJECT")
+explicit_database = os.getenv("FIRESTORE_DATABASE")
+explicit_emulator = os.getenv("FIRESTORE_EMULATOR_HOST")
+
 if env_path.exists():
-    load_dotenv(env_path)
+    load_dotenv(env_path, override=True)
+    # Restore explicitly set environment variables (they take precedence)
+    if explicit_project:
+        os.environ["GOOGLE_CLOUD_PROJECT"] = explicit_project
+    if explicit_database:
+        os.environ["FIRESTORE_DATABASE"] = explicit_database
+    # If FIRESTORE_EMULATOR_HOST was explicitly unset (empty string), keep it unset
+    if explicit_emulator == "":
+        os.environ.pop("FIRESTORE_EMULATOR_HOST", None)
+    elif explicit_emulator is not None:
+        os.environ["FIRESTORE_EMULATOR_HOST"] = explicit_emulator
 
 
 def load_archetypes_from_json() -> list[dict[str, Any]]:
@@ -109,6 +124,8 @@ def seed_archetypes(dry_run: bool = False) -> tuple[int, int]:
 
     # Initialize Firestore client
     print("🌱 Seeding archetypes into Firestore...", file=sys.stderr)
+    # Check emulator_host again after .env loading (may have been overridden)
+    emulator_host = os.getenv("FIRESTORE_EMULATOR_HOST")
     if emulator_host:
         print(f"   Environment: Local Emulator ({emulator_host})", file=sys.stderr)
     else:
