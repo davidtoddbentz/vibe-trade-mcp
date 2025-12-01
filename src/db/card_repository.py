@@ -6,7 +6,6 @@ The repository owns the conversion from Firestore documents to domain models.
 
 from google.cloud.firestore import Client
 
-from src.db.firestore_client import FirestoreClient
 from src.models.card import Card
 
 
@@ -17,21 +16,13 @@ class CardRepository:
     The repository owns the conversion from Firestore documents to domain models.
     """
 
-    def __init__(self, client: Client | None = None):
+    def __init__(self, client: Client):
         """Initialize repository.
 
         Args:
-            client: Optional Firestore client. If None, uses FirestoreClient.get_client().
+            client: Firestore client (required).
         """
-        if client is None:
-            import os
-
-            project = os.getenv("GOOGLE_CLOUD_PROJECT")
-            if not project:
-                raise ValueError("GOOGLE_CLOUD_PROJECT environment variable must be set")
-            self.client = FirestoreClient.get_client(project=project)
-        else:
-            self.client = client
+        self.client = client
         self.collection = "cards"
 
     def create(self, card: Card) -> Card:
