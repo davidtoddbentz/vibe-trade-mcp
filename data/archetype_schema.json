@@ -1,0 +1,461 @@
+[
+    {
+      "type_id": "signal.trend_pullback",
+      "schema_version": 1,
+      "etag": "W/\"seed-v1.signal.trend_pullback\"",
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": ["tf", "symbol", "direction", "dip_trigger", "dip_threshold"],
+        "properties": {
+          "tf": { "enum": ["15m", "1h", "4h", "1d"] },
+          "symbol": { "type": "string" },
+          "direction": { "enum": ["long", "short"] },
+          "dip_trigger": { "enum": ["keltner", "bollinger", "ema_z"] },
+          "dip_threshold": { "type": "number", "minimum": 0.2, "maximum": 5.0 },
+          "trend_gate": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "mode": { "const": "hard" },
+                  "gate": {
+                    "type": "object",
+                    "properties": {
+                      "kind": { "const": "preset" },
+                      "name": { "enum": ["uptrend_basic", "downtrend_basic"] }
+                    },
+                    "required": ["kind", "name"],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["mode", "gate"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "mode": { "const": "ma_rel" },
+                  "fast": { "type": "integer", "minimum": 5, "maximum": 50 },
+                  "slow": { "type": "integer", "minimum": 20, "maximum": 200 },
+                  "op": { "enum": [">", "<"] }
+                },
+                "required": ["mode", "fast", "slow", "op"],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "cooldown_bars": { "type": "integer", "minimum": 0, "maximum": 1000 },
+          "max_entries_per_day": { "type": "integer", "minimum": 0, "maximum": 50 }
+        },
+        "additionalProperties": false
+      },
+      "constraints": { "min_history_bars": 120, "pit_safe": true },
+      "slot_hints": {
+        "dip_threshold": { "unit": "x_band_or_sigma", "min": 0.5, "max": 3.0, "step": 0.1 },
+        "trend_gate": { "ui": "discriminated_union" }
+      },
+      "examples": [
+        {
+          "human": "On BTC 1h, buy dips ≤1.5×Keltner only when uptrend",
+          "slots": { "tf": "1h", "symbol": "BTC-USD", "direction": "long", "dip_trigger": "keltner", "dip_threshold": 1.5, "trend_gate": { "mode": "hard", "gate": { "kind": "preset", "name": "uptrend_basic" } } }
+        }
+      ],
+      "notes": [],
+      "updated_at": "2025-11-25T00:00:00Z"
+    },
+    {
+      "type_id": "signal.range_mean_reversion",
+      "schema_version": 1,
+      "etag": "W/\"seed-v1.signal.range_mean_reversion\"",
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": ["tf", "symbol", "band", "entry_thresh"],
+        "properties": {
+          "tf": { "enum": ["15m", "1h", "4h"] },
+          "symbol": { "type": "string" },
+          "band": { "enum": ["bollinger", "keltner", "donchian", "vwap_band"] },
+          "entry_thresh": { "type": "number", "minimum": 0.5, "maximum": 3.0 },
+          "exit_to_mean": { "type": "boolean" },
+          "tp_atr": { "type": "number", "minimum": 0.1, "maximum": 10.0 },
+          "stop_atr": { "type": "number", "minimum": 0.1, "maximum": 10.0 },
+          "range_confirm": { "enum": ["adx_lt", "hurst", "none"] }
+        },
+        "additionalProperties": false
+      },
+      "constraints": { "min_history_bars": 100, "pit_safe": true },
+      "slot_hints": {
+        "entry_thresh": { "unit": "z_or_band_mult", "min": 0.8, "max": 2.5, "step": 0.1 }
+      },
+      "examples": [
+        {
+          "human": "ETH 15m: fade outside Bollinger z≥1.8, exit to mean",
+          "slots": { "tf": "15m", "symbol": "ETH-USD", "band": "bollinger", "entry_thresh": 1.8, "exit_to_mean": true }
+        }
+      ],
+      "notes": [],
+      "updated_at": "2025-11-25T00:00:00Z"
+    },
+    {
+      "type_id": "signal.breakout_trendfollow",
+      "schema_version": 1,
+      "etag": "W/\"seed-v1.signal.breakout_trendfollow\"",
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": ["tf", "symbol", "direction", "lookback_bars"],
+        "properties": {
+          "tf": { "enum": ["1h", "4h", "1d"] },
+          "symbol": { "type": "string" },
+          "direction": { "enum": ["long", "short"] },
+          "lookback_bars": { "type": "integer", "minimum": 5, "maximum": 200 },
+          "buffer_bps": { "type": "number", "minimum": 0, "maximum": 200 },
+          "atr_trail_mult": { "type": "number", "minimum": 0.5, "maximum": 10.0 },
+          "confirm": { "enum": ["none", "close_above", "volume_spike"] }
+        },
+        "additionalProperties": false
+      },
+      "constraints": { "min_history_bars": 250, "pit_safe": true },
+      "slot_hints": {
+        "lookback_bars": { "min": 20, "max": 100, "step": 5 },
+        "atr_trail_mult": { "min": 1.0, "max": 4.0, "step": 0.25 }
+      },
+      "examples": [
+        {
+          "human": "BTC 4h: buy 55-bar breakout, trail 2×ATR",
+          "slots": { "tf": "4h", "symbol": "BTC-USD", "direction": "long", "lookback_bars": 55, "atr_trail_mult": 2.0 }
+        }
+      ],
+      "notes": [],
+      "updated_at": "2025-11-25T00:00:00Z"
+    },
+    {
+      "type_id": "signal.breakout_retest",
+      "schema_version": 1,
+      "etag": "W/\"seed-v1.signal.breakout_retest\"",
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": ["tf", "symbol", "direction", "break_lookback", "pullback_depth_atr"],
+        "properties": {
+          "tf": { "enum": ["1h", "4h"] },
+          "symbol": { "type": "string" },
+          "direction": { "enum": ["long", "short"] },
+          "break_lookback": { "type": "integer", "minimum": 10, "maximum": 200 },
+          "pullback_depth_atr": { "type": "number", "minimum": 0.2, "maximum": 3.0 },
+          "confirmation": { "enum": ["none", "reclaim", "wick_reject"] },
+          "invalidation_atr": { "type": "number", "minimum": 0.2, "maximum": 5.0 }
+        },
+        "additionalProperties": false
+      },
+      "constraints": { "min_history_bars": 250, "pit_safe": true },
+      "slot_hints": {
+        "pullback_depth_atr": { "min": 0.5, "max": 2.0, "step": 0.1 }
+      },
+      "examples": [
+        {
+          "human": "SOL 1h: on 20-bar break, buy retest within 1.0×ATR, invalidate at 1.5×ATR",
+          "slots": { "tf": "1h", "symbol": "SOL-USD", "direction": "long", "break_lookback": 20, "pullback_depth_atr": 1.0, "invalidation_atr": 1.5 }
+        }
+      ],
+      "notes": [],
+      "updated_at": "2025-11-25T00:00:00Z"
+    },
+    {
+      "type_id": "signal.squeeze_expansion",
+      "schema_version": 1,
+      "etag": "W/\"seed-v1.signal.squeeze_expansion\"",
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": ["tf", "symbol", "squeeze_metric", "pctile_min"],
+        "properties": {
+          "tf": { "enum": ["1h", "4h"] },
+          "symbol": { "type": "string" },
+          "squeeze_metric": { "enum": ["bb_width_pctile", "kc_comp", "hv_ratio"] },
+          "pctile_min": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "break_rule": { "enum": ["none", "donchian", "close_outside_band"] },
+          "atr_trail_mult": { "type": "number", "minimum": 0.5, "maximum": 10.0 },
+          "with_trend": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      },
+      "constraints": { "min_history_bars": 200, "pit_safe": true },
+      "slot_hints": {
+        "pctile_min": { "min": 70, "max": 95, "step": 1 }
+      },
+      "examples": [
+        {
+          "human": "BTC 1h: trade when BB width ≤ 10th pctile; confirm on close outside band",
+          "slots": { "tf": "1h", "symbol": "BTC-USD", "squeeze_metric": "bb_width_pctile", "pctile_min": 10, "break_rule": "close_outside_band" }
+        }
+      ],
+      "notes": [],
+      "updated_at": "2025-11-25T00:00:00Z"
+    },
+    {
+      "type_id": "signal.xs_momentum",
+      "schema_version": 1,
+      "etag": "W/\"seed-v1.signal.xs_momentum\"",
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": ["universe", "rank_feature", "top_n", "rebalance_cadence"],
+        "properties": {
+          "universe": { "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 100 },
+          "rank_feature": { "enum": ["ret_1d", "ret_1w", "rs"] },
+          "top_n": { "type": "integer", "minimum": 1, "maximum": 50 },
+          "rebalance_cadence": { "enum": ["1d", "1w", "4h", "1h"] },
+          "min_liquidity": { "type": "number", "minimum": 0 },
+          "weights": { "enum": ["equal", "rank"] },
+          "side": { "enum": ["long_only", "long_short"] }
+        },
+        "additionalProperties": false
+      },
+      "constraints": { "min_history_bars": 60, "pit_safe": true },
+      "slot_hints": {
+        "top_n": { "min": 3, "max": 10, "step": 1 }
+      },
+      "examples": [
+        {
+          "human": "Top 5 by 1W momentum from BTC,ETH,SOL,LINK,AVAX; rebalance daily",
+          "slots": { "universe": ["BTC-USD", "ETH-USD", "SOL-USD", "LINK-USD", "AVAX-USD"], "rank_feature": "ret_1w", "top_n": 5, "rebalance_cadence": "1d" }
+        }
+      ],
+      "notes": [],
+      "updated_at": "2025-11-25T00:00:00Z"
+    },
+    {
+      "type_id": "signal.pairs_relative_value",
+      "schema_version": 1,
+      "etag": "W/\"seed-v1.signal.pairs_relative_value\"",
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": ["symbol_a", "symbol_b", "method", "z_entry", "z_exit"],
+        "properties": {
+          "symbol_a": { "type": "string" },
+          "symbol_b": { "type": "string" },
+          "method": { "enum": ["log_spread", "beta_hedged"] },
+          "z_entry": { "type": "number", "minimum": 0.5, "maximum": 5.0 },
+          "z_exit": { "type": "number", "minimum": 0.0, "maximum": 5.0 },
+          "hedge_ratio_mode": { "enum": ["static", "rolling"] },
+          "long_only_shadow": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      },
+      "constraints": { "min_history_bars": 250, "pit_safe": true },
+      "slot_hints": {
+        "z_entry": { "min": 1.0, "max": 3.0, "step": 0.1 },
+        "z_exit": { "min": 0.0, "max": 1.0, "step": 0.1 }
+      },
+      "examples": [
+        {
+          "human": "Long BTC vs short ETH when spread z ≤ -2; exit at z = 0",
+          "slots": { "symbol_a": "BTC-USD", "symbol_b": "ETH-USD", "method": "log_spread", "z_entry": -2.0, "z_exit": 0.0 }
+        }
+      ],
+      "notes": [],
+      "updated_at": "2025-11-25T00:00:00Z"
+    },
+    {
+      "type_id": "signal.intermarket_trigger",
+      "schema_version": 1,
+      "etag": "W/\"seed-v1.signal.intermarket_trigger\"",
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": ["leader_symbol", "follower_symbol", "trigger_feature", "trigger_threshold", "window"],
+        "properties": {
+          "leader_symbol": { "type": "string" },
+          "follower_symbol": { "type": "string" },
+          "trigger_feature": { "enum": ["ret_move", "breakout", "vol_spike"] },
+          "trigger_threshold": { "type": "number" },
+          "window": { "type": "integer", "minimum": 1, "maximum": 720 },
+          "entry_side_map": {
+            "type": "object",
+            "properties": {
+              "leader_up": { "enum": ["buy_follower", "sell_follower", "none"] },
+              "leader_down": { "enum": ["buy_follower", "sell_follower", "none"] }
+            },
+            "additionalProperties": false
+          },
+          "hold_bars": { "type": "integer", "minimum": 1, "maximum": 1000 },
+          "stop_atr": { "type": "number", "minimum": 0.1, "maximum": 10.0 },
+          "tp_atr": { "type": "number", "minimum": 0.1, "maximum": 10.0 }
+        },
+        "additionalProperties": false
+      },
+      "constraints": { "min_history_bars": 120, "pit_safe": true },
+      "slot_hints": {
+        "trigger_threshold": { "note": "percent for ret_move; sigma for vol_spike" }
+      },
+      "examples": [
+        {
+          "human": "If NVDA up >2% in 60 bars, buy TSLA for 20 bars",
+          "slots": { "leader_symbol": "NVDA", "follower_symbol": "TSLA", "trigger_feature": "ret_move", "trigger_threshold": 2.0, "window": 60, "hold_bars": 20, "entry_side_map": { "leader_up": "buy_follower", "leader_down": "none" } }
+        }
+      ],
+      "notes": [],
+      "updated_at": "2025-11-25T00:00:00Z"
+    },
+    {
+      "type_id": "signal.avwap_reversion",
+      "schema_version": 1,
+      "etag": "W/\"seed-v1.signal.avwap_reversion\"",
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": ["tf", "symbol", "anchor", "dist_sigma_entry"],
+        "properties": {
+          "tf": { "enum": ["1h", "4h", "1d"] },
+          "symbol": { "type": "string" },
+          "anchor": { "enum": ["ytd", "month_start", "event_ts", "price"] },
+          "dist_sigma_entry": { "type": "number", "minimum": 0.2, "maximum": 5.0 },
+          "event_ts": { "type": "string", "format": "date-time" },
+          "anchor_price": { "type": "number", "minimum": 0 },
+          "tp_to_vwap": { "type": "boolean" },
+          "stop_atr": { "type": "number", "minimum": 0.1, "maximum": 10.0 },
+          "reanchor_policy": { "enum": ["fixed", "monthly", "quarterly"] }
+        },
+        "allOf": [
+          { "if": { "properties": { "anchor": { "const": "event_ts" } } }, "then": { "required": ["event_ts"] } },
+          { "if": { "properties": { "anchor": { "const": "price" } } }, "then": { "required": ["anchor_price"] } }
+        ],
+        "additionalProperties": false
+      },
+      "constraints": { "min_history_bars": 200, "pit_safe": true },
+      "slot_hints": {
+        "dist_sigma_entry": { "unit": "sigma", "min": 0.5, "max": 2.5, "step": 0.1 }
+      },
+      "examples": [
+        {
+          "human": "BTC 1d: revert to YTD AVWAP when distance ≥ 1.0σ",
+          "slots": { "tf": "1d", "symbol": "BTC-USD", "anchor": "ytd", "dist_sigma_entry": 1.0, "tp_to_vwap": true }
+        }
+      ],
+      "notes": [],
+      "updated_at": "2025-11-25T00:00:00Z"
+    },
+    {
+      "type_id": "signal.event_followthrough",
+      "schema_version": 1,
+      "etag": "W/\"seed-v1.signal.event_followthrough\"",
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": ["symbol", "event_kind", "entry_window", "direction"],
+        "properties": {
+          "symbol": { "type": "string" },
+          "event_kind": { "enum": ["earnings", "listing", "macro", "token_unlock", "news_tag"] },
+          "entry_window": { "type": "string", "pattern": "^[0-9]+(m|h|d)$" },
+          "direction": { "enum": ["auto", "long", "short"] },
+          "strength_filter": { "type": "number", "minimum": 0 },
+          "hold_horizon": { "type": "string", "pattern": "^[0-9]+(m|h|d)$" },
+          "stop_atr": { "type": "number", "minimum": 0.1, "maximum": 10.0 },
+          "tp_atr": { "type": "number", "minimum": 0.1, "maximum": 10.0 }
+        },
+        "additionalProperties": false
+      },
+      "constraints": { "min_history_bars": 0, "pit_safe": true },
+      "slot_hints": {
+        "entry_window": { "examples": ["4h", "1d"] }
+      },
+      "examples": [
+        {
+          "human": "Buy BTC for 1d after CPI surprise if strength ≥ 2σ",
+          "slots": { "symbol": "BTC-USD", "event_kind": "macro", "entry_window": "1d", "direction": "long", "strength_filter": 2.0 }
+        }
+      ],
+      "notes": [],
+      "updated_at": "2025-11-25T00:00:00Z"
+    },
+    {
+      "type_id": "signal.gap_play",
+      "schema_version": 1,
+      "etag": "W/\"seed-v1.signal.gap_play\"",
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": ["symbol", "session", "mode", "min_gap_pct"],
+        "properties": {
+          "symbol": { "type": "string" },
+          "session": { "enum": ["us", "eu", "asia"] },
+          "mode": { "enum": ["gap_fade", "gap_go"] },
+          "min_gap_pct": { "type": "number", "minimum": 0.1, "maximum": 20.0 },
+          "confirmation": { "enum": ["none", "range_break", "first_min_high_low"] },
+          "tp_atr": { "type": "number", "minimum": 0.1, "maximum": 10.0 },
+          "stop_atr": { "type": "number", "minimum": 0.1, "maximum": 10.0 },
+          "session_window": { "type": "string", "pattern": "^[0-2][0-9][0-5][0-9]-[0-2][0-9][0-5][0-9]$" }
+        },
+        "additionalProperties": false
+      },
+      "constraints": { "min_history_bars": 0, "pit_safe": true },
+      "slot_hints": {
+        "min_gap_pct": { "min": 1.0, "max": 5.0, "step": 0.25 }
+      },
+      "examples": [
+        {
+          "human": "TSLA US session: gap-and-go only if gap ≥ 2%",
+          "slots": { "symbol": "TSLA", "session": "us", "mode": "gap_go", "min_gap_pct": 2.0 }
+        }
+      ],
+      "notes": [],
+      "updated_at": "2025-11-25T00:00:00Z"
+    },
+    {
+      "type_id": "overlay.seasonality_tod",
+      "schema_version": 1,
+      "etag": "W/\"seed-v1.overlay.seasonality_tod\"",
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": ["tf", "symbol", "windows"],
+        "properties": {
+          "tf": { "enum": ["15m", "1h"] },
+          "symbol": { "type": "string" },
+          "windows": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["dow", "hhmm"],
+              "properties": {
+                "dow": { "enum": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] },
+                "hhmm": { "type": "string", "pattern": "^[0-2][0-9][0-5][0-9]-[0-2][0-9][0-5][0-9]$" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "blackouts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["dow", "hhmm"],
+              "properties": {
+                "dow": { "enum": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] },
+                "hhmm": { "type": "string", "pattern": "^[0-2][0-9][0-5][0-9]-[0-2][0-9][0-5][0-9]$" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "turn_of_month": { "type": "boolean" },
+          "holiday_filter": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      },
+      "constraints": { "min_history_bars": 0, "pit_safe": true },
+      "slot_hints": {
+        "windows": { "example": [{ "dow": "Mon", "hhmm": "0700-0900" }] }
+      },
+      "examples": [
+        {
+          "human": "Only trade BTC on 1h during US morning: Mon–Fri 0700-1100",
+          "slots": { "tf": "1h", "symbol": "BTC-USD", "windows": [{ "dow": "Mon", "hhmm": "0700-1100" }, { "dow": "Tue", "hhmm": "0700-1100" }, { "dow": "Wed", "hhmm": "0700-1100" }, { "dow": "Thu", "hhmm": "0700-1100" }, { "dow": "Fri", "hhmm": "0700-1100" }], "holiday_filter": true }
+        }
+      ],
+      "notes": [],
+      "updated_at": "2025-11-25T00:00:00Z"
+    }
+  ]

@@ -1,66 +1,80 @@
-"""Repository for archetype data access using Firestore.
+"""Repository for archetype data access from JSON file.
 
-This layer abstracts Firestore operations and returns domain models.
-The repository owns the conversion from raw database format to domain models.
+This layer abstracts data access and returns domain models.
+The repository owns the conversion from raw JSON format to domain models.
 """
 
-from google.cloud.firestore import Client
-from google.cloud.firestore_v1 import FieldFilter
+import json
+from pathlib import Path
 
-from src.db.firestore_client import FirestoreClient
 from src.models.archetype import Archetype
 
 
 class ArchetypeRepository:
-    """Repository for archetype CRUD operations.
+    """Repository for archetype read operations.
 
-    Returns domain models (Archetype objects) from Firestore.
-    The repository owns the conversion from raw database format to domain models.
+    Returns domain models (Archetype objects) from JSON file.
+    The repository owns the conversion from raw JSON format to domain models.
     """
 
-    def __init__(self, client: Client | None = None):
+    def __init__(self, archetypes_file: Path | None = None):
         """Initialize repository.
 
         Args:
-            client: Optional Firestore client. If None, uses singleton client.
+            archetypes_file: Optional path to archetypes JSON file. If None, uses default location.
         """
-        self.client = client or FirestoreClient.get_client()
-        self.collection = self.client.collection("archetypes")
+        if archetypes_file is None:
+            # Default to data/archetypes.json relative to project root
+            project_root = Path(__file__).parent.parent.parent
+            archetypes_file = project_root / "data" / "archetypes.json"
+        self.archetypes_file = archetypes_file
+        self._archetypes: dict[str, Archetype] | None = None
 
-    def _to_domain_model(self, doc_id: str, data: dict) -> Archetype:
-        """Convert raw Firestore document to domain model.
-
-        Args:
-            doc_id: Document ID from Firestore
-            data: Raw document data from Firestore
+    def _load_archetypes(self) -> dict[str, Archetype]:
+        """Load all archetypes from JSON file and cache them.
 
         Returns:
-            Archetype domain model
+            Dictionary mapping archetype ID to Archetype domain model
         """
-        return Archetype.from_dict(data | {"id": doc_id})
+        if self._archetypes is not None:
+            return self._archetypes
+
+        if not self.archetypes_file.exists():
+            raise FileNotFoundError(f"Archetypes file not found: {self.archetypes_file}")
+
+        with open(self.archetypes_file) as f:
+            data = json.load(f)
+
+        if not isinstance(data, list):
+            raise ValueError(f"Expected list in {self.archetypes_file}, got {type(data)}")
+
+        self._archetypes = {}
+        for arch_data in data:
+            archetype = Archetype.from_dict(arch_data)
+            self._archetypes[archetype.id] = archetype
+
+        return self._archetypes
 
     def get_all(self) -> list[Archetype]:
-        """Get all archetypes from Firestore.
+        """Get all archetypes from JSON file.
 
         Returns:
-            List of Archetype domain models
+            List of all Archetype domain models
         """
-        docs = self.collection.stream()
-        return [self._to_domain_model(doc.id, doc.to_dict()) for doc in docs]
+        archetypes = self._load_archetypes()
+        return list(archetypes.values())
 
     def get_by_id(self, archetype_id: str) -> Archetype | None:
         """Get archetype by ID.
 
         Args:
-            archetype_id: The archetype identifier (document ID in Firestore)
+            archetype_id: The archetype identifier
 
         Returns:
             Archetype domain model or None if not found
         """
-        doc = self.collection.document(archetype_id).get()
-        if not doc.exists:
-            return None
-        return self._to_domain_model(doc.id, doc.to_dict())
+        archetypes = self._load_archetypes()
+        return archetypes.get(archetype_id)
 
     def get_non_deprecated(self) -> list[Archetype]:
         """Get all non-deprecated archetypes.
@@ -68,31 +82,5 @@ class ArchetypeRepository:
         Returns:
             List of non-deprecated Archetype domain models
         """
-        docs = self.collection.where(filter=FieldFilter("deprecated", "==", False)).stream()
-        return [self._to_domain_model(doc.id, doc.to_dict()) for doc in docs]
-
-    def create_or_update(self, archetype_id: str, data: dict) -> None:
-        """Create or update an archetype.
-
-        Args:
-            archetype_id: The archetype identifier (document ID)
-            data: Archetype data dictionary (without 'id' field)
-        """
-        # Remove 'id' from data if present (it's the document ID, not a field)
-        data_clean = {k: v for k, v in data.items() if k != "id"}
-        # Use merge=True to update existing documents or create new ones
-        self.collection.document(archetype_id).set(data_clean, merge=True)
-
-    def delete(self, archetype_id: str) -> None:
-        """Delete an archetype by ID.
-
-        Args:
-            archetype_id: The archetype identifier (document ID)
-        """
-        self.collection.document(archetype_id).delete()
-
-    def delete_all(self) -> None:
-        """Delete all archetypes. Useful for test cleanup."""
-        docs = self.collection.stream()
-        for doc in docs:
-            doc.reference.delete()
+        archetypes = self._load_archetypes()
+        return [arch for arch in archetypes.values() if not arch.deprecated]
