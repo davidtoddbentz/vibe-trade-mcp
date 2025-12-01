@@ -33,3 +33,13 @@ output "region" {
   value       = var.region
 }
 
+output "firestore_location" {
+  description = "Firestore database location"
+  value       = google_firestore_database.strategy.location_id
+}
+
+output "firestore_database_name" {
+  description = "Firestore database name"
+  value       = google_firestore_database.strategy.name
+}
+

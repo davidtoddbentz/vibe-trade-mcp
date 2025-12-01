@@ -1,9 +1,84 @@
-.PHONY: install test lint format format-check check ci clean \
+.PHONY: install run emulator seed seed-dry-run test lint format format-check check ci clean \
 	terraform-init terraform-plan terraform-apply terraform-apply-auto terraform-destroy terraform-output terraform-validate terraform-fmt \
 	docker-build docker-push docker-build-push deploy deploy-image deploy-info force-revision
 
 install:
 	uv sync --all-groups
+
+# Start Firestore emulator using Docker (no Java/Xcode needed)
+emulator:
+	@echo "🔥 Starting Firestore emulator in background (Docker)..."
+	@docker stop firestore-emulator 2>/dev/null || true
+	@docker rm firestore-emulator 2>/dev/null || true
+	@docker run -d --name firestore-emulator -p 8081:8080 -e FIRESTORE_PROJECT_ID=demo-project mtlynch/firestore-emulator-docker
+	@sleep 3
+	@echo "✅ Emulator running in background (container: firestore-emulator)"
+	@echo "   Stop it with: make emulator-stop"
+
+# Stop background emulator
+emulator-stop:
+	@echo "🛑 Stopping Firestore emulator..."
+	@docker stop firestore-emulator 2>/dev/null || echo "   Emulator not running"
+	@docker rm firestore-emulator 2>/dev/null || true
+	@echo "✅ Emulator stopped"
+
+# Check if emulator is running
+check-emulator:
+	@if ! nc -z localhost 8081 2>/dev/null; then \
+		echo "❌ Firestore emulator is not running on localhost:8081"; \
+		echo "   Start it with: make emulator (in another terminal)"; \
+		exit 1; \
+	fi
+
+# Run the server locally
+# Uses emulator if FIRESTORE_EMULATOR_HOST is set in .env, otherwise production
+run:
+	@bash -c '\
+	if [ -f .env ]; then \
+		export $$(grep -v "^#" .env | xargs); \
+	fi; \
+	if [ -z "$$FIRESTORE_EMULATOR_HOST" ] && [ -z "$$GOOGLE_CLOUD_PROJECT" ]; then \
+		echo "⚠️  Warning: Neither FIRESTORE_EMULATOR_HOST nor GOOGLE_CLOUD_PROJECT set"; \
+		echo "   For local dev: export FIRESTORE_EMULATOR_HOST=localhost:8081"; \
+		echo "   For production: export GOOGLE_CLOUD_PROJECT=vibe-trade-475704"; \
+	fi; \
+	if [ -n "$$FIRESTORE_EMULATOR_HOST" ]; then \
+		nc -z localhost 8081 2>/dev/null || (echo "❌ Firestore emulator is not running on localhost:8081"; echo "   Start it with: make emulator"; exit 1); \
+		echo "✅ Firestore emulator is running"; \
+	fi; \
+	echo "🚀 Starting MCP server..."; \
+	if [ -n "$$FIRESTORE_EMULATOR_HOST" ]; then \
+		echo "   Using Firestore Emulator: $$FIRESTORE_EMULATOR_HOST"; \
+	else \
+		echo "   Using Production Firestore: $$GOOGLE_CLOUD_PROJECT"; \
+	fi; \
+	echo "   Endpoint: http://localhost:8080/mcp"; \
+	uv run main'
+
+# Seed archetypes into database
+seed:
+	@echo "🌱 Seeding archetypes..."
+	uv run python -m src.scripts.seed_archetypes
+
+# Dry run seed (see what would be done)
+seed-dry-run:
+	@echo "🌱 [DRY RUN] Seeding archetypes..."
+	uv run python -m src.scripts.seed_archetypes --dry-run
+
+# Seed to production (requires GOOGLE_CLOUD_PROJECT set)
+seed-prod:
+	@echo "🌱 Seeding archetypes to production..."
+	@if [ -z "$$GOOGLE_CLOUD_PROJECT" ]; then \
+		echo "❌ Error: GOOGLE_CLOUD_PROJECT not set"; \
+		echo "   Set it with: export GOOGLE_CLOUD_PROJECT=vibe-trade-475704"; \
+		exit 1; \
+	fi
+	@if [ -n "$$FIRESTORE_EMULATOR_HOST" ]; then \
+		echo "⚠️  Warning: FIRESTORE_EMULATOR_HOST is set - this will seed the emulator, not production!"; \
+		echo "   Unset it with: unset FIRESTORE_EMULATOR_HOST"; \
+		exit 1; \
+	fi
+	uv run python -m src.scripts.seed_archetypes
 
 test:
 	uv run pytest tests/ -v

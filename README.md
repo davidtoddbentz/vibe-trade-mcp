@@ -4,16 +4,73 @@ MCP server for creating and managing trading strategies.
 
 ## Setup
 
-```bash
-# Install uv (if not already installed)
-brew install uv  # or pip install uv
+### Prerequisites
 
-# Install dependencies
-uv sync
+1. **Install uv** (if not already installed):
+   ```bash
+   brew install uv  # or pip install uv
+   ```
 
-# Run the server
-uv run main
-```
+2. **Install Docker** (for running Firestore emulator locally):
+   ```bash
+   brew install docker # or follow https://docs.docker.com/get-docker/
+   ```
+
+### Local Development
+
+Local development uses the **Firestore Emulator** via Docker - no connection to production GCP needed.
+
+1. **Install dependencies**:
+   ```bash
+   uv sync
+   ```
+
+2. **Start Firestore Emulator** (in a separate terminal):
+   ```bash
+   make emulator
+   ```
+   This will start the Docker-based emulator in the background.
+
+3. **Set environment variables** (recommended: use `.env` file):
+   
+   Create a `.env` file in the project root (automatically loaded):
+   ```bash
+   # .env (not committed to git)
+   FIRESTORE_EMULATOR_HOST=localhost:8081
+   GOOGLE_CLOUD_PROJECT=demo-project
+   FIRESTORE_DATABASE=(default)  # Required - emulator only supports "(default)"
+   ```
+
+   Or export them manually:
+   ```bash
+   export FIRESTORE_EMULATOR_HOST=localhost:8081
+   export GOOGLE_CLOUD_PROJECT=demo-project
+   export FIRESTORE_DATABASE=(default)
+   ```
+
+   **Note**: The `.env` file is automatically loaded by `python-dotenv` - no code changes needed!
+
+4. **Seed local data** (optional, but recommended for testing):
+   ```bash
+   make seed
+   ```
+
+5. **Run the server**:
+   ```bash
+   # Option 1: Using Makefile
+   make run
+
+   # Option 2: Direct command
+   uv run main
+   ```
+
+   The server will start on `http://localhost:8080` and expose the MCP endpoint at `http://localhost:8080/mcp`
+
+6. **Stop the emulator** (when done):
+   ```bash
+   make emulator-stop
+   ```
+
 
 ## Development Commands
 
@@ -22,6 +79,13 @@ Use the Makefile for common tasks:
 ```bash
 # Install dependencies
 make install
+
+# Start Firestore emulator (in separate terminal)
+make emulator
+
+# Seed database with archetypes
+make seed              # Seed local emulator
+make seed-dry-run      # See what would be done
 
 # Run tests
 make test
@@ -83,14 +147,9 @@ def register_trading_tools(mcp: FastMCP) -> None:
         return TradeResult(success=True, message=f"Strategy {name} created")
 ```
 
-### Current Tools (Example/Demo)
+### Current Tools
 
-- `add` - Add two numbers
-- `multiply` - Multiply two numbers
-- `subtract` - Subtract two numbers
-- `divide` - Divide two numbers
-- `power` - Calculate power
-- `calculate` - Evaluate mathematical expression
+- `get_archetypes` - Fetch the catalog of available trading strategy archetypes
 
 ## Project Structure
 
@@ -98,14 +157,28 @@ def register_trading_tools(mcp: FastMCP) -> None:
 vibe-trade-mcp/
 ├── pyproject.toml          # Project config
 ├── README.md               # This file
+├── data/
+│   └── archetypes.json     # Seed data for archetypes
 ├── src/
 │   ├── __init__.py
 │   ├── main.py             # MCP server entry point
+│   ├── db/
+│   │   ├── __init__.py
+│   │   ├── archetype_repository.py # Repository for Archetype data
+│   │   └── firestore_client.py     # Singleton Firestore client
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── archetype.py            # Pydantic models for Archetype
+│   ├── scripts/
+│   │   ├── __init__.py
+│   │   └── seed_archetypes.py      # Script to seed Firestore
 │   └── tools/
 │       ├── __init__.py
-│       └── math_tools.py  # Math tools (for testing)
+│       └── trading_tools.py        # Trading strategy tools
 └── tests/
-    └── test_tools.py       # Tests
+    ├── conftest.py                 # Pytest fixtures for Firestore
+    ├── test_main.py
+    └── test_trading_tools.py       # Tests for trading tools
 ```
 
 ## Architecture
@@ -113,7 +186,14 @@ vibe-trade-mcp/
 - **FastMCP**: MCP server framework
 - **Pydantic**: Type-safe models for tool inputs/outputs
 - **HTTP Transport**: Ready for Cloud Run deployment
+- **Firestore**: NoSQL database for strategy data (local and production)
 - **Type Safety**: Strong typing throughout with Pydantic models
+
+### Local vs Production
+
+- **Local**: Uses Firestore Emulator via Docker (no GCP connection needed). Set `FIRESTORE_EMULATOR_HOST=localhost:8081`
+- **Production**: Uses Cloud Run service account credentials (automatically configured)
+- The code is identical - environment variables control which backend is used
 
 ## Deployment
 
