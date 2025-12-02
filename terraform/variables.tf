@@ -10,17 +10,6 @@ variable "region" {
   default     = "us-central1"
 }
 
-variable "allowed_invokers" {
-  description = "List of IAM members (users/service accounts) allowed to invoke the Cloud Run service. Format: 'user:email@example.com' or 'serviceAccount:sa@project.iam.gserviceaccount.com'. If empty, only project owners/admins can access."
-  type        = list(string)
-  default     = []
-
-  validation {
-    condition     = alltrue([for invoker in var.allowed_invokers : can(regex("^(user|serviceAccount|group|domain):", invoker))])
-    error_message = "Each invoker must start with 'user:', 'serviceAccount:', 'group:', or 'domain:'"
-  }
-}
-
 variable "firestore_location" {
   description = "Firestore location. For Native mode, use multi-region IDs: nam5 (US), eur3 (Europe), asia1 (Asia). Or single regions like us-central1, us-east1, etc."
   type        = string
@@ -30,5 +19,12 @@ variable "firestore_location" {
     condition     = can(regex("^(nam5|eur3|asia1|us-central1|us-east1|us-west1|europe-west1|asia-northeast1)$", var.firestore_location))
     error_message = "Firestore location must be a valid location: nam5, eur3, asia1 (multi-region) or us-central1, us-east1, us-west1, europe-west1, asia-northeast1 (single region)"
   }
+}
+
+variable "mcp_auth_token" {
+  description = "Static authentication token for MCP server. If empty, authentication is disabled. Set this to a secure random string."
+  type        = string
+  default     = ""
+  sensitive   = true
 }
 

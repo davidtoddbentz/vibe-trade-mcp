@@ -4,11 +4,13 @@ This directory contains Terraform configuration for deploying the Vibe Trade MCP
 
 ## Security Model
 
-**By default, the Cloud Run service requires authentication** - it's not publicly accessible. Access is controlled via IAM:
+**Authentication is handled at the application level** using a static token:
 
-- No public access (`--no-allow-unauthenticated`)
-- Only users/service accounts in `allowed_invokers` can invoke the service
-- Easy to add/remove access by updating the list
+- Cloud Run service is publicly accessible (required for app-level auth)
+- Authentication is enforced by application middleware
+- Set `mcp_auth_token` in `terraform.tfvars` to enable authentication
+- If `mcp_auth_token` is empty, authentication is disabled (not recommended for production)
+- Clients must include `Authorization: Bearer <token>` header
 
 ## Prerequisites
 
@@ -32,11 +34,10 @@ gcloud config set project vibe-trade-475704
    cp terraform.tfvars.example terraform.tfvars
    ```
 
-2. **Edit `terraform.tfvars`** and add your email to `allowed_invokers`:
+2. **Edit `terraform.tfvars`** and set your authentication token:
    ```hcl
-   allowed_invokers = [
-     "user:your-email@gmail.com",
-   ]
+   # Generate a secure token: openssl rand -hex 32
+   mcp_auth_token = "your-secure-random-token-here"
    ```
 
 3. **Initialize Terraform:**
@@ -93,37 +94,40 @@ Once deployed, get the service URL:
 terraform output mcp_endpoint
 ```
 
-To invoke the service, you need to authenticate and use the correct headers:
+To invoke the service, include the authentication token in the Authorization header:
 
 ```bash
-# Get an identity token
-gcloud auth print-identity-token
+# Use the static token from terraform.tfvars
+TOKEN="your-secure-random-token-here"
 
 # Use it in requests (MCP uses Server-Sent Events)
-curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+curl -H "Authorization: Bearer $TOKEN" \
      -H "Accept: text/event-stream" \
      https://vibe-trade-mcp-xxxxx.run.app/mcp
 ```
 
 **Note**: The MCP endpoint uses Server-Sent Events (SSE), so you must include `Accept: text/event-stream` header. For actual MCP client connections, use an MCP client library that handles SSE properly.
 
-## Adding More Users
+## Rotating the Authentication Token
 
-To grant access to additional users or service accounts:
+To change the authentication token:
 
-1. Edit `terraform.tfvars`:
-   ```hcl
-   allowed_invokers = [
-     "user:user1@gmail.com",
-     "user:user2@gmail.com",
-     "serviceAccount:sa@project.iam.gserviceaccount.com",
-   ]
+1. Generate a new secure token:
+   ```bash
+   openssl rand -hex 32
    ```
 
-2. Apply the changes:
+2. Update `terraform.tfvars`:
+   ```hcl
+   mcp_auth_token = "new-secure-random-token-here"
+   ```
+
+3. Apply the changes:
    ```bash
    terraform apply
    ```
+
+4. Update all clients with the new token
 
 ## Outputs
 

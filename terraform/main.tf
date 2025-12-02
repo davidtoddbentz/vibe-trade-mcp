@@ -88,6 +88,10 @@ resource "google_cloud_run_v2_service" "mcp_server" {
         name  = "FIRESTORE_DATABASE"
         value = google_firestore_database.strategy.name
       }
+      env {
+        name  = "MCP_AUTH_TOKEN"
+        value = var.mcp_auth_token
+      }
 
       resources {
         limits = {
@@ -115,15 +119,12 @@ resource "google_cloud_run_v2_service" "mcp_server" {
   ]
 }
 
-# IAM policy: Grant access only to specific users/service accounts
-# By default, Cloud Run v2 requires authentication (no public access)
-# Only members in allowed_invokers will have access
-resource "google_cloud_run_service_iam_member" "invokers" {
-  for_each = toset(var.allowed_invokers)
-
+# Make service publicly accessible (authentication handled by app-level middleware)
+# This allows the app to handle auth with static tokens instead of IAM
+resource "google_cloud_run_service_iam_member" "public_access" {
   location = google_cloud_run_v2_service.mcp_server.location
   service  = google_cloud_run_v2_service.mcp_server.name
   role     = "roles/run.invoker"
-  member   = each.value
+  member   = "allUsers"
 }
 
