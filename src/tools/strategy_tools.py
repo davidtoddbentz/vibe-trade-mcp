@@ -3,12 +3,17 @@
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
-from mcp.server.fastmcp.exceptions import ToolError
 from pydantic import BaseModel, Field
 
 from src.db.card_repository import CardRepository
 from src.db.strategy_repository import StrategyRepository
 from src.models.strategy import Attachment, Strategy
+from src.tools.errors import (
+    ErrorCode,
+    StructuredToolError,
+    not_found_error,
+    validation_error,
+)
 
 # Valid roles for card attachments
 VALID_ROLES = ["signal", "gate", "exit", "sizing", "risk", "overlay"]
@@ -155,12 +160,18 @@ def register_strategy_tools(
             GetStrategyResponse with strategy data
 
         Raises:
-            ToolError: If strategy not found
+            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found (non-retryable)
+
+        Error Handling:
+            Errors include structured information with error_code, retryable flag,
+            recovery_hint, and details for agentic decision-making.
         """
         strategy = strategy_repo.get_by_id(strategy_id)
         if strategy is None:
-            raise ToolError(
-                f"Strategy not found: {strategy_id}. Use list_strategies to see all available strategies."
+            raise not_found_error(
+                resource_type="Strategy",
+                resource_id=strategy_id,
+                recovery_hint="Use list_strategies to see all available strategies.",
             )
 
         return GetStrategyResponse(
@@ -197,18 +208,28 @@ def register_strategy_tools(
             UpdateStrategyMetaResponse with updated strategy data
 
         Raises:
-            ToolError: If strategy not found or validation fails
+            StructuredToolError: With error codes:
+                - STRATEGY_NOT_FOUND: If strategy not found (non-retryable)
+                - INVALID_STATUS: If status is invalid (non-retryable)
         """
         # Get existing strategy
         strategy = strategy_repo.get_by_id(strategy_id)
         if strategy is None:
-            raise ToolError(
-                f"Strategy not found: {strategy_id}. Use list_strategies to see all available strategies."
+            raise not_found_error(
+                resource_type="Strategy",
+                resource_id=strategy_id,
+                recovery_hint="Use list_strategies to see all available strategies.",
             )
 
         # Validate status if provided
         if status is not None and status not in VALID_STATUSES:
-            raise ToolError(f"Invalid status: {status}. Must be one of: {VALID_STATUSES}.")
+            raise StructuredToolError(
+                message=f"Invalid status: {status}. Must be one of: {VALID_STATUSES}.",
+                error_code=ErrorCode.INVALID_STATUS,
+                retryable=False,
+                recovery_hint=f"Use one of: {', '.join(VALID_STATUSES)}",
+                details={"provided_status": status, "valid_statuses": VALID_STATUSES},
+            )
 
         # Update only provided fields
         if name is not None:
@@ -275,35 +296,51 @@ def register_strategy_tools(
             AttachCardResponse with updated attachments list
 
         Raises:
-            ToolError: If strategy or card not found, or role is invalid
+            StructuredToolError: With error codes:
+                - INVALID_ROLE: If role is invalid (non-retryable)
+                - STRATEGY_NOT_FOUND: If strategy not found (non-retryable)
+                - CARD_NOT_FOUND: If card not found (non-retryable)
+                - DUPLICATE_ATTACHMENT: If card is already attached (non-retryable)
+
+        Error Handling:
+            All errors include structured information with error_code, retryable flag,
+            recovery_hint, and details for agentic decision-making.
         """
         # Validate role
         if role not in VALID_ROLES:
-            raise ToolError(
-                f"Invalid role: {role}. Must be one of: {VALID_ROLES}. "
-                f"Use get_strategy to see current attachments."
+            raise StructuredToolError(
+                message=f"Invalid role: {role}. Must be one of: {VALID_ROLES}.",
+                error_code=ErrorCode.INVALID_ROLE,
+                retryable=False,
+                recovery_hint=f"Use one of: {', '.join(VALID_ROLES)}. Use get_strategy to see current attachments.",
+                details={"provided_role": role, "valid_roles": VALID_ROLES},
             )
 
         # Get strategy
         strategy = strategy_repo.get_by_id(strategy_id)
         if strategy is None:
-            raise ToolError(
-                f"Strategy not found: {strategy_id}. Use list_strategies to see all available strategies."
+            raise not_found_error(
+                resource_type="Strategy",
+                resource_id=strategy_id,
+                recovery_hint="Use list_strategies to see all available strategies.",
             )
 
         # Verify card exists
         card = card_repo.get_by_id(card_id)
         if card is None:
-            raise ToolError(
-                f"Card not found: {card_id}. Use list_cards to see all available cards."
+            raise not_found_error(
+                resource_type="Card",
+                resource_id=card_id,
+                recovery_hint="Use list_cards to see all available cards.",
             )
 
         # Check if card is already attached
         for att in strategy.attachments:
             if att.card_id == card_id:
-                raise ToolError(
-                    f"Card {card_id} is already attached to strategy {strategy_id}. "
-                    f"Use detach_card first to remove it, or update the attachment manually."
+                raise validation_error(
+                    message=f"Card {card_id} is already attached to strategy {strategy_id}.",
+                    recovery_hint="Use detach_card first to remove it, or update the attachment manually.",
+                    details={"card_id": card_id, "strategy_id": strategy_id},
                 )
 
         # Determine order (auto-assign if not provided)
@@ -357,13 +394,17 @@ def register_strategy_tools(
             DetachCardResponse with updated attachments list
 
         Raises:
-            ToolError: If strategy not found or card is not attached
+            StructuredToolError: With error codes:
+                - STRATEGY_NOT_FOUND: If strategy not found (non-retryable)
+                - ATTACHMENT_NOT_FOUND: If card is not attached (non-retryable)
         """
         # Get strategy
         strategy = strategy_repo.get_by_id(strategy_id)
         if strategy is None:
-            raise ToolError(
-                f"Strategy not found: {strategy_id}. Use list_strategies to see all available strategies."
+            raise not_found_error(
+                resource_type="Strategy",
+                resource_id=strategy_id,
+                recovery_hint="Use list_strategies to see all available strategies.",
             )
 
         # Find and remove attachment
@@ -371,9 +412,10 @@ def register_strategy_tools(
         strategy.attachments = [att for att in strategy.attachments if att.card_id != card_id]
 
         if len(strategy.attachments) == original_count:
-            raise ToolError(
-                f"Card {card_id} is not attached to strategy {strategy_id}. "
-                f"Use get_strategy to see current attachments."
+            raise validation_error(
+                message=f"Card {card_id} is not attached to strategy {strategy_id}.",
+                recovery_hint="Use get_strategy to see current attachments.",
+                details={"card_id": card_id, "strategy_id": strategy_id},
             )
 
         updated_strategy = strategy_repo.update(strategy)

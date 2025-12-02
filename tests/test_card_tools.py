@@ -2,7 +2,7 @@
 
 import pytest
 from mcp.server.fastmcp.exceptions import ToolError
-from test_helpers import call_tool, run_async
+from test_helpers import call_tool, get_structured_error, run_async
 
 from src.tools.card_tools import (
     CreateCardResponse,
@@ -11,6 +11,7 @@ from src.tools.card_tools import (
     ListCardsResponse,
     UpdateCardResponse,
 )
+from src.tools.errors import ErrorCode
 
 
 def test_create_card_valid(card_tools_mcp, schema_repository):
@@ -75,8 +76,14 @@ def test_create_card_invalid_slots(card_tools_mcp, schema_repository):
             )
         )
 
-    # Assert: should get validation error
+    # Assert: should get validation error with structured information
     assert "validation" in str(exc_info.value).lower() or "required" in str(exc_info.value).lower()
+    # Verify structured error properties
+    structured_error = get_structured_error(exc_info.value)
+    assert structured_error is not None
+    assert structured_error.error_code == ErrorCode.SCHEMA_VALIDATION_ERROR
+    assert structured_error.retryable is False
+    assert structured_error.recovery_hint is not None
 
 
 def test_create_card_invalid_range_values(card_tools_mcp, schema_repository):
@@ -523,6 +530,12 @@ def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repo
         )
     error_msg = str(exc_info.value)
     assert "get_archetypes" in error_msg.lower()
+    # Verify structured error
+    structured_error = get_structured_error(exc_info.value)
+    assert structured_error is not None
+    assert structured_error.error_code == ErrorCode.ARCHETYPE_NOT_FOUND
+    assert structured_error.retryable is False
+    assert structured_error.recovery_hint is not None
 
     # Test: validation error includes guidance to fetch schema
     with pytest.raises(ToolError) as exc_info:
@@ -546,6 +559,65 @@ def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repo
     error_msg = str(exc_info.value)
     assert "get_archetype_schema" in error_msg.lower()
     assert "signal.trend_pullback" in error_msg
+    # Verify structured error
+    structured_error = get_structured_error(exc_info.value)
+    assert structured_error is not None
+    assert structured_error.error_code == ErrorCode.SCHEMA_VALIDATION_ERROR
+    assert structured_error.retryable is False
+    assert structured_error.recovery_hint is not None
+    assert "type_id" in structured_error.details
+
+
+def test_update_card_invalid_etag(card_tools_mcp, schema_repository):
+    """Test updating a card with invalid schema_etag fails."""
+    # Setup: create a valid card first
+    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    example_slots = (
+        schema.examples[0].slots
+        if schema.examples
+        else {
+            "tf": "1h",
+            "symbol": "BTC-USD",
+            "direction": "long",
+            "dip_trigger": "keltner",
+            "dip_threshold": 1.5,
+            "trend_gate": {"mode": "hard", "gate": {"kind": "preset", "name": "uptrend_basic"}},
+        }
+    )
+
+    create_result = run_async(
+        call_tool(
+            card_tools_mcp,
+            "create_card",
+            {
+                "type": "signal.trend_pullback",
+                "slots": example_slots,
+                "schema_etag": schema.etag,
+            },
+        )
+    )
+    card_id = CreateCardResponse(**create_result).card_id
+
+    # Run: try to update card with wrong etag
+    with pytest.raises(ToolError) as exc_info:
+        run_async(
+            call_tool(
+                card_tools_mcp,
+                "update_card",
+                {
+                    "card_id": card_id,
+                    "slots": example_slots,
+                    "schema_etag": "invalid-etag",
+                },
+            )
+        )
+
+    # Assert: should get etag mismatch error with structured information
+    assert "etag" in str(exc_info.value).lower() or "mismatch" in str(exc_info.value).lower()
+    structured_error = get_structured_error(exc_info.value)
+    assert structured_error is not None
+    assert structured_error.error_code == ErrorCode.SCHEMA_ETAG_MISMATCH
+    assert structured_error.retryable is False
 
 
 def test_update_card_error_messages_include_guidance(card_tools_mcp, schema_repository):
@@ -621,6 +693,12 @@ def test_get_card_error_includes_guidance(card_tools_mcp):
         run_async(call_tool(card_tools_mcp, "get_card", {"card_id": "nonexistent-id"}))
     error_msg = str(exc_info.value)
     assert "list_cards" in error_msg.lower()
+    # Verify structured error
+    structured_error = get_structured_error(exc_info.value)
+    assert structured_error is not None
+    assert structured_error.error_code == ErrorCode.CARD_NOT_FOUND
+    assert structured_error.retryable is False
+    assert structured_error.recovery_hint is not None
 
 
 def test_delete_card(card_tools_mcp, schema_repository):

@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from src.db.archetype_repository import ArchetypeRepository
 from src.db.archetype_schema_repository import ArchetypeSchemaRepository
+from src.tools.errors import not_found_error
 
 
 class ArchetypeInfo(BaseModel):
@@ -136,12 +137,23 @@ def register_trading_tools(
 
         Returns:
             GetArchetypeSchemaResponse containing the full schema definition
+
+        Raises:
+            StructuredToolError: With error code SCHEMA_NOT_FOUND if archetype schema not found (non-retryable)
+
+        Error Handling:
+            Errors include structured information with error_code, retryable flag,
+            recovery_hint, and details for agentic decision-making.
         """
         # Fetch schema from repository
         schema = schema_repo.get_by_type_id(type)
 
         if schema is None:
-            raise ValueError(f"Archetype schema not found: {type}")
+            raise not_found_error(
+                resource_type="Schema",
+                resource_id=type,
+                recovery_hint="Use get_archetypes to see available archetypes.",
+            )
 
         # Check if client already has this version (ETag matching)
         # Note: For MVP, we just return the schema. In the future, we could return

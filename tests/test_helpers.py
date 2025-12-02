@@ -6,6 +6,8 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from src.tools.errors import StructuredToolError
+
 
 def extract_tool_result(result: Any) -> dict:
     """Extract the actual result from FastMCP's call_tool return value.
@@ -59,3 +61,24 @@ def run_async(coro):
         The result of the coroutine
     """
     return asyncio.run(coro)
+
+
+def get_structured_error(exc: Exception) -> StructuredToolError | None:
+    """Extract StructuredToolError from FastMCP's wrapped exception.
+
+    FastMCP wraps StructuredToolError in a generic ToolError. This function
+    checks if the exception itself is a StructuredToolError, or if it's
+    in the __cause__ attribute.
+
+    Args:
+        exc: The exception raised by FastMCP
+
+    Returns:
+        The StructuredToolError if found, None otherwise
+    """
+    if isinstance(exc, StructuredToolError):
+        return exc
+    # Check __cause__ (exception chaining)
+    if hasattr(exc, "__cause__") and isinstance(exc.__cause__, StructuredToolError):
+        return exc.__cause__
+    return None

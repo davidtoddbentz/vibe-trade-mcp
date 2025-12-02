@@ -4,12 +4,16 @@ from typing import Any
 
 import jsonschema
 from mcp.server.fastmcp import FastMCP
-from mcp.server.fastmcp.exceptions import ToolError
 from pydantic import BaseModel, Field
 
 from src.db.archetype_schema_repository import ArchetypeSchemaRepository
 from src.db.card_repository import CardRepository
 from src.models.card import Card
+from src.tools.errors import (
+    not_found_error,
+    schema_etag_mismatch_error,
+    schema_validation_error,
+)
 
 
 class CreateCardRequest(BaseModel):
@@ -181,30 +185,42 @@ def register_card_tools(
             CreateCardResponse with generated card_id and validated data
 
         Raises:
-            ToolError: If archetype not found, validation fails, or schema_etag doesn't match
+            StructuredToolError: With error codes:
+                - ARCHETYPE_NOT_FOUND: If archetype schema not found (non-retryable)
+                - SCHEMA_ETAG_MISMATCH: If schema_etag doesn't match current schema (non-retryable)
+                - SCHEMA_VALIDATION_ERROR: If slot validation fails (non-retryable)
+
+        Error Handling:
+            All errors include structured information:
+            - error_code: Machine-readable error code for conditional logic
+            - retryable: Boolean indicating if the error is retryable
+            - recovery_hint: Actionable guidance for recovery
+            - details: Additional context (resource IDs, validation errors, etc.)
         """
         # Fetch schema for validation
         schema = schema_repo.get_by_type_id(type)
         if schema is None:
-            raise ToolError(
-                f"Archetype schema not found: {type}. "
-                f"Use get_archetypes to see available archetypes."
+            raise not_found_error(
+                resource_type="Archetype",
+                resource_id=type,
+                recovery_hint="Use get_archetypes to see available archetypes.",
             )
 
         # Verify schema_etag matches current schema
         if schema_etag != schema.etag:
-            raise ToolError(
-                f"Schema ETag mismatch. Provided: {schema_etag}, "
-                f"Current: {schema.etag}. Please fetch the latest schema with get_archetype_schema."
+            raise schema_etag_mismatch_error(
+                provided_etag=schema_etag,
+                current_etag=schema.etag,
+                recovery_hint="Please fetch the latest schema with get_archetype_schema.",
             )
 
         # Validate slots against JSON schema
         validation_errors = _validate_slots_against_schema(slots, schema.json_schema, schema_repo)
         if validation_errors:
-            error_details = "\n".join(f"  - {err}" for err in validation_errors)
-            raise ToolError(
-                f"Slot validation failed for archetype '{type}':\n{error_details}\n"
-                f"Use get_archetype_schema('{type}') to see valid values, constraints, and examples."
+            raise schema_validation_error(
+                type_id=type,
+                errors=validation_errors,
+                recovery_hint=f"Use get_archetype_schema('{type}') to see valid values, constraints, and examples.",
             )
 
         # Create card
@@ -239,12 +255,18 @@ def register_card_tools(
             GetCardResponse with card data
 
         Raises:
-            ToolError: If card not found
+            StructuredToolError: With error code CARD_NOT_FOUND if card not found (non-retryable)
+
+        Error Handling:
+            Errors include structured information with error_code, retryable flag,
+            recovery_hint, and details for agentic decision-making.
         """
         card = card_repo.get_by_id(card_id)
         if card is None:
-            raise ToolError(
-                f"Card not found: {card_id}. Use list_cards to see all available cards."
+            raise not_found_error(
+                resource_type="Card",
+                resource_id=card_id,
+                recovery_hint="Use list_cards to see all available cards.",
             )
 
         return GetCardResponse(
@@ -309,37 +331,49 @@ def register_card_tools(
             UpdateCardResponse with updated card data
 
         Raises:
-            ToolError: If card not found, validation fails, or schema_etag doesn't match
+            StructuredToolError: With error codes:
+                - CARD_NOT_FOUND: If card not found (non-retryable)
+                - ARCHETYPE_NOT_FOUND: If archetype schema not found (non-retryable)
+                - SCHEMA_ETAG_MISMATCH: If schema_etag doesn't match current schema (non-retryable)
+                - SCHEMA_VALIDATION_ERROR: If slot validation fails (non-retryable)
+
+        Error Handling:
+            All errors include structured information with error_code, retryable flag,
+            recovery_hint, and details for agentic decision-making.
         """
         # Get existing card to get the type
         existing_card = card_repo.get_by_id(card_id)
         if existing_card is None:
-            raise ToolError(
-                f"Card not found: {card_id}. Use list_cards to see all available cards."
+            raise not_found_error(
+                resource_type="Card",
+                resource_id=card_id,
+                recovery_hint="Use list_cards to see all available cards.",
             )
 
         # Fetch schema for validation
         schema = schema_repo.get_by_type_id(existing_card.type)
         if schema is None:
-            raise ToolError(
-                f"Archetype schema not found: {existing_card.type}. "
-                f"Use get_archetypes to see available archetypes."
+            raise not_found_error(
+                resource_type="Archetype",
+                resource_id=existing_card.type,
+                recovery_hint="Use get_archetypes to see available archetypes.",
             )
 
         # Verify schema_etag matches current schema
         if schema_etag != schema.etag:
-            raise ToolError(
-                f"Schema ETag mismatch. Provided: {schema_etag}, "
-                f"Current: {schema.etag}. Please fetch the latest schema with get_archetype_schema."
+            raise schema_etag_mismatch_error(
+                provided_etag=schema_etag,
+                current_etag=schema.etag,
+                recovery_hint="Please fetch the latest schema with get_archetype_schema.",
             )
 
         # Validate slots against JSON schema
         validation_errors = _validate_slots_against_schema(slots, schema.json_schema, schema_repo)
         if validation_errors:
-            error_details = "\n".join(f"  - {err}" for err in validation_errors)
-            raise ToolError(
-                f"Slot validation failed for archetype '{existing_card.type}':\n{error_details}\n"
-                f"Use get_archetype_schema('{existing_card.type}') to see valid values, constraints, and examples."
+            raise schema_validation_error(
+                type_id=existing_card.type,
+                errors=validation_errors,
+                recovery_hint=f"Use get_archetype_schema('{existing_card.type}') to see valid values, constraints, and examples.",
             )
 
         # Update card
@@ -374,10 +408,14 @@ def register_card_tools(
             DeleteCardResponse confirming deletion
 
         Raises:
-            ToolError: If card not found
+            StructuredToolError: With error code CARD_NOT_FOUND if card not found (non-retryable)
         """
         try:
             card_repo.delete(card_id)
             return DeleteCardResponse(card_id=card_id, success=True)
         except ValueError as e:
-            raise ToolError(str(e)) from e
+            raise not_found_error(
+                resource_type="Card",
+                resource_id=card_id,
+                recovery_hint="Use list_cards to see all available cards.",
+            ) from e
