@@ -62,7 +62,7 @@ def test_create_card_invalid_slots(card_tools_mcp, schema_repository):
     assert schema is not None
 
     # Run: try to create card with invalid slots (missing required field)
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
                 card_tools_mcp,
@@ -348,7 +348,7 @@ def test_update_card_invalid_range_values(card_tools_mcp, schema_repository):
 def test_create_card_invalid_etag(card_tools_mcp):
     """Test creating a card with invalid schema_etag fails."""
     # Run: try to create card with wrong etag
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
                 card_tools_mcp,

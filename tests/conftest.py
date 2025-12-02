@@ -10,7 +10,9 @@ from src.db.archetype_repository import ArchetypeRepository
 from src.db.archetype_schema_repository import ArchetypeSchemaRepository
 from src.db.card_repository import CardRepository
 from src.db.firestore_client import FirestoreClient
+from src.db.strategy_repository import StrategyRepository
 from src.tools.card_tools import register_card_tools
+from src.tools.strategy_tools import register_strategy_tools
 from src.tools.trading_tools import register_trading_tools
 
 
@@ -69,16 +71,10 @@ def firestore_client(monkeypatch):
     except Exception as e:
         pytest.fail(f"Could not check Firestore emulator accessibility: {e}")
 
-    # Reset client singleton
-    FirestoreClient.reset_client()
-
-    # Get client
-    client = FirestoreClient.get_client(project="test-project")
+    # Get client (database=None for emulator default)
+    client = FirestoreClient.get_client(project="test-project", database=None)
 
     yield client
-
-    # Cleanup: reset client after test
-    FirestoreClient.reset_client()
 
 
 @pytest.fixture
@@ -92,4 +88,18 @@ def card_tools_mcp(card_repository, schema_repository):
     """Create an MCP server instance with card tools registered."""
     mcp = FastMCP("test-server")
     register_card_tools(mcp, card_repository, schema_repository)
+    return mcp
+
+
+@pytest.fixture
+def strategy_repository(firestore_client):
+    """Create a StrategyRepository for testing."""
+    return StrategyRepository(client=firestore_client)
+
+
+@pytest.fixture
+def strategy_tools_mcp(strategy_repository, card_repository):
+    """Create an MCP server instance with strategy tools registered."""
+    mcp = FastMCP("test-server")
+    register_strategy_tools(mcp, strategy_repository, card_repository)
     return mcp
