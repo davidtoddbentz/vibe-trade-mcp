@@ -2,8 +2,9 @@
 
 import pytest
 from mcp.server.fastmcp.exceptions import ToolError
-from test_helpers import call_tool, run_async
+from test_helpers import call_tool, get_structured_error, run_async
 
+from src.tools.errors import ErrorCode
 from src.tools.strategy_tools import (
     AttachCardResponse,
     CreateStrategyResponse,
@@ -72,6 +73,11 @@ def test_get_strategy_not_found(strategy_tools_mcp):
     # Assert: should get error with helpful guidance
     assert "not found" in str(exc_info.value).lower()
     assert "list_strategies" in str(exc_info.value).lower()
+    # Verify structured error
+    structured_error = get_structured_error(exc_info.value)
+    assert structured_error is not None
+    assert structured_error.error_code == ErrorCode.STRATEGY_NOT_FOUND
+    assert structured_error.retryable is False
 
 
 def test_update_strategy_meta(strategy_tools_mcp):
@@ -264,8 +270,12 @@ def test_attach_card_invalid_role(strategy_tools_mcp, card_tools_mcp, schema_rep
             )
         )
 
-    # Assert: should get validation error
+    # Assert: should get validation error with structured information
     assert "role" in str(exc_info.value).lower()
+    structured_error = get_structured_error(exc_info.value)
+    assert structured_error is not None
+    assert structured_error.error_code == ErrorCode.INVALID_ROLE
+    assert structured_error.retryable is False
 
 
 def test_attach_card_card_not_found(strategy_tools_mcp):

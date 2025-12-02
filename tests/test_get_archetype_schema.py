@@ -2,8 +2,9 @@
 
 import pytest
 from mcp.server.fastmcp.exceptions import ToolError
-from test_helpers import call_tool, run_async
+from test_helpers import call_tool, get_structured_error, run_async
 
+from src.tools.errors import ErrorCode
 from src.tools.trading_tools import GetArchetypeSchemaResponse
 
 
@@ -72,8 +73,8 @@ def test_get_archetype_schema_not_found(trading_tools_mcp):
     """Test that get_archetype_schema raises error for unknown archetype."""
     # Setup: use a non-existent archetype type
 
-    # Run & Assert: should raise ToolError (FastMCP wraps ValueError)
-    with pytest.raises(ToolError):
+    # Run & Assert: should raise ToolError (FastMCP wraps StructuredToolError)
+    with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
                 trading_tools_mcp,
@@ -81,6 +82,11 @@ def test_get_archetype_schema_not_found(trading_tools_mcp):
                 {"type": "signal.nonexistent"},
             )
         )
+    # Verify structured error
+    structured_error = get_structured_error(exc_info.value)
+    assert structured_error is not None
+    assert structured_error.error_code == ErrorCode.SCHEMA_NOT_FOUND
+    assert structured_error.retryable is False
 
 
 def test_get_archetype_schema_response_structure(trading_tools_mcp):

@@ -1,0 +1,237 @@
+"""Structured error handling for MCP tools.
+
+This module provides structured error types that agents can parse to make
+better decisions about retries and error recovery.
+"""
+
+from enum import Enum
+from typing import Any
+
+from mcp.server.fastmcp.exceptions import ToolError
+
+
+class ErrorCode(str, Enum):
+    """Error codes for structured error responses.
+
+    These codes help agents distinguish between different error types
+    and make appropriate retry decisions.
+    """
+
+    # Resource not found errors (non-retryable)
+    NOT_FOUND = "NOT_FOUND"
+    ARCHETYPE_NOT_FOUND = "ARCHETYPE_NOT_FOUND"
+    CARD_NOT_FOUND = "CARD_NOT_FOUND"
+    STRATEGY_NOT_FOUND = "STRATEGY_NOT_FOUND"
+    SCHEMA_NOT_FOUND = "SCHEMA_NOT_FOUND"
+
+    # Validation errors (non-retryable, requires user action)
+    VALIDATION_ERROR = "VALIDATION_ERROR"
+    SCHEMA_VALIDATION_ERROR = "SCHEMA_VALIDATION_ERROR"
+    SCHEMA_ETAG_MISMATCH = "SCHEMA_ETAG_MISMATCH"
+    INVALID_ROLE = "INVALID_ROLE"
+    INVALID_STATUS = "INVALID_STATUS"
+    DUPLICATE_ATTACHMENT = "DUPLICATE_ATTACHMENT"
+    ATTACHMENT_NOT_FOUND = "ATTACHMENT_NOT_FOUND"
+
+    # Transient errors (retryable)
+    DATABASE_ERROR = "DATABASE_ERROR"
+    NETWORK_ERROR = "NETWORK_ERROR"
+    TIMEOUT_ERROR = "TIMEOUT_ERROR"
+
+    # Internal errors (non-retryable, requires investigation)
+    INTERNAL_ERROR = "INTERNAL_ERROR"
+
+
+class StructuredToolError(ToolError):
+    """Structured error for MCP tools with error codes and retryable flags.
+
+    This extends FastMCP's ToolError to provide structured information
+    that agents can parse to make better retry decisions.
+
+    Attributes:
+        error_code: Machine-readable error code
+        retryable: Whether this error is retryable
+        recovery_hint: Optional hint for how to recover from this error
+        details: Optional additional error details
+    """
+
+    def __init__(
+        self,
+        message: str,
+        error_code: ErrorCode,
+        retryable: bool = False,
+        recovery_hint: str | None = None,
+        details: dict[str, Any] | None = None,
+    ):
+        """Initialize structured tool error.
+
+        Args:
+            message: Human-readable error message
+            error_code: Machine-readable error code
+            retryable: Whether this error is retryable
+            recovery_hint: Optional hint for recovery
+            details: Optional additional error details
+        """
+        super().__init__(message)
+        self.error_code = error_code
+        self.retryable = retryable
+        self.recovery_hint = recovery_hint
+        self.details = details or {}
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert error to dictionary for structured response.
+
+        Returns:
+            Dictionary with error structure
+        """
+        return {
+            "error_code": self.error_code.value,
+            "message": str(self),
+            "retryable": self.retryable,
+            "recovery_hint": self.recovery_hint,
+            "details": self.details,
+        }
+
+    def __str__(self) -> str:
+        """Return error message with structured information."""
+        msg = super().__str__()
+        if self.recovery_hint:
+            msg += f"\nRecovery hint: {self.recovery_hint}"
+        return msg
+
+
+# Convenience functions for common error types
+
+
+def not_found_error(
+    resource_type: str, resource_id: str, recovery_hint: str
+) -> StructuredToolError:
+    """Create a NOT_FOUND error.
+
+    Args:
+        resource_type: Type of resource (e.g., "Card", "Strategy", "Archetype", "Schema")
+        resource_id: Identifier of the resource
+        recovery_hint: Recovery hint provided by the calling tool
+
+    Returns:
+        StructuredToolError with appropriate NOT_FOUND error code
+    """
+    message = f"{resource_type} not found: {resource_id}"
+
+    # Map resource types to specific error codes
+    error_code_map = {
+        "Card": ErrorCode.CARD_NOT_FOUND,
+        "Strategy": ErrorCode.STRATEGY_NOT_FOUND,
+        "Archetype": ErrorCode.ARCHETYPE_NOT_FOUND,
+        "Schema": ErrorCode.SCHEMA_NOT_FOUND,
+    }
+    error_code = error_code_map.get(resource_type, ErrorCode.NOT_FOUND)
+
+    return StructuredToolError(
+        message=message,
+        error_code=error_code,
+        retryable=False,
+        recovery_hint=recovery_hint,
+        details={"resource_type": resource_type, "resource_id": resource_id},
+    )
+
+
+def validation_error(
+    message: str, recovery_hint: str | None = None, details: dict[str, Any] | None = None
+) -> StructuredToolError:
+    """Create a VALIDATION_ERROR.
+
+    Args:
+        message: Error message
+        recovery_hint: Optional recovery hint
+        details: Optional additional details
+
+    Returns:
+        StructuredToolError with VALIDATION_ERROR code
+    """
+    return StructuredToolError(
+        message=message,
+        error_code=ErrorCode.VALIDATION_ERROR,
+        retryable=False,
+        recovery_hint=recovery_hint,
+        details=details or {},
+    )
+
+
+def schema_validation_error(
+    type_id: str, errors: list[str], recovery_hint: str | None = None
+) -> StructuredToolError:
+    """Create a SCHEMA_VALIDATION_ERROR.
+
+    Args:
+        type_id: Archetype identifier
+        errors: List of validation error messages
+        recovery_hint: Optional recovery hint
+
+    Returns:
+        StructuredToolError with SCHEMA_VALIDATION_ERROR code
+    """
+    if not recovery_hint:
+        recovery_hint = (
+            f"Use get_archetype_schema('{type_id}') to see valid values, constraints, and examples."
+        )
+
+    error_details = "\n".join(f"  - {err}" for err in errors)
+    message = f"Slot validation failed for archetype '{type_id}':\n{error_details}"
+
+    return StructuredToolError(
+        message=message,
+        error_code=ErrorCode.SCHEMA_VALIDATION_ERROR,
+        retryable=False,
+        recovery_hint=recovery_hint,
+        details={"type_id": type_id, "validation_errors": errors},
+    )
+
+
+def schema_etag_mismatch_error(
+    provided_etag: str, current_etag: str, recovery_hint: str | None = None
+) -> StructuredToolError:
+    """Create a SCHEMA_ETAG_MISMATCH error.
+
+    Args:
+        provided_etag: ETag provided by client
+        current_etag: Current schema ETag
+        recovery_hint: Optional recovery hint
+
+    Returns:
+        StructuredToolError with SCHEMA_ETAG_MISMATCH code
+    """
+    if not recovery_hint:
+        recovery_hint = "Please fetch the latest schema with get_archetype_schema."
+
+    message = f"Schema ETag mismatch. Provided: {provided_etag}, Current: {current_etag}."
+
+    return StructuredToolError(
+        message=message,
+        error_code=ErrorCode.SCHEMA_ETAG_MISMATCH,
+        retryable=False,
+        recovery_hint=recovery_hint,
+        details={"provided_etag": provided_etag, "current_etag": current_etag},
+    )
+
+
+def transient_error(
+    message: str, recovery_hint: str | None = None, details: dict[str, Any] | None = None
+) -> StructuredToolError:
+    """Create a transient (retryable) error.
+
+    Args:
+        message: Error message
+        recovery_hint: Optional recovery hint
+        details: Optional additional details
+
+    Returns:
+        StructuredToolError with retryable=True
+    """
+    return StructuredToolError(
+        message=message,
+        error_code=ErrorCode.DATABASE_ERROR,
+        retryable=True,
+        recovery_hint=recovery_hint or "This error may be transient. Please retry.",
+        details=details or {},
+    )
