@@ -1,0 +1,413 @@
+"""Strategy management tools for MCP server."""
+
+from typing import Any
+
+from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.exceptions import ToolError
+from pydantic import BaseModel, Field
+
+from src.db.card_repository import CardRepository
+from src.db.strategy_repository import StrategyRepository
+from src.models.strategy import Attachment, Strategy
+
+# Valid roles for card attachments
+VALID_ROLES = ["signal", "gate", "exit", "sizing", "risk", "overlay"]
+VALID_STATUSES = ["draft", "ready", "running", "paused", "stopped", "error"]
+
+
+class CreateStrategyResponse(BaseModel):
+    """Response from create_strategy tool."""
+
+    strategy_id: str = Field(..., description="Generated strategy identifier")
+    name: str = Field(..., description="Strategy name")
+    status: str = Field(..., description="Strategy status")
+    universe: list[str] = Field(..., description="Trading universe")
+    attachments: list[dict[str, Any]] = Field(..., description="Attached cards")
+    version: int = Field(..., description="Strategy version")
+    created_at: str = Field(..., description="ISO8601 timestamp of creation")
+
+
+class GetStrategyResponse(BaseModel):
+    """Response from get_strategy tool."""
+
+    strategy_id: str = Field(..., description="Strategy identifier")
+    owner_id: str | None = Field(None, description="Owner identifier")
+    name: str = Field(..., description="Strategy name")
+    status: str = Field(..., description="Strategy status")
+    universe: list[str] = Field(..., description="Trading universe")
+    attachments: list[dict[str, Any]] = Field(..., description="Attached cards")
+    version: int = Field(..., description="Strategy version")
+    created_at: str = Field(..., description="ISO8601 timestamp of creation")
+    updated_at: str = Field(..., description="ISO8601 timestamp of last update")
+
+
+class UpdateStrategyMetaResponse(BaseModel):
+    """Response from update_strategy_meta tool."""
+
+    strategy_id: str = Field(..., description="Strategy identifier")
+    name: str = Field(..., description="Strategy name")
+    status: str = Field(..., description="Strategy status")
+    universe: list[str] = Field(..., description="Trading universe")
+    version: int = Field(..., description="Strategy version")
+    updated_at: str = Field(..., description="ISO8601 timestamp of last update")
+
+
+class AttachCardResponse(BaseModel):
+    """Response from attach_card tool."""
+
+    strategy_id: str = Field(..., description="Strategy identifier")
+    attachments: list[dict[str, Any]] = Field(..., description="Updated attachments list")
+    version: int = Field(..., description="Strategy version")
+    updated_at: str = Field(..., description="ISO8601 timestamp of last update")
+
+
+class DetachCardResponse(BaseModel):
+    """Response from detach_card tool."""
+
+    strategy_id: str = Field(..., description="Strategy identifier")
+    attachments: list[dict[str, Any]] = Field(..., description="Updated attachments list")
+    version: int = Field(..., description="Strategy version")
+    updated_at: str = Field(..., description="ISO8601 timestamp of last update")
+
+
+class ListStrategiesResponse(BaseModel):
+    """Response from list_strategies tool."""
+
+    strategies: list[dict[str, Any]] = Field(..., description="List of strategies")
+    count: int = Field(..., description="Total number of strategies")
+
+
+def register_strategy_tools(
+    mcp: FastMCP,
+    strategy_repo: StrategyRepository,
+    card_repo: CardRepository,
+) -> None:
+    """Register all strategy management tools with the MCP server.
+
+    Dependencies are injected so tests and callers can control which
+    repositories (and therefore which databases/backends) are used.
+    """
+
+    @mcp.tool()
+    def create_strategy(
+        name: str = Field(..., description="Strategy name"),
+        owner_id: str | None = Field(None, description="Owner identifier (optional)"),
+        universe: list[str] = Field(  # noqa: B008
+            default_factory=list, description="Trading universe symbols"
+        ),
+    ) -> CreateStrategyResponse:
+        """
+        Create a new trading strategy.
+
+        A strategy is a composition of cards (signals, gates, exits, etc.) with
+        universe selection. Risk and execution parameters are configured when
+        the strategy is run, not at creation time.
+
+        Recommended workflow:
+        1. Create cards using create_card tool
+        2. Create strategy with create_strategy
+        3. Attach cards to strategy using attach_card
+
+        Args:
+            name: Strategy name
+            owner_id: Owner identifier (optional)
+            universe: List of trading symbols (e.g., ['BTC-USD'])
+
+        Returns:
+            CreateStrategyResponse with generated strategy_id and initial configuration
+        """
+        # Create strategy
+        strategy = Strategy(
+            id="",  # Will be generated by Firestore
+            owner_id=owner_id,
+            name=name,
+            status="draft",
+            universe=universe,
+            attachments=[],
+            version=1,
+            created_at="",  # Will be set by repository
+            updated_at="",  # Will be set by repository
+        )
+
+        created_strategy = strategy_repo.create(strategy)
+
+        return CreateStrategyResponse(
+            strategy_id=created_strategy.id,
+            name=created_strategy.name,
+            status=created_strategy.status,
+            universe=created_strategy.universe,
+            attachments=[att.model_dump() for att in created_strategy.attachments],
+            version=created_strategy.version,
+            created_at=created_strategy.created_at,
+        )
+
+    @mcp.tool()
+    def get_strategy(
+        strategy_id: str = Field(..., description="Strategy identifier"),
+    ) -> GetStrategyResponse:
+        """
+        Get a strategy by ID.
+
+        Args:
+            strategy_id: Strategy identifier
+
+        Returns:
+            GetStrategyResponse with strategy data
+
+        Raises:
+            ToolError: If strategy not found
+        """
+        strategy = strategy_repo.get_by_id(strategy_id)
+        if strategy is None:
+            raise ToolError(
+                f"Strategy not found: {strategy_id}. Use list_strategies to see all available strategies."
+            )
+
+        return GetStrategyResponse(
+            strategy_id=strategy.id,
+            owner_id=strategy.owner_id,
+            name=strategy.name,
+            status=strategy.status,
+            universe=strategy.universe,
+            attachments=[att.model_dump() for att in strategy.attachments],
+            version=strategy.version,
+            created_at=strategy.created_at,
+            updated_at=strategy.updated_at,
+        )
+
+    @mcp.tool()
+    def update_strategy_meta(
+        strategy_id: str = Field(..., description="Strategy identifier"),
+        name: str | None = Field(None, description="Strategy name (optional)"),
+        status: str | None = Field(None, description="Strategy status (optional)"),
+        universe: list[str] | None = Field(None, description="Trading universe (optional)"),  # noqa: B008
+    ) -> UpdateStrategyMetaResponse:
+        """
+        Update strategy metadata.
+
+        Updates only the fields provided. Other fields remain unchanged.
+
+        Args:
+            strategy_id: Strategy identifier
+            name: Strategy name (optional)
+            status: Strategy status: draft, ready, running, paused, stopped, error (optional)
+            universe: Trading universe symbols (optional)
+
+        Returns:
+            UpdateStrategyMetaResponse with updated strategy data
+
+        Raises:
+            ToolError: If strategy not found or validation fails
+        """
+        # Get existing strategy
+        strategy = strategy_repo.get_by_id(strategy_id)
+        if strategy is None:
+            raise ToolError(
+                f"Strategy not found: {strategy_id}. Use list_strategies to see all available strategies."
+            )
+
+        # Validate status if provided
+        if status is not None and status not in VALID_STATUSES:
+            raise ToolError(f"Invalid status: {status}. Must be one of: {VALID_STATUSES}.")
+
+        # Update only provided fields
+        if name is not None:
+            strategy.name = name
+        if status is not None:
+            strategy.status = status
+        if universe is not None:
+            strategy.universe = universe
+
+        updated_strategy = strategy_repo.update(strategy)
+
+        return UpdateStrategyMetaResponse(
+            strategy_id=updated_strategy.id,
+            name=updated_strategy.name,
+            status=updated_strategy.status,
+            universe=updated_strategy.universe,
+            version=updated_strategy.version,
+            updated_at=updated_strategy.updated_at,
+        )
+
+    @mcp.tool()
+    def attach_card(
+        strategy_id: str = Field(..., description="Strategy identifier"),
+        card_id: str = Field(..., description="Card identifier to attach"),
+        role: str = Field(
+            ...,
+            description="Card role: signal, gate, exit, sizing, risk, or overlay",
+        ),
+        overrides: dict[str, Any] = Field(  # noqa: B008
+            default_factory=dict, description="Slot value overrides (optional)"
+        ),
+        follow_latest: bool = Field(
+            default=False,
+            description="If true, use latest card version; if false, pin current version",
+        ),
+        order: int | None = Field(
+            None,
+            description="Execution order (optional, auto-assigned if not provided)",
+        ),
+        enabled: bool = Field(default=True, description="Whether attachment is enabled"),
+    ) -> AttachCardResponse:
+        """
+        Attach a card to a strategy.
+
+        Cards can be attached with different roles (signal, gate, exit, etc.) and
+        optional slot overrides. The attachment can follow the latest card version
+        or be pinned to a specific version.
+
+        Recommended workflow:
+        1. Create cards using create_card
+        2. Create strategy using create_strategy
+        3. Attach cards using attach_card with appropriate roles
+
+        Args:
+            strategy_id: Strategy identifier
+            card_id: Card identifier to attach
+            role: Card role (signal, gate, exit, sizing, risk, or overlay)
+            overrides: Slot value overrides to merge with card slots (optional)
+            follow_latest: If true, use latest card version; if false, pin current version
+            order: Execution order (optional, auto-assigned to next available)
+            enabled: Whether attachment is enabled (default: true)
+
+        Returns:
+            AttachCardResponse with updated attachments list
+
+        Raises:
+            ToolError: If strategy or card not found, or role is invalid
+        """
+        # Validate role
+        if role not in VALID_ROLES:
+            raise ToolError(
+                f"Invalid role: {role}. Must be one of: {VALID_ROLES}. "
+                f"Use get_strategy to see current attachments."
+            )
+
+        # Get strategy
+        strategy = strategy_repo.get_by_id(strategy_id)
+        if strategy is None:
+            raise ToolError(
+                f"Strategy not found: {strategy_id}. Use list_strategies to see all available strategies."
+            )
+
+        # Verify card exists
+        card = card_repo.get_by_id(card_id)
+        if card is None:
+            raise ToolError(
+                f"Card not found: {card_id}. Use list_cards to see all available cards."
+            )
+
+        # Check if card is already attached
+        for att in strategy.attachments:
+            if att.card_id == card_id:
+                raise ToolError(
+                    f"Card {card_id} is already attached to strategy {strategy_id}. "
+                    f"Use detach_card first to remove it, or update the attachment manually."
+                )
+
+        # Determine order (auto-assign if not provided)
+        if order is None:
+            if strategy.attachments:
+                max_order = max(att.order for att in strategy.attachments)
+                order = max_order + 1
+            else:
+                order = 1
+
+        # Determine card_revision_id (use updated_at as simple revision identifier for MVP)
+        card_revision_id = None
+        if not follow_latest:
+            card_revision_id = card.updated_at  # Simple revision ID for MVP
+
+        # Create attachment
+        attachment = Attachment(
+            card_id=card_id,
+            role=role,
+            order=order,
+            enabled=enabled,
+            overrides=overrides,
+            follow_latest=follow_latest,
+            card_revision_id=card_revision_id,
+        )
+
+        # Add attachment to strategy
+        strategy.attachments.append(attachment)
+        updated_strategy = strategy_repo.update(strategy)
+
+        return AttachCardResponse(
+            strategy_id=updated_strategy.id,
+            attachments=[att.model_dump() for att in updated_strategy.attachments],
+            version=updated_strategy.version,
+            updated_at=updated_strategy.updated_at,
+        )
+
+    @mcp.tool()
+    def detach_card(
+        strategy_id: str = Field(..., description="Strategy identifier"),
+        card_id: str = Field(..., description="Card identifier to detach"),
+    ) -> DetachCardResponse:
+        """
+        Detach a card from a strategy.
+
+        Args:
+            strategy_id: Strategy identifier
+            card_id: Card identifier to detach
+
+        Returns:
+            DetachCardResponse with updated attachments list
+
+        Raises:
+            ToolError: If strategy not found or card is not attached
+        """
+        # Get strategy
+        strategy = strategy_repo.get_by_id(strategy_id)
+        if strategy is None:
+            raise ToolError(
+                f"Strategy not found: {strategy_id}. Use list_strategies to see all available strategies."
+            )
+
+        # Find and remove attachment
+        original_count = len(strategy.attachments)
+        strategy.attachments = [att for att in strategy.attachments if att.card_id != card_id]
+
+        if len(strategy.attachments) == original_count:
+            raise ToolError(
+                f"Card {card_id} is not attached to strategy {strategy_id}. "
+                f"Use get_strategy to see current attachments."
+            )
+
+        updated_strategy = strategy_repo.update(strategy)
+
+        return DetachCardResponse(
+            strategy_id=updated_strategy.id,
+            attachments=[att.model_dump() for att in updated_strategy.attachments],
+            version=updated_strategy.version,
+            updated_at=updated_strategy.updated_at,
+        )
+
+    @mcp.tool()
+    def list_strategies() -> ListStrategiesResponse:
+        """
+        List all strategies.
+
+        Returns:
+            ListStrategiesResponse with all strategies
+        """
+        strategies = strategy_repo.get_all()
+        strategy_dicts = []
+        for strategy in strategies:
+            strategy_dicts.append(
+                {
+                    "strategy_id": strategy.id,
+                    "owner_id": strategy.owner_id,
+                    "name": strategy.name,
+                    "status": strategy.status,
+                    "universe": strategy.universe,
+                    "attachments_count": len(strategy.attachments),
+                    "version": strategy.version,
+                    "created_at": strategy.created_at,
+                    "updated_at": strategy.updated_at,
+                }
+            )
+
+        return ListStrategiesResponse(strategies=strategy_dicts, count=len(strategy_dicts))

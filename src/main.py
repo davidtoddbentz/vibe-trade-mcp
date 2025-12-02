@@ -12,7 +12,9 @@ from src.db.archetype_repository import ArchetypeRepository
 from src.db.archetype_schema_repository import ArchetypeSchemaRepository
 from src.db.card_repository import CardRepository
 from src.db.firestore_client import FirestoreClient
+from src.db.strategy_repository import StrategyRepository
 from src.tools.card_tools import register_card_tools
+from src.tools.strategy_tools import register_strategy_tools
 from src.tools.trading_tools import register_trading_tools
 
 # Load .env file if it exists (for local development)
@@ -42,6 +44,7 @@ database = None if database == "(default)" else database
 
 firestore_client = FirestoreClient.get_client(project=project, database=database)
 card_repo = CardRepository(client=firestore_client)
+strategy_repo = StrategyRepository(client=firestore_client)
 
 # Cloud Run sets PORT environment variable (defaults to 8080)
 port = int(os.getenv("PORT", "8080"))
@@ -53,6 +56,7 @@ mcp = FastMCP("vibe-trade-server", port=port, host="0.0.0.0")
 # Register tools with injected repositories
 register_trading_tools(mcp, archetype_repo, schema_repo)
 register_card_tools(mcp, card_repo, schema_repo)
+register_strategy_tools(mcp, strategy_repo, card_repo)
 
 
 def main():
