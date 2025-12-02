@@ -82,3 +82,20 @@ def get_structured_error(exc: Exception) -> StructuredToolError | None:
     if hasattr(exc, "__cause__") and isinstance(exc.__cause__, StructuredToolError):
         return exc.__cause__
     return None
+
+
+def get_valid_slots_for_archetype(schema_repository, type_id: str) -> dict:
+    """Get valid slots for an archetype from its schema examples.
+
+    Args:
+        schema_repository: Schema repository instance
+        type_id: Archetype identifier (e.g., 'signal.trend_pullback')
+
+    Returns:
+        Valid slots dictionary from schema examples
+    """
+    schema = schema_repository.get_by_type_id(type_id)
+    if schema and schema.examples:
+        return schema.examples[0].slots.copy()
+    # Fallback - this shouldn't happen if schemas have examples
+    raise ValueError(f"No examples found for {type_id}")

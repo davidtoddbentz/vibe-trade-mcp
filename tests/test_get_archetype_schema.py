@@ -34,11 +34,12 @@ def test_get_archetype_schema_returns_schema(trading_tools_mcp):
     assert "examples" in response.model_dump()
     assert len(response.examples) > 0
 
-    # Check that required slots are in the schema
+    # Check that required slots are in the schema (new structure: context, event, action, risk)
     required = response.json_schema.get("required", [])
-    assert "tf" in required
-    assert "symbol" in required
-    assert "direction" in required
+    assert "context" in required
+    assert "event" in required
+    assert "action" in required
+    assert "risk" in required
 
 
 def test_get_archetype_schema_with_etag(trading_tools_mcp):

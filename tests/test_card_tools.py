@@ -1,8 +1,15 @@
 """Tests for card management tools."""
 
+import copy
+
 import pytest
 from mcp.server.fastmcp.exceptions import ToolError
-from test_helpers import call_tool, get_structured_error, run_async
+from test_helpers import (
+    call_tool,
+    get_structured_error,
+    get_valid_slots_for_archetype,
+    run_async,
+)
 
 from src.tools.card_tools import (
     CreateCardResponse,
@@ -20,19 +27,8 @@ def test_create_card_valid(card_tools_mcp, schema_repository):
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
     assert schema is not None
 
-    # Use example slots from schema
-    example_slots = (
-        schema.examples[0].slots
-        if schema.examples
-        else {
-            "tf": "1h",
-            "symbol": "BTC-USD",
-            "direction": "long",
-            "dip_trigger": "keltner",
-            "dip_threshold": 1.5,
-            "trend_gate": {"mode": "hard", "gate": {"kind": "preset", "name": "uptrend_basic"}},
-        }
-    )
+    # Use example slots from schema (now includes context, event, action, risk)
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     # Run: create card
     result = run_async(
@@ -62,7 +58,7 @@ def test_create_card_invalid_slots(card_tools_mcp, schema_repository):
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
     assert schema is not None
 
-    # Run: try to create card with invalid slots (missing required field)
+    # Run: try to create card with invalid slots (missing required fields)
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
@@ -70,7 +66,9 @@ def test_create_card_invalid_slots(card_tools_mcp, schema_repository):
                 "create_card",
                 {
                     "type": "signal.trend_pullback",
-                    "slots": {"tf": "1h"},  # Missing required fields
+                    "slots": {
+                        "context": {"tf": "1h"}
+                    },  # Missing required fields (event, action, risk)
                     "schema_etag": schema.etag,
                 },
             )
@@ -88,33 +86,16 @@ def test_create_card_invalid_slots(card_tools_mcp, schema_repository):
 
 def test_create_card_invalid_range_values(card_tools_mcp, schema_repository):
     """Test creating a card with values outside allowed ranges fails validation."""
-    # Setup: get a valid schema
+    # Setup: get a valid schema and valid slots
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
     assert schema is not None
 
-    # Test: dip_threshold below minimum (0.2)
-    with pytest.raises(ToolError) as exc_info:
-        run_async(
-            call_tool(
-                card_tools_mcp,
-                "create_card",
-                {
-                    "type": "signal.trend_pullback",
-                    "slots": {
-                        "tf": "1h",
-                        "symbol": "BTC-USD",
-                        "direction": "long",
-                        "dip_trigger": "keltner",
-                        "dip_threshold": 0.1,  # Below minimum 0.2
-                    },
-                    "schema_etag": schema.etag,
-                },
-            )
-        )
-    assert "validation" in str(exc_info.value).lower()
-    assert "0.2" in str(exc_info.value) or "minimum" in str(exc_info.value).lower()
+    # Get valid slots and modify to test range validation
+    # Test: event.dip_band.mult above maximum (5.0) - this was the old dip_threshold field
+    valid_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    invalid_slots = copy.deepcopy(valid_slots)
+    invalid_slots["event"]["dip_band"]["mult"] = 6.0  # Above maximum 5.0
 
-    # Test: dip_threshold above maximum (5.0)
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
@@ -122,13 +103,7 @@ def test_create_card_invalid_range_values(card_tools_mcp, schema_repository):
                 "create_card",
                 {
                     "type": "signal.trend_pullback",
-                    "slots": {
-                        "tf": "1h",
-                        "symbol": "BTC-USD",
-                        "direction": "long",
-                        "dip_trigger": "keltner",
-                        "dip_threshold": 6.0,  # Above maximum 5.0
-                    },
+                    "slots": invalid_slots,
                     "schema_etag": schema.etag,
                 },
             )
@@ -136,14 +111,10 @@ def test_create_card_invalid_range_values(card_tools_mcp, schema_repository):
     assert "validation" in str(exc_info.value).lower()
     assert "5.0" in str(exc_info.value) or "maximum" in str(exc_info.value).lower()
 
+    # Test: risk.sl_atr above maximum (20.0)
+    invalid_slots2 = copy.deepcopy(valid_slots)
+    invalid_slots2["risk"]["sl_atr"] = 21.0  # Above maximum 20.0
 
-def test_create_card_invalid_enum_values(card_tools_mcp, schema_repository):
-    """Test creating a card with invalid enum values fails validation."""
-    # Setup: get a valid schema
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
-    assert schema is not None
-
-    # Test: invalid tf enum value
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
@@ -151,13 +122,35 @@ def test_create_card_invalid_enum_values(card_tools_mcp, schema_repository):
                 "create_card",
                 {
                     "type": "signal.trend_pullback",
-                    "slots": {
-                        "tf": "5m",  # Invalid: must be one of ["15m", "1h", "4h", "1d"]
-                        "symbol": "BTC-USD",
-                        "direction": "long",
-                        "dip_trigger": "keltner",
-                        "dip_threshold": 1.5,
-                    },
+                    "slots": invalid_slots2,
+                    "schema_etag": schema.etag,
+                },
+            )
+        )
+    assert "validation" in str(exc_info.value).lower()
+    assert "20.0" in str(exc_info.value) or "maximum" in str(exc_info.value).lower()
+
+
+def test_create_card_invalid_enum_values(card_tools_mcp, schema_repository):
+    """Test creating a card with invalid enum values fails validation."""
+    # Setup: get a valid schema and valid slots
+    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    assert schema is not None
+
+    valid_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+
+    # Test: invalid context.tf enum value
+    invalid_slots = copy.deepcopy(valid_slots)
+    invalid_slots["context"]["tf"] = "5m"  # Invalid: must be one of ["15m", "1h", "4h", "1d"]
+
+    with pytest.raises(ToolError) as exc_info:
+        run_async(
+            call_tool(
+                card_tools_mcp,
+                "create_card",
+                {
+                    "type": "signal.trend_pullback",
+                    "slots": invalid_slots,
                     "schema_etag": schema.etag,
                 },
             )
@@ -165,7 +158,10 @@ def test_create_card_invalid_enum_values(card_tools_mcp, schema_repository):
     assert "validation" in str(exc_info.value).lower()
     assert "tf" in str(exc_info.value).lower() or "enum" in str(exc_info.value).lower()
 
-    # Test: invalid direction enum value
+    # Test: invalid action.direction enum value
+    invalid_slots2 = copy.deepcopy(valid_slots)
+    invalid_slots2["action"]["direction"] = "invalid"  # Invalid: must be "long", "short", or "auto"
+
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
@@ -173,13 +169,7 @@ def test_create_card_invalid_enum_values(card_tools_mcp, schema_repository):
                 "create_card",
                 {
                     "type": "signal.trend_pullback",
-                    "slots": {
-                        "tf": "1h",
-                        "symbol": "BTC-USD",
-                        "direction": "invalid",  # Invalid: must be "long" or "short"
-                        "dip_trigger": "keltner",
-                        "dip_threshold": 1.5,
-                    },
+                    "slots": invalid_slots2,
                     "schema_etag": schema.etag,
                 },
             )
@@ -187,36 +177,23 @@ def test_create_card_invalid_enum_values(card_tools_mcp, schema_repository):
     assert "validation" in str(exc_info.value).lower()
     assert "direction" in str(exc_info.value).lower() or "enum" in str(exc_info.value).lower()
 
-    # Test: invalid dip_trigger enum value
-    with pytest.raises(ToolError) as exc_info:
-        run_async(
-            call_tool(
-                card_tools_mcp,
-                "create_card",
-                {
-                    "type": "signal.trend_pullback",
-                    "slots": {
-                        "tf": "1h",
-                        "symbol": "BTC-USD",
-                        "direction": "long",
-                        "dip_trigger": "invalid",  # Invalid: must be one of ["keltner", "bollinger", "ema_z"]
-                        "dip_threshold": 1.5,
-                    },
-                    "schema_etag": schema.etag,
-                },
-            )
-        )
-    assert "validation" in str(exc_info.value).lower()
-    assert "dip_trigger" in str(exc_info.value).lower() or "enum" in str(exc_info.value).lower()
-
 
 def test_create_card_invalid_nested_structure(card_tools_mcp, schema_repository):
     """Test creating a card with invalid nested object structures fails validation."""
-    # Setup: get a valid schema
+    # Setup: get a valid schema and valid slots
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
     assert schema is not None
 
-    # Test: invalid trend_gate structure (wrong mode)
+    valid_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+
+    # Test: invalid event.trend_gate structure (missing required op field)
+    invalid_slots = copy.deepcopy(valid_slots)
+    invalid_slots["event"]["trend_gate"] = {
+        "fast": 20,
+        "slow": 50,
+        # Missing required: op
+    }
+
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
@@ -224,24 +201,17 @@ def test_create_card_invalid_nested_structure(card_tools_mcp, schema_repository)
                 "create_card",
                 {
                     "type": "signal.trend_pullback",
-                    "slots": {
-                        "tf": "1h",
-                        "symbol": "BTC-USD",
-                        "direction": "long",
-                        "dip_trigger": "keltner",
-                        "dip_threshold": 1.5,
-                        "trend_gate": {
-                            "mode": "invalid",  # Invalid: must be "hard" or "ma_rel"
-                            "gate": {"kind": "preset", "name": "uptrend_basic"},
-                        },
-                    },
+                    "slots": invalid_slots,
                     "schema_etag": schema.etag,
                 },
             )
         )
     assert "validation" in str(exc_info.value).lower()
 
-    # Test: invalid trend_gate structure (missing required fields for ma_rel mode)
+    # Test: invalid event.trend_gate.op enum value
+    invalid_slots2 = copy.deepcopy(valid_slots)
+    invalid_slots2["event"]["trend_gate"]["op"] = "invalid"  # Invalid: must be ">" or "<"
+
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
@@ -249,40 +219,24 @@ def test_create_card_invalid_nested_structure(card_tools_mcp, schema_repository)
                 "create_card",
                 {
                     "type": "signal.trend_pullback",
-                    "slots": {
-                        "tf": "1h",
-                        "symbol": "BTC-USD",
-                        "direction": "long",
-                        "dip_trigger": "keltner",
-                        "dip_threshold": 1.5,
-                        "trend_gate": {
-                            "mode": "ma_rel",
-                            # Missing required: fast, slow, op
-                        },
-                    },
+                    "slots": invalid_slots2,
                     "schema_etag": schema.etag,
                 },
             )
         )
-    # Note: oneOf validation may report error from first option, but validation should still fail
     assert "validation" in str(exc_info.value).lower()
 
 
 def test_create_card_additional_properties(card_tools_mcp, schema_repository):
     """Test creating a card with additional properties fails validation."""
-    # Setup: get a valid schema
+    # Setup: get a valid schema and valid slots
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
     assert schema is not None
 
     # Test: additional property at root level
-    valid_slots = {
-        "tf": "1h",
-        "symbol": "BTC-USD",
-        "direction": "long",
-        "dip_trigger": "keltner",
-        "dip_threshold": 1.5,
-    }
-    invalid_slots = {**valid_slots, "extra_field": "not allowed"}
+    valid_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    invalid_slots = copy.deepcopy(valid_slots)
+    invalid_slots["extra_field"] = "not allowed"
 
     with pytest.raises(ToolError) as exc_info:
         run_async(
@@ -306,18 +260,7 @@ def test_update_card_invalid_range_values(card_tools_mcp, schema_repository):
     """Test updating a card with values outside allowed ranges fails validation."""
     # Setup: create a valid card first
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = (
-        schema.examples[0].slots
-        if schema.examples
-        else {
-            "tf": "1h",
-            "symbol": "BTC-USD",
-            "direction": "long",
-            "dip_trigger": "keltner",
-            "dip_threshold": 1.5,
-            "trend_gate": {"mode": "hard", "gate": {"kind": "preset", "name": "uptrend_basic"}},
-        }
-    )
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     create_result = run_async(
         call_tool(
@@ -332,9 +275,10 @@ def test_update_card_invalid_range_values(card_tools_mcp, schema_repository):
     )
     card_id = CreateCardResponse(**create_result).card_id
 
-    # Test: update with dip_threshold above maximum
-    updated_slots = example_slots.copy()
-    updated_slots["dip_threshold"] = 10.0  # Above maximum 5.0
+    # Test: update with event.dip_band.mult above maximum (5.0)
+    # This corresponds to the old dip_threshold field that had max 5.0
+    updated_slots = copy.deepcopy(example_slots)
+    updated_slots["event"]["dip_band"]["mult"] = 6.0  # Above maximum 5.0
 
     with pytest.raises(ToolError) as exc_info:
         run_async(
@@ -352,8 +296,11 @@ def test_update_card_invalid_range_values(card_tools_mcp, schema_repository):
     assert "5.0" in str(exc_info.value) or "maximum" in str(exc_info.value).lower()
 
 
-def test_create_card_invalid_etag(card_tools_mcp):
+def test_create_card_invalid_etag(card_tools_mcp, schema_repository):
     """Test creating a card with invalid schema_etag fails."""
+    # Setup: get valid slots
+    valid_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+
     # Run: try to create card with wrong etag
     with pytest.raises(ToolError) as exc_info:
         run_async(
@@ -362,7 +309,7 @@ def test_create_card_invalid_etag(card_tools_mcp):
                 "create_card",
                 {
                     "type": "signal.trend_pullback",
-                    "slots": {"tf": "1h", "symbol": "BTC-USD"},
+                    "slots": valid_slots,
                     "schema_etag": "invalid-etag",
                 },
             )
@@ -376,18 +323,7 @@ def test_get_card(card_tools_mcp, schema_repository):
     """Test getting a card by ID."""
     # Setup: create a card first
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = (
-        schema.examples[0].slots
-        if schema.examples
-        else {
-            "tf": "1h",
-            "symbol": "BTC-USD",
-            "direction": "long",
-            "dip_trigger": "keltner",
-            "dip_threshold": 1.5,
-            "trend_gate": {"mode": "hard", "gate": {"kind": "preset", "name": "uptrend_basic"}},
-        }
-    )
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     create_result = run_async(
         call_tool(
@@ -423,18 +359,7 @@ def test_list_cards(card_tools_mcp, schema_repository):
     """Test listing all cards."""
     # Setup: create a couple of cards
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = (
-        schema.examples[0].slots
-        if schema.examples
-        else {
-            "tf": "1h",
-            "symbol": "BTC-USD",
-            "direction": "long",
-            "dip_trigger": "keltner",
-            "dip_threshold": 1.5,
-            "trend_gate": {"mode": "hard", "gate": {"kind": "preset", "name": "uptrend_basic"}},
-        }
-    )
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     run_async(
         call_tool(
@@ -461,18 +386,7 @@ def test_update_card(card_tools_mcp, schema_repository):
     """Test updating a card."""
     # Setup: create a card first
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = (
-        schema.examples[0].slots
-        if schema.examples
-        else {
-            "tf": "1h",
-            "symbol": "BTC-USD",
-            "direction": "long",
-            "dip_trigger": "keltner",
-            "dip_threshold": 1.5,
-            "trend_gate": {"mode": "hard", "gate": {"kind": "preset", "name": "uptrend_basic"}},
-        }
-    )
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     create_result = run_async(
         call_tool(
@@ -488,8 +402,8 @@ def test_update_card(card_tools_mcp, schema_repository):
     card_id = CreateCardResponse(**create_result).card_id
 
     # Run: update card with new slots
-    updated_slots = example_slots.copy()
-    updated_slots["dip_threshold"] = 2.0
+    updated_slots = copy.deepcopy(example_slots)
+    updated_slots["event"]["dip_band"]["mult"] = 2.5  # Update dip_band multiplier
 
     result = run_async(
         call_tool(
@@ -506,7 +420,7 @@ def test_update_card(card_tools_mcp, schema_repository):
     # Assert: verify response
     response = UpdateCardResponse(**result)
     assert response.card_id == card_id
-    assert response.slots["dip_threshold"] == 2.0
+    assert response.slots["event"]["dip_band"]["mult"] == 2.5
     assert response.updated_at is not None
 
 
@@ -523,7 +437,7 @@ def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repo
                 "create_card",
                 {
                     "type": "signal.nonexistent",
-                    "slots": {"tf": "1h"},
+                    "slots": {"context": {"tf": "1h"}},
                     "schema_etag": "invalid",
                 },
             )
@@ -538,6 +452,10 @@ def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repo
     assert structured_error.recovery_hint is not None
 
     # Test: validation error includes guidance to fetch schema
+    valid_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    invalid_slots = copy.deepcopy(valid_slots)
+    invalid_slots["event"]["dip_band"]["mult"] = 6.0  # Invalid: above max 5.0
+
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
@@ -545,13 +463,7 @@ def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repo
                 "create_card",
                 {
                     "type": "signal.trend_pullback",
-                    "slots": {
-                        "tf": "1h",
-                        "symbol": "BTC-USD",
-                        "direction": "long",
-                        "dip_trigger": "keltner",
-                        "dip_threshold": 6.0,  # Invalid: above max
-                    },
+                    "slots": invalid_slots,
                     "schema_etag": schema.etag,
                 },
             )
@@ -572,18 +484,7 @@ def test_update_card_invalid_etag(card_tools_mcp, schema_repository):
     """Test updating a card with invalid schema_etag fails."""
     # Setup: create a valid card first
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = (
-        schema.examples[0].slots
-        if schema.examples
-        else {
-            "tf": "1h",
-            "symbol": "BTC-USD",
-            "direction": "long",
-            "dip_trigger": "keltner",
-            "dip_threshold": 1.5,
-            "trend_gate": {"mode": "hard", "gate": {"kind": "preset", "name": "uptrend_basic"}},
-        }
-    )
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     create_result = run_async(
         call_tool(
@@ -623,18 +524,7 @@ def test_update_card_invalid_etag(card_tools_mcp, schema_repository):
 def test_update_card_error_messages_include_guidance(card_tools_mcp, schema_repository):
     """Test that update_card error messages include helpful guidance."""
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = (
-        schema.examples[0].slots
-        if schema.examples
-        else {
-            "tf": "1h",
-            "symbol": "BTC-USD",
-            "direction": "long",
-            "dip_trigger": "keltner",
-            "dip_threshold": 1.5,
-            "trend_gate": {"mode": "hard", "gate": {"kind": "preset", "name": "uptrend_basic"}},
-        }
-    )
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     # Create a card first
     create_result = run_async(
@@ -651,8 +541,8 @@ def test_update_card_error_messages_include_guidance(card_tools_mcp, schema_repo
     card_id = CreateCardResponse(**create_result).card_id
 
     # Test: validation error includes guidance
-    updated_slots = example_slots.copy()
-    updated_slots["dip_threshold"] = 10.0  # Invalid
+    updated_slots = copy.deepcopy(example_slots)
+    updated_slots["event"]["dip_band"]["mult"] = 6.0  # Invalid: above max 5.0
 
     with pytest.raises(ToolError) as exc_info:
         run_async(
@@ -705,18 +595,7 @@ def test_delete_card(card_tools_mcp, schema_repository):
     """Test deleting a card."""
     # Setup: create a card first
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = (
-        schema.examples[0].slots
-        if schema.examples
-        else {
-            "tf": "1h",
-            "symbol": "BTC-USD",
-            "direction": "long",
-            "dip_trigger": "keltner",
-            "dip_threshold": 1.5,
-            "trend_gate": {"mode": "hard", "gate": {"kind": "preset", "name": "uptrend_basic"}},
-        }
-    )
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     create_result = run_async(
         call_tool(
