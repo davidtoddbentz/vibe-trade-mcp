@@ -45,11 +45,18 @@ class ArchetypeRepository:
         with open(self.archetypes_file) as f:
             data = json.load(f)
 
-        if not isinstance(data, list):
-            raise ValueError(f"Expected list in {self.archetypes_file}, got {type(data)}")
+        # Handle both old format (list) and new format (object with "archetypes" key)
+        if isinstance(data, list):
+            archetype_list = data
+        elif isinstance(data, dict) and "archetypes" in data:
+            archetype_list = data["archetypes"]
+        else:
+            raise ValueError(
+                f"Expected list or object with 'archetypes' key in {self.archetypes_file}, got {type(data)}"
+            )
 
         self._archetypes = {}
-        for arch_data in data:
+        for arch_data in archetype_list:
             archetype = Archetype.from_dict(arch_data)
             self._archetypes[archetype.id] = archetype
 

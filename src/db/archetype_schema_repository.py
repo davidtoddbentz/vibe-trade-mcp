@@ -45,11 +45,18 @@ class ArchetypeSchemaRepository:
         with open(self.schema_file) as f:
             data = json.load(f)
 
-        if not isinstance(data, list):
-            raise ValueError(f"Expected list in {self.schema_file}, got {type(data)}")
+        # Handle both old format (list) and new format (object with "schemas" key)
+        if isinstance(data, dict) and "schemas" in data:
+            schema_list = data["schemas"]
+        elif isinstance(data, list):
+            schema_list = data
+        else:
+            raise ValueError(
+                f"Expected list or object with 'schemas' key in {self.schema_file}, got {type(data)}"
+            )
 
         self._schemas = {}
-        for schema_data in data:
+        for schema_data in schema_list:
             schema = ArchetypeSchema.from_dict(schema_data)
             self._schemas[schema.type_id] = schema
 

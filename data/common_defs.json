@@ -1,0 +1,610 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "./common_defs.schema.json",
+    "$defs": {
+    "Timeframe": {
+      "enum": [
+        "15m",
+        "1h",
+        "4h",
+        "1d"
+      ]
+    },
+    "Direction": {
+      "enum": [
+        "long",
+        "short",
+        "auto"
+      ]
+    },
+    "Confirm": {
+      "enum": [
+        "none",
+        "close_confirm"
+      ]
+    },
+    "BandKind": {
+      "enum": [
+        "bollinger",
+        "keltner",
+        "donchian",
+        "vwap_band"
+      ]
+    },
+    "BandSpec": {
+      "type": "object",
+      "properties": {
+        "band": {
+          "$ref": "#/$defs/BandKind"
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 400
+        },
+        "mult": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 5.0
+        }
+      },
+      "required": [
+        "band",
+        "length"
+      ],
+      "additionalProperties": false
+    },
+    "BandEvent": {
+      "type": "object",
+      "oneOf": [
+        {
+          "title": "Distance from mean via z or band-multiple",
+          "properties": {
+            "kind": {
+              "const": "distance"
+            },
+            "mode": {
+              "enum": [
+                "z",
+                "band_mult"
+              ]
+            },
+            "side": {
+              "enum": [
+                "away_upper",
+                "away_lower"
+              ]
+            },
+            "thresh": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 5.0
+            }
+          },
+          "required": [
+            "kind",
+            "mode",
+            "side",
+            "thresh"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "title": "Touch / cross band edge",
+          "properties": {
+            "kind": {
+              "const": "edge_event"
+            },
+            "edge": {
+              "enum": [
+                "upper",
+                "lower",
+                "mid"
+              ]
+            },
+            "op": {
+              "enum": [
+                "touch",
+                "cross_in",
+                "cross_out"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "edge",
+            "op"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "title": "Re-entry after outside",
+          "properties": {
+            "kind": {
+              "const": "reentry"
+            },
+            "edge": {
+              "enum": [
+                "upper",
+                "lower"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "edge"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "MASpec": {
+      "type": "object",
+      "properties": {
+        "fast": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 400
+        },
+        "slow": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 800
+        },
+        "op": {
+          "enum": [
+            ">",
+            "<"
+          ]
+        }
+      },
+      "required": [
+        "fast",
+        "slow",
+        "op"
+      ],
+      "additionalProperties": false
+    },
+    "BreakoutSpec": {
+      "type": "object",
+      "properties": {
+        "lookback_bars": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 1000
+        },
+        "buffer_bps": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 200
+        },
+        "confirm": {
+          "$ref": "#/$defs/Confirm"
+        }
+      },
+      "required": [
+        "lookback_bars"
+      ],
+      "additionalProperties": false
+    },
+    "RetestSpec": {
+      "type": "object",
+      "properties": {
+        "break_lookback_bars": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 1000
+        },
+        "pullback_depth_atr": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 10.0
+        },
+        "confirm": {
+          "$ref": "#/$defs/Confirm"
+        }
+      },
+      "required": [
+        "break_lookback_bars",
+        "pullback_depth_atr"
+      ],
+      "additionalProperties": false
+    },
+    "SqueezeSpec": {
+      "type": "object",
+      "properties": {
+        "metric": {
+          "enum": [
+            "bb_width_pctile",
+            "kc_comp"
+          ]
+        },
+        "pctile_min": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "break_rule": {
+          "enum": [
+            "donchian",
+            "band_edge"
+          ]
+        },
+        "with_trend": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "metric",
+        "pctile_min"
+      ],
+      "additionalProperties": false
+    },
+    "XSRankSpec": {
+      "type": "object",
+      "properties": {
+        "universe": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "rank_feature": {
+          "enum": [
+            "ret_1d",
+            "ret_1w",
+            "hv_ratio",
+            "rsi",
+            "ema_slope"
+          ]
+        },
+        "top_n": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "bottom_n": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "rebalance_cadence": {
+          "enum": [
+            "1d",
+            "1w"
+          ]
+        },
+        "weights": {
+          "enum": [
+            "equal",
+            "rank"
+          ]
+        },
+        "side": {
+          "enum": [
+            "long_only",
+            "long_short"
+          ]
+        }
+      },
+      "required": [
+        "universe",
+        "rank_feature",
+        "top_n",
+        "rebalance_cadence",
+        "weights",
+        "side"
+      ],
+      "additionalProperties": false
+    },
+    "PairsSpec": {
+      "type": "object",
+      "properties": {
+        "symbol_a": {
+          "type": "string"
+        },
+        "symbol_b": {
+          "type": "string"
+        },
+        "method": {
+          "enum": [
+            "price_spread",
+            "log_spread"
+          ]
+        },
+        "hedge_ratio_mode": {
+          "enum": [
+            "fixed_1to1",
+            "ols"
+          ]
+        },
+        "z_entry": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 5.0
+        },
+        "z_exit": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 5.0
+        }
+      },
+      "required": [
+        "symbol_a",
+        "symbol_b",
+        "method",
+        "hedge_ratio_mode",
+        "z_entry",
+        "z_exit"
+      ],
+      "additionalProperties": false
+    },
+    "IntermarketSpec": {
+      "type": "object",
+      "properties": {
+        "leader_symbol": {
+          "type": "string"
+        },
+        "follower_symbol": {
+          "type": "string"
+        },
+        "trigger_feature": {
+          "enum": [
+            "ret_pct",
+            "ma_flip",
+            "band_break"
+          ]
+        },
+        "trigger_threshold": {
+          "type": "number"
+        },
+        "window_bars": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "entry_side_map": {
+          "type": "object",
+          "properties": {
+            "leader_up": {
+              "enum": [
+                "long",
+                "short",
+                "none"
+              ]
+            },
+            "leader_down": {
+              "enum": [
+                "long",
+                "short",
+                "none"
+              ]
+            }
+          },
+          "required": [
+            "leader_up",
+            "leader_down"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "leader_symbol",
+        "follower_symbol",
+        "trigger_feature",
+        "trigger_threshold",
+        "window_bars",
+        "entry_side_map"
+      ],
+      "additionalProperties": false
+    },
+    "VWAPAnchorSpec": {
+      "type": "object",
+      "properties": {
+        "anchor": {
+          "enum": [
+            "ytd",
+            "month_start",
+            "session_open",
+            "event_ts",
+            "price_level"
+          ]
+        },
+        "event_ts": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "price_level": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "anchor"
+      ],
+      "additionalProperties": false
+    },
+    "EventSpec": {
+      "type": "object",
+      "properties": {
+        "event_kind": {
+          "enum": [
+            "earnings",
+            "macro",
+            "listing",
+            "upgrade_downgrade",
+            "custom"
+          ]
+        },
+        "entry_window_bars": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "strength_filter": {
+          "enum": [
+            "weak",
+            "normal",
+            "strong",
+            "auto"
+          ]
+        }
+      },
+      "required": [
+        "event_kind",
+        "entry_window_bars",
+        "strength_filter"
+      ],
+      "additionalProperties": false
+    },
+    "SessionSpec": {
+      "type": "object",
+      "properties": {
+        "session": {
+          "enum": [
+            "us",
+            "eu",
+            "asia"
+          ]
+        },
+        "window": {
+          "type": "string",
+          "pattern": "^[0-2][0-9][0-5][0-9]-[0-2][0-9][0-5][0-9]$"
+        },
+        "min_gap_pct": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 50.0
+        },
+        "mode": {
+          "enum": [
+            "gap_fade",
+            "gap_go"
+          ]
+        },
+        "confirm": {
+          "$ref": "#/$defs/Confirm"
+        }
+      },
+      "required": [
+        "session",
+        "window",
+        "min_gap_pct",
+        "mode"
+      ],
+      "additionalProperties": false
+    },
+    "RiskSpec": {
+      "type": "object",
+      "properties": {
+        "tp_pct": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 100.0
+        },
+        "sl_pct": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 100.0
+        },
+        "tp_rr": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 20.0
+        },
+        "sl_atr": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 20.0
+        },
+        "time_stop_bars": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000
+        }
+      },
+      "additionalProperties": false
+    },
+    "ContextSpec": {
+      "type": "object",
+      "properties": {
+        "tf": {
+          "$ref": "#/$defs/Timeframe"
+        },
+        "symbol": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "tf",
+        "symbol"
+      ],
+      "additionalProperties": false
+    },
+    "EntryActionSpec": {
+      "type": "object",
+      "properties": {
+        "direction": {
+          "$ref": "#/$defs/Direction"
+        },
+        "confirm": {
+          "$ref": "#/$defs/Confirm"
+        }
+      },
+      "required": [
+        "direction"
+      ]
+    },
+    "ThrottledEntryActionSpec": {
+      "type": "object",
+      "properties": {
+        "direction": {
+          "$ref": "#/$defs/Direction"
+        },
+        "confirm": {
+          "$ref": "#/$defs/Confirm"
+        },
+        "cooldown_bars": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "max_entries_per_day": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 50
+        }
+      },
+      "required": [
+        "direction"
+      ],
+      "additionalProperties": false
+    },
+    "ExitActionSpec": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "close",
+            "reduce",
+            "reverse"
+          ]
+        },
+        "size_frac": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 1.0
+        },
+        "confirm": {
+          "$ref": "#/$defs/Confirm"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

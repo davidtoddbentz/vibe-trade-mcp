@@ -1,158 +1,320 @@
-[
+{
+  "archetypes": [
     {
       "id": "signal.trend_pullback",
       "version": 1,
       "title": "Trend Pullback",
-      "summary": "Buy dips in an uptrend (or sell rips in a downtrend) with a trend gate.",
+      "summary": "Enter with trend on dips/rallies gated by MA relation or ADX.",
       "kind": "signal",
-      "tags": ["spot", "trend", "mean-revert", "crypto"],
-      "required_slots": ["tf", "symbol", "direction", "dip_trigger", "dip_threshold"],
-      "schema_etag": "W/\"seed-v1.signal.trend_pullback\"",
+      "tags": [
+        "spot",
+        "trend",
+        "mean-revert",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action",
+        "risk"
+      ],
+      "schema_etag": "W/\"v2.signal.trend_pullback\"",
       "deprecated": false,
-      "hints": { "preferred_tfs": ["1h", "4h"] },
-      "updated_at": "2025-11-25T00:00:00Z"
+      "hints": {
+        "preferred_tfs": [
+          "1h",
+          "4h"
+        ]
+      },
+      "updated_at": "2025-12-02T17:58:21Z"
     },
     {
       "id": "signal.range_mean_reversion",
       "version": 1,
       "title": "Range Mean-Reversion",
-      "summary": "Fade extremes back to the mean during choppy regimes.",
+      "summary": "Fade extremes back toward the mean within a range regime.",
       "kind": "signal",
-      "tags": ["spot", "range", "mean-revert"],
-      "required_slots": ["tf", "symbol", "band", "entry_thresh"],
-      "schema_etag": "W/\"seed-v1.signal.range_mean_reversion\"",
+      "tags": [
+        "spot",
+        "range",
+        "mean-revert",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action",
+        "risk"
+      ],
+      "schema_etag": "W/\"v2.signal.range_mean_reversion\"",
       "deprecated": false,
-      "hints": { "preferred_tfs": ["15m", "1h"] },
-      "updated_at": "2025-11-25T00:00:00Z"
+      "hints": {
+        "preferred_tfs": [
+          "15m",
+          "1h"
+        ]
+      },
+      "updated_at": "2025-12-02T17:58:21Z"
     },
     {
       "id": "signal.breakout_trendfollow",
       "version": 1,
-      "title": "Breakout / Trend-Follow",
-      "summary": "Enter on N-bar highs/lows; manage with ATR trailing stop.",
+      "title": "Breakout Trend-Follow",
+      "summary": "Enter on N-bar breakouts with optional buffer/confirm; with-trend bias.",
       "kind": "signal",
-      "tags": ["spot", "momentum", "trend"],
-      "required_slots": ["tf", "symbol", "direction", "lookback_bars"],
-      "schema_etag": "W/\"seed-v1.signal.breakout_trendfollow\"",
+      "tags": [
+        "spot",
+        "breakout",
+        "trend",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action",
+        "risk"
+      ],
+      "schema_etag": "W/\"v2.signal.breakout_trendfollow\"",
       "deprecated": false,
-      "hints": { "preferred_tfs": ["1h", "4h", "1d"] },
-      "updated_at": "2025-11-25T00:00:00Z"
+      "hints": {
+        "preferred_tfs": [
+          "1h",
+          "4h"
+        ]
+      },
+      "updated_at": "2025-12-02T17:58:21Z"
     },
     {
       "id": "signal.breakout_retest",
       "version": 1,
       "title": "Breakout Retest",
-      "summary": "Break through level, pull back to it (±ATR), then continue.",
+      "summary": "After a breakout, enter on retest pullback and continuation.",
       "kind": "signal",
-      "tags": ["spot", "momentum", "structure"],
-      "required_slots": ["tf", "symbol", "direction", "break_lookback", "pullback_depth_atr"],
-      "schema_etag": "W/\"seed-v1.signal.breakout_retest\"",
+      "tags": [
+        "spot",
+        "breakout",
+        "structure",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action",
+        "risk"
+      ],
+      "schema_etag": "W/\"v2.signal.breakout_retest\"",
       "deprecated": false,
-      "hints": { "preferred_tfs": ["1h", "4h"] },
-      "updated_at": "2025-11-25T00:00:00Z"
+      "hints": {
+        "preferred_tfs": [
+          "1h",
+          "4h"
+        ]
+      },
+      "updated_at": "2025-12-02T17:58:21Z"
     },
     {
       "id": "signal.squeeze_expansion",
       "version": 1,
-      "title": "Squeeze → Expansion",
-      "summary": "Trade volatility compression resolving into directional expansion.",
+      "title": "Squeeze \u2192 Expansion",
+      "summary": "Detect volatility compression then enter on expansion with breakout rule.",
       "kind": "signal",
-      "tags": ["spot", "volatility", "breakout"],
-      "required_slots": ["tf", "symbol", "squeeze_metric", "pctile_min"],
-      "schema_etag": "W/\"seed-v1.signal.squeeze_expansion\"",
+      "tags": [
+        "spot",
+        "volatility",
+        "squeeze",
+        "breakout",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action",
+        "risk"
+      ],
+      "schema_etag": "W/\"v2.signal.squeeze_expansion\"",
       "deprecated": false,
-      "hints": { "preferred_tfs": ["1h", "4h"] },
-      "updated_at": "2025-11-25T00:00:00Z"
+      "hints": {
+        "preferred_tfs": [
+          "1h",
+          "4h"
+        ]
+      },
+      "updated_at": "2025-12-02T17:58:21Z"
     },
     {
       "id": "signal.xs_momentum",
       "version": 1,
       "title": "Cross-Sectional Momentum",
-      "summary": "Rank a universe by recent strength; rotate into leaders.",
+      "summary": "Periodic rebalance into strongest names by a rank feature.",
       "kind": "signal",
-      "tags": ["spot", "portfolio", "momentum"],
-      "required_slots": ["universe", "rank_feature", "top_n", "rebalance_cadence"],
-      "schema_etag": "W/\"seed-v1.signal.xs_momentum\"",
+      "tags": [
+        "spot",
+        "portfolio",
+        "momentum",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action",
+        "risk"
+      ],
+      "schema_etag": "W/\"v2.signal.xs_momentum\"",
       "deprecated": false,
-      "hints": { "preferred_tfs": ["1d"] },
-      "updated_at": "2025-11-25T00:00:00Z"
+      "hints": {
+        "preferred_tfs": []
+      },
+      "updated_at": "2025-12-02T17:58:21Z"
     },
     {
       "id": "signal.pairs_relative_value",
       "version": 1,
       "title": "Pairs / Relative-Value",
-      "summary": "Trade A vs B spread (or long-only shadow if shorting is disabled).",
+      "summary": "Trade spread between A and B using z-score triggers.",
       "kind": "signal",
-      "tags": ["spot", "pairs", "stat-arb"],
-      "required_slots": ["symbol_a", "symbol_b", "method", "z_entry", "z_exit"],
-      "schema_etag": "W/\"seed-v1.signal.pairs_relative_value\"",
+      "tags": [
+        "spot",
+        "pairs",
+        "mean-revert",
+        "equity",
+        "crypto",
+        "fx"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action",
+        "risk"
+      ],
+      "schema_etag": "W/\"v2.signal.pairs_relative_value\"",
       "deprecated": false,
-      "hints": { "preferred_tfs": ["1h", "4h"] },
-      "updated_at": "2025-11-25T00:00:00Z"
+      "hints": {
+        "preferred_tfs": []
+      },
+      "updated_at": "2025-12-02T17:58:21Z"
     },
     {
       "id": "signal.intermarket_trigger",
       "version": 1,
-      "title": "Intermarket Trigger",
-      "summary": "Trade follower A based on leader B’s move (leader→follower).",
+      "title": "Intermarket Trigger (Leader\u2192Follower)",
+      "summary": "Trade follower when leader moves per trigger within a window.",
       "kind": "signal",
-      "tags": ["spot", "intermarket", "event"],
-      "required_slots": ["leader_symbol", "follower_symbol", "trigger_feature", "trigger_threshold", "window"],
-      "schema_etag": "W/\"seed-v1.signal.intermarket_trigger\"",
+      "tags": [
+        "spot",
+        "intermarket",
+        "event",
+        "equity",
+        "crypto",
+        "fx"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action",
+        "risk"
+      ],
+      "schema_etag": "W/\"v2.signal.intermarket_trigger\"",
       "deprecated": false,
-      "hints": { "preferred_tfs": ["15m", "1h"] },
-      "updated_at": "2025-11-25T00:00:00Z"
+      "hints": {
+        "preferred_tfs": []
+      },
+      "updated_at": "2025-12-02T17:58:21Z"
     },
     {
       "id": "signal.avwap_reversion",
       "version": 1,
       "title": "Anchored VWAP Reversion",
-      "summary": "Use AVWAP as a magnet/mean; trade reversion to anchor.",
+      "summary": "Trade toward anchored VWAP when distance exceeds sigma threshold.",
       "kind": "signal",
-      "tags": ["spot", "vwap", "mean-revert"],
-      "required_slots": ["tf", "symbol", "anchor", "dist_sigma_entry"],
-      "schema_etag": "W/\"seed-v1.signal.avwap_reversion\"",
+      "tags": [
+        "spot",
+        "vwap",
+        "mean-revert",
+        "equity",
+        "crypto",
+        "fx"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action",
+        "risk"
+      ],
+      "schema_etag": "W/\"v2.signal.avwap_reversion\"",
       "deprecated": false,
-      "hints": { "preferred_tfs": ["1h", "4h", "1d"] },
-      "updated_at": "2025-11-25T00:00:00Z"
+      "hints": {
+        "preferred_tfs": [
+          "1h",
+          "4h"
+        ]
+      },
+      "updated_at": "2025-12-02T17:58:21Z"
     },
     {
       "id": "signal.event_followthrough",
       "version": 1,
       "title": "Event / Catalyst Follow-Through",
-      "summary": "Structure entries/exits after scheduled or detected catalysts.",
+      "summary": "Enter after a discrete catalyst within an entry window and strength filter.",
       "kind": "signal",
-      "tags": ["spot", "event", "discretionary"],
-      "required_slots": ["symbol", "event_kind", "entry_window", "direction"],
-      "schema_etag": "W/\"seed-v1.signal.event_followthrough\"",
+      "tags": [
+        "spot",
+        "event",
+        "news",
+        "equity",
+        "crypto",
+        "fx"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action",
+        "risk"
+      ],
+      "schema_etag": "W/\"v2.signal.event_followthrough\"",
       "deprecated": false,
-      "hints": { "preferred_tfs": ["1h", "1d"] },
-      "updated_at": "2025-11-25T00:00:00Z"
+      "hints": {
+        "preferred_tfs": []
+      },
+      "updated_at": "2025-12-02T17:58:21Z"
     },
     {
       "id": "signal.gap_play",
       "version": 1,
-      "title": "Gap Play",
-      "summary": "Gap-fade or gap-and-go around the open/session.",
+      "title": "Gap Play (Open)",
+      "summary": "Trade session gap: gap-fade or gap-and-go with session gate.",
       "kind": "signal",
-      "tags": ["spot", "session", "intraday"],
-      "required_slots": ["symbol", "session", "mode", "min_gap_pct"],
-      "schema_etag": "W/\"seed-v1.signal.gap_play\"",
+      "tags": [
+        "spot",
+        "session",
+        "gap",
+        "equity",
+        "crypto",
+        "fx"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action",
+        "risk"
+      ],
+      "schema_etag": "W/\"v2.signal.gap_play\"",
       "deprecated": false,
-      "hints": { "preferred_tfs": ["15m", "1h"] },
-      "updated_at": "2025-11-25T00:00:00Z"
-    },
-    {
-      "id": "overlay.seasonality_tod",
-      "version": 1,
-      "title": "Seasonality / Time-of-Day Overlay",
-      "summary": "Only trade in allowed seasonal/time-of-day windows.",
-      "kind": "gate",
-      "tags": ["overlay", "schedule"],
-      "required_slots": ["tf", "symbol", "windows"],
-      "schema_etag": "W/\"seed-v1.overlay.seasonality_tod\"",
-      "deprecated": false,
-      "hints": { "preferred_tfs": ["15m", "1h"] },
-      "updated_at": "2025-11-25T00:00:00Z"
+      "hints": {
+        "preferred_tfs": []
+      },
+      "updated_at": "2025-12-02T17:58:21Z"
     }
   ]
+}

@@ -1,8 +1,11 @@
 """Card management tools for MCP server."""
 
+import json
+from pathlib import Path
 from typing import Any
 
 import jsonschema
+from jsonschema import RefResolver
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
@@ -98,6 +101,9 @@ def _validate_slots_against_schema(
 ) -> list[str]:
     """Validate slots against JSON schema and return actionable error messages.
 
+    This function handles external $ref references (e.g., to common_defs.schema.json)
+    by loading the common definitions and using a RefResolver.
+
     Args:
         slots: Slot values to validate
         schema: JSON Schema to validate against
@@ -108,9 +114,35 @@ def _validate_slots_against_schema(
     """
     errors = []
 
-    # Use jsonschema to validate
+    # Load common_defs.json to resolve external $ref references
+    # The schemas reference definitions like "common_defs.schema.json#/$defs/EntryActionSpec"
+    project_root = Path(__file__).parent.parent.parent
+    common_defs_path = project_root / "data" / "common_defs.json"
+
     try:
-        jsonschema.validate(instance=slots, schema=schema)
+        with open(common_defs_path) as f:
+            common_defs = json.load(f)
+    except FileNotFoundError:
+        # If common_defs.json doesn't exist, validation will fail on $ref resolution
+        # This is fine - it will be caught by jsonschema and reported as an error
+        common_defs = None
+
+    # Create a resolver that can resolve references to common_defs
+    # The store maps URI-like identifiers to their actual schema content
+    store = {}
+    if common_defs is not None:
+        # Map "common_defs.schema.json" to the loaded JSON
+        store["common_defs.schema.json"] = common_defs
+
+    # Create resolver - it will use the store to resolve external references
+    resolver = RefResolver.from_schema(schema, store=store) if store else None
+
+    # Use jsonschema to validate with resolver for external $ref support
+    try:
+        if resolver:
+            jsonschema.validate(instance=slots, schema=schema, resolver=resolver)
+        else:
+            jsonschema.validate(instance=slots, schema=schema)
     except jsonschema.ValidationError as e:
         # Extract actionable error message
         path = ".".join(str(p) for p in e.absolute_path) if e.absolute_path else "root"

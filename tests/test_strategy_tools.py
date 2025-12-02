@@ -2,7 +2,12 @@
 
 import pytest
 from mcp.server.fastmcp.exceptions import ToolError
-from test_helpers import call_tool, get_structured_error, run_async
+from test_helpers import (
+    call_tool,
+    get_structured_error,
+    get_valid_slots_for_archetype,
+    run_async,
+)
 
 from src.tools.errors import ErrorCode
 from src.tools.strategy_tools import (
@@ -153,18 +158,7 @@ def test_attach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test attaching a card to a strategy."""
     # Setup: create a card and strategy
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = (
-        schema.examples[0].slots
-        if schema.examples
-        else {
-            "tf": "1h",
-            "symbol": "BTC-USD",
-            "direction": "long",
-            "dip_trigger": "keltner",
-            "dip_threshold": 1.5,
-            "trend_gate": {"mode": "hard", "gate": {"kind": "preset", "name": "uptrend_basic"}},
-        }
-    )
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     create_card_result = run_async(
         call_tool(
@@ -219,18 +213,7 @@ def test_attach_card_invalid_role(strategy_tools_mcp, card_tools_mcp, schema_rep
     """Test attaching a card with invalid role fails."""
     # Setup: create a card and strategy
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = (
-        schema.examples[0].slots
-        if schema.examples
-        else {
-            "tf": "1h",
-            "symbol": "BTC-USD",
-            "direction": "long",
-            "dip_trigger": "keltner",
-            "dip_threshold": 1.5,
-            "trend_gate": {"mode": "hard", "gate": {"kind": "preset", "name": "uptrend_basic"}},
-        }
-    )
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     create_card_result = run_async(
         call_tool(
@@ -316,18 +299,7 @@ def test_attach_card_duplicate(strategy_tools_mcp, card_tools_mcp, schema_reposi
     """Test attaching the same card twice fails."""
     # Setup: create a card and strategy
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = (
-        schema.examples[0].slots
-        if schema.examples
-        else {
-            "tf": "1h",
-            "symbol": "BTC-USD",
-            "direction": "long",
-            "dip_trigger": "keltner",
-            "dip_threshold": 1.5,
-            "trend_gate": {"mode": "hard", "gate": {"kind": "preset", "name": "uptrend_basic"}},
-        }
-    )
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     create_card_result = run_async(
         call_tool(
@@ -388,18 +360,7 @@ def test_detach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test detaching a card from a strategy."""
     # Setup: create a card and strategy, then attach
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = (
-        schema.examples[0].slots
-        if schema.examples
-        else {
-            "tf": "1h",
-            "symbol": "BTC-USD",
-            "direction": "long",
-            "dip_trigger": "keltner",
-            "dip_threshold": 1.5,
-            "trend_gate": {"mode": "hard", "gate": {"kind": "preset", "name": "uptrend_basic"}},
-        }
-    )
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     create_card_result = run_async(
         call_tool(
@@ -529,18 +490,7 @@ def test_attach_card_auto_order(strategy_tools_mcp, card_tools_mcp, schema_repos
     """Test that attach_card auto-assigns order when not provided."""
     # Setup: create multiple cards and a strategy
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = (
-        schema.examples[0].slots
-        if schema.examples
-        else {
-            "tf": "1h",
-            "symbol": "BTC-USD",
-            "direction": "long",
-            "dip_trigger": "keltner",
-            "dip_threshold": 1.5,
-            "trend_gate": {"mode": "hard", "gate": {"kind": "preset", "name": "uptrend_basic"}},
-        }
-    )
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     card1_result = run_async(
         call_tool(
@@ -616,18 +566,7 @@ def test_attach_card_follow_latest(strategy_tools_mcp, card_tools_mcp, schema_re
     """Test attach_card with follow_latest flag."""
     # Setup: create a card and strategy
     schema = schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = (
-        schema.examples[0].slots
-        if schema.examples
-        else {
-            "tf": "1h",
-            "symbol": "BTC-USD",
-            "direction": "long",
-            "dip_trigger": "keltner",
-            "dip_threshold": 1.5,
-            "trend_gate": {"mode": "hard", "gate": {"kind": "preset", "name": "uptrend_basic"}},
-        }
-    )
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     create_card_result = run_async(
         call_tool(
