@@ -62,6 +62,19 @@ class GetArchetypeSchemaResponse(BaseModel):
     updated_at: str = Field(..., description="ISO8601 timestamp of last update")
 
 
+class GetSchemaExampleResponse(BaseModel):
+    """Response from get_schema_example tool."""
+
+    type_id: str = Field(..., description="Archetype identifier")
+    example_slots: dict = Field(..., description="Ready-to-use example slots (copy-paste ready)")
+    human_description: str | None = Field(
+        None, description="Human-readable description of this example"
+    )
+    schema_etag: str = Field(
+        ..., description="Schema ETag to use when creating card with these slots"
+    )
+
+
 def register_trading_tools(
     mcp: FastMCP,
     archetype_repo: ArchetypeRepository,
@@ -183,4 +196,69 @@ def register_trading_tools(
                 for ex in schema.examples
             ],
             updated_at=schema.updated_at,
+        )
+
+    @mcp.tool()
+    def get_schema_example(
+        type: str = Field(..., description="Archetype identifier (e.g., 'signal.trend_pullback')"),
+        example_index: int = Field(
+            0, description="Index of example to return (default: 0 for first example)"
+        ),
+    ) -> GetSchemaExampleResponse:
+        """
+        Get a ready-to-use example slot configuration for an archetype.
+
+        This tool returns a complete, valid slot configuration that can be directly
+        used when creating a card. It's designed to reduce friction when
+        constructing slots manually.
+
+        Recommended workflow:
+        1. Use get_archetypes to find available archetypes
+        2. Use get_schema_example(type) to get a ready-to-use example
+        3. Optionally modify the example slots to fit your needs
+        4. Use create_card with the slots and schema_etag from this response
+
+        Args:
+            type: Archetype identifier
+            example_index: Index of example to return (0-based, defaults to 0)
+
+        Returns:
+            GetSchemaExampleResponse with ready-to-use example slots
+
+        Raises:
+            StructuredToolError: With error code SCHEMA_NOT_FOUND if archetype schema not found (non-retryable)
+            StructuredToolError: With error code VALIDATION_ERROR if example_index is out of range (non-retryable)
+
+        Error Handling:
+            Errors include structured information with error_code, retryable flag,
+            recovery_hint, and details for agentic decision-making.
+        """
+        # Fetch schema from repository
+        schema = schema_repo.get_by_type_id(type)
+
+        if schema is None:
+            raise not_found_error(
+                resource_type="Schema",
+                resource_id=type,
+                recovery_hint="Use get_archetypes to see available archetypes.",
+            )
+
+        # Check if example_index is valid
+        if example_index < 0 or example_index >= len(schema.examples):
+            from src.tools.errors import ErrorCode, validation_error
+
+            raise validation_error(
+                error_code=ErrorCode.VALIDATION_ERROR,
+                message=f"Example index {example_index} is out of range. Schema has {len(schema.examples)} example(s).",
+                recovery_hint=f"Use get_archetype_schema('{type}') to see all available examples, or use index 0-{len(schema.examples) - 1}.",
+            )
+
+        # Get the requested example
+        example = schema.examples[example_index]
+
+        return GetSchemaExampleResponse(
+            type_id=schema.type_id,
+            example_slots=example.slots,
+            human_description=example.human,
+            schema_etag=schema.etag,
         )

@@ -96,6 +96,19 @@ class DeleteCardResponse(BaseModel):
     success: bool = Field(..., description="Whether deletion was successful")
 
 
+class ValidateSlotsDraftResponse(BaseModel):
+    """Response from validate_slots_draft tool."""
+
+    type_id: str = Field(..., description="Archetype identifier")
+    valid: bool = Field(..., description="Whether slots are valid")
+    errors: list[str] = Field(
+        default_factory=list, description="List of validation error messages (empty if valid)"
+    )
+    schema_etag: str = Field(
+        ..., description="Schema ETag to use when creating card with these slots"
+    )
+
+
 def _validate_slots_against_schema(
     slots: dict[str, Any], schema: dict[str, Any], schema_repo: ArchetypeSchemaRepository
 ) -> list[str]:
@@ -451,3 +464,53 @@ def register_card_tools(
                 resource_id=card_id,
                 recovery_hint="Use list_cards to see all available cards.",
             ) from e
+
+    @mcp.tool()
+    def validate_slots_draft(
+        type: str = Field(..., description="Archetype identifier (e.g., 'signal.trend_pullback')"),
+        slots: dict[str, Any] = Field(..., description="Slot values to validate"),  # noqa: B008
+    ) -> ValidateSlotsDraftResponse:
+        """
+        Validate slot values against an archetype schema without creating a card.
+
+        This tool allows you to check if slot values are valid before creating a card.
+        It's useful for iterating on slot configurations or validating user input.
+
+        Recommended workflow:
+        1. Use get_schema_example(type) to get a starting point
+        2. Modify the example slots as needed
+        3. Use validate_slots_draft(type, slots) to check validity
+        4. If valid, use create_card with the slots and schema_etag from the response
+
+        Args:
+            type: Archetype identifier
+            slots: Slot values to validate
+
+        Returns:
+            ValidateSlotsDraftResponse with validation result and errors (if any)
+
+        Raises:
+            StructuredToolError: With error code ARCHETYPE_NOT_FOUND if archetype schema not found (non-retryable)
+
+        Error Handling:
+            Errors include structured information with error_code, retryable flag,
+            recovery_hint, and details for agentic decision-making.
+        """
+        # Fetch schema for validation
+        schema = schema_repo.get_by_type_id(type)
+        if schema is None:
+            raise not_found_error(
+                resource_type="Archetype",
+                resource_id=type,
+                recovery_hint="Use get_archetypes to see available archetypes.",
+            )
+
+        # Validate slots against JSON schema
+        validation_errors = _validate_slots_against_schema(slots, schema.json_schema, schema_repo)
+
+        return ValidateSlotsDraftResponse(
+            type_id=type,
+            valid=len(validation_errors) == 0,
+            errors=validation_errors,
+            schema_etag=schema.etag,
+        )
