@@ -58,7 +58,9 @@ auth_token = os.getenv("MCP_AUTH_TOKEN")
 
 # Create MCP server instance with port configuration
 # For Cloud Run, we need to bind to 0.0.0.0 to accept external connections
-mcp = FastMCP("vibe-trade-server", port=port, host="0.0.0.0")
+# stateless_http=True enables compatibility with OpenAI's Responses API
+# which sends GET requests without establishing a session first
+mcp = FastMCP("vibe-trade-server", port=port, host="0.0.0.0", stateless_http=True)
 
 # Add authentication middleware if token is configured
 # We need to wrap streamable_http_app() because it creates a new app each time
@@ -77,7 +79,8 @@ if auth_token:
             if request.url.path in ["/", "/health", "/ready"] or request.method == "OPTIONS":
                 return await call_next(request)
 
-            # Check Authorization header
+            # Check Authorization header for all MCP requests (GET and POST)
+            # stateless_http=True handles GET requests properly, so we just need auth
             auth_header = request.headers.get("Authorization", "")
             if not auth_header.startswith("Bearer "):
                 return JSONResponse(
