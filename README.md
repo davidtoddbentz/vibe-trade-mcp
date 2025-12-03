@@ -193,9 +193,9 @@ vibe-trade-mcp/
 
 ## Deployment
 
-Terraform infrastructure is now in a separate repository: [vibe-trade-terraform](../vibe-trade-terraform/).
+**Code deployments:** Run `make deploy` to build, push, and update Cloud Run with new code.
 
-See the terraform repository for Cloud Run deployment instructions.
+**Infrastructure changes:** Terraform infrastructure is in a separate repository: [vibe-trade-terraform](../vibe-trade-terraform/). See that repository for infrastructure deployment instructions.
 
 The server automatically:
 - Uses HTTP transport for Cloud Run (reads `PORT` env var)
