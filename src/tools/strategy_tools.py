@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from src.db.archetype_schema_repository import ArchetypeSchemaRepository
 from src.db.card_repository import CardRepository
 from src.db.strategy_repository import StrategyRepository
+from src.models.card import Card
 from src.models.strategy import Attachment, Strategy
 from src.tools.card_tools import _validate_slots_against_schema
 from src.tools.errors import (
@@ -127,6 +128,10 @@ class CompileStrategyResponse(BaseModel):
     status_hint: str = Field(..., description="Status: ready or fix_required")
     compiled: CompiledStrategy | None = Field(None, description="Compiled strategy (if ready)")
     issues: list[Issue] = Field(default_factory=list, description="Validation issues")
+    validation_summary: dict[str, int] = Field(
+        default_factory=lambda: {"errors": 0, "warnings": 0, "cards_validated": 0},
+        description="Summary of validation: error count, warning count, and number of cards validated",
+    )
 
 
 def register_strategy_tools(
@@ -330,12 +335,18 @@ def register_strategy_tools(
         1. Create cards using create_card
         2. Create strategy using create_strategy
         3. Attach cards using attach_card with appropriate roles
+        4. Use validate_strategy or compile_strategy to check for issues
 
         Args:
             strategy_id: Strategy identifier
             card_id: Card identifier to attach
             role: Card role (signal, gate, exit, sizing, risk, or overlay)
-            overrides: Slot value overrides to merge with card slots (optional)
+            overrides: Slot value overrides to merge with card slots (optional).
+                Overrides use deep merge: nested objects are merged recursively,
+                not replaced. For example, if card has {"context": {"symbol": "BTC-USD", "tf": "1h"}}
+                and you provide {"context": {"tf": "4h"}}, the result is
+                {"context": {"symbol": "BTC-USD", "tf": "4h"}} (tf is updated, symbol is preserved).
+                To replace an entire nested object, you must provide all its fields.
             follow_latest: If true, use latest card version; if false, pin current version
             order: Execution order (optional, auto-assigned to next available)
             enabled: Whether attachment is enabled (default: true)
@@ -501,6 +512,220 @@ def register_strategy_tools(
             )
 
         return ListStrategiesResponse(strategies=strategy_dicts, count=len(strategy_dicts))
+
+    @mcp.tool()
+    def validate_strategy(
+        strategy_id: str = Field(..., description="Strategy identifier to validate"),
+    ) -> CompileStrategyResponse:
+        """
+        Validate a strategy without compiling it into a runnable plan.
+
+        This tool performs the same validation checks as compile_strategy but
+        doesn't return a compiled plan. It's useful for quick validation checks
+        or when you want to see issues without the overhead of compilation.
+
+        Recommended workflow:
+        1. Create/update strategy and attach cards
+        2. Call validate_strategy to check for issues
+        3. If status_hint is 'fix_required', address issues and re-validate
+        4. Once ready, use compile_strategy to get the compiled plan
+
+        Args:
+            strategy_id: The ID of the strategy to validate
+
+        Returns:
+            CompileStrategyResponse: Contains status_hint, issues, and validation_summary.
+            The compiled field will be None since this is validation-only.
+
+        Raises:
+            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found (non-retryable)
+        """
+        # Get strategy
+        strategy = strategy_repo.get_by_id(strategy_id)
+        if strategy is None:
+            raise not_found_error(
+                resource_type="Strategy",
+                resource_id=strategy_id,
+                recovery_hint="Use list_strategies to see all available strategies.",
+            )
+
+        # Reuse the same validation logic as compile_strategy
+        # We'll build issues and validation summary but skip the compiled plan
+        issues: list[Issue] = []
+        compiled_cards: list[CompiledCard] = []
+        data_requirements_map: dict[tuple[str, str], int] = {}  # (symbol, tf) -> min_bars
+
+        # Process attachments (same logic as compile_strategy)
+        for attachment in strategy.attachments:
+            card: Card | None = None
+            card_revision_id: str | None = None
+
+            if attachment.follow_latest:
+                card = card_repo.get_by_id(attachment.card_id)
+                if card is None:
+                    issues.append(
+                        Issue(
+                            severity="error",
+                            code="CARD_NOT_FOUND",
+                            message=f"Attached card '{attachment.card_id}' not found.",
+                            path=f"attachments[{attachment.card_id}]",
+                        )
+                    )
+                    continue
+            else:
+                current_card = card_repo.get_by_id(attachment.card_id)
+                if current_card and current_card.updated_at == attachment.card_revision_id:
+                    card = current_card
+                    card_revision_id = attachment.card_revision_id
+                else:
+                    issues.append(
+                        Issue(
+                            severity="error",
+                            code="CARD_REVISION_NOT_FOUND",
+                            message=f"Pinned card revision for card '{attachment.card_id}' (revision '{attachment.card_revision_id}') not found or does not match current card's updated_at.",
+                            path=f"attachments[{attachment.card_id}]",
+                        )
+                    )
+                    continue
+
+            # Merge card.slots with attachment.overrides
+            effective_slots = card.slots.copy()
+            if attachment.overrides:
+                # Deep merge overrides
+                def deep_merge(base: dict, override: dict) -> dict:
+                    result = base.copy()
+                    for key, value in override.items():
+                        if (
+                            key in result
+                            and isinstance(result[key], dict)
+                            and isinstance(value, dict)
+                        ):
+                            result[key] = deep_merge(result[key], value)
+                        else:
+                            result[key] = value
+                    return result
+
+                effective_slots = deep_merge(effective_slots, attachment.overrides)
+
+            # Get schema for validation and data requirements
+            schema = schema_repo.get_by_type_id(card.type)
+            if schema is None:
+                issues.append(
+                    Issue(
+                        severity="error",
+                        code="SCHEMA_NOT_FOUND",
+                        message=f"Schema for archetype {card.type} not found",
+                        path=f"attachments[{attachment.card_id}].type",
+                    )
+                )
+                continue
+
+            # Validate effective slots against schema (after merging overrides)
+            validation_errors = _validate_slots_against_schema(
+                effective_slots, schema.json_schema, schema_repo
+            )
+            if validation_errors:
+                # Format validation errors into issues
+                for error_msg in validation_errors:
+                    issues.append(
+                        Issue(
+                            severity="error",
+                            code="SLOT_VALIDATION_ERROR",
+                            message=f"Effective slots for card '{attachment.card_id}' (type '{card.type}') failed schema validation: {error_msg}",
+                            path=f"attachments[{attachment.card_id}].effective_slots",
+                        )
+                    )
+                # Continue processing other cards even if this one fails validation
+                continue
+
+            # Extract symbol and timeframe from effective_slots
+            symbol = None
+            tf = None
+            if "context" in effective_slots:
+                context = effective_slots["context"]
+                symbol = context.get("symbol")
+                tf = context.get("tf")
+
+            if not symbol or not tf:
+                issues.append(
+                    Issue(
+                        severity="error",
+                        code="MISSING_CONTEXT",
+                        message=f"Card {attachment.card_id} missing symbol or tf in context",
+                        path=f"attachments[{attachment.card_id}].effective_slots.context",
+                    )
+                )
+                continue
+
+            # Compute data requirements
+            min_bars = schema.constraints.min_history_bars or 100  # Default fallback
+            key = (symbol, tf)
+            if key not in data_requirements_map or min_bars > data_requirements_map[key]:
+                data_requirements_map[key] = min_bars
+
+            # Create compiled card (for validation summary)
+            compiled_cards.append(
+                CompiledCard(
+                    role=attachment.role,
+                    card_id=attachment.card_id,
+                    card_revision_id=card_revision_id,
+                    type=card.type,
+                    effective_slots=effective_slots,
+                )
+            )
+
+        # Validate composition
+        signal_count = sum(1 for card in compiled_cards if card.role == "signal")
+        exit_count = sum(1 for card in compiled_cards if card.role == "exit")
+
+        if signal_count == 0:
+            issues.append(
+                Issue(
+                    severity="error",
+                    code="NO_SIGNALS",
+                    message="Strategy has no signal cards attached",
+                    path="attachments",
+                )
+            )
+
+        if exit_count == 0:
+            issues.append(
+                Issue(
+                    severity="warning",
+                    code="NO_EXITS",
+                    message="Strategy has no exit cards attached (positions may not close automatically)",
+                    path="attachments",
+                )
+            )
+
+        if exit_count > 1:
+            issues.append(
+                Issue(
+                    severity="warning",
+                    code="MULTIPLE_EXITS",
+                    message=f"Strategy has {exit_count} exit cards (may cause conflicts)",
+                    path="attachments",
+                )
+            )
+
+        # Determine status
+        error_count = sum(1 for issue in issues if issue.severity == "error")
+        status_hint = "ready" if error_count == 0 else "fix_required"
+
+        # Calculate validation summary
+        warning_count = sum(1 for i in issues if i.severity == "warning")
+        cards_validated = len(compiled_cards)
+
+        return CompileStrategyResponse(
+            status_hint=status_hint,
+            compiled=None,  # Validation-only, no compiled plan
+            issues=issues,
+            validation_summary={
+                "errors": error_count,
+                "warnings": warning_count,
+                "cards_validated": cards_validated,
+            },
+        )
 
     @mcp.tool()
     def compile_strategy(
@@ -741,8 +966,18 @@ def register_strategy_tools(
                 data_requirements=data_requirements,
             )
 
+        # Calculate validation summary
+        error_count = sum(1 for i in issues if i.severity == "error")
+        warning_count = sum(1 for i in issues if i.severity == "warning")
+        cards_validated = len(compiled_cards)
+
         return CompileStrategyResponse(
             status_hint=status_hint,
             compiled=compiled,
             issues=issues,
+            validation_summary={
+                "errors": error_count,
+                "warnings": warning_count,
+                "cards_validated": cards_validated,
+            },
         )

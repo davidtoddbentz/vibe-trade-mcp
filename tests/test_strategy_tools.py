@@ -735,6 +735,9 @@ def test_compile_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repos
     assert len(response.compiled.cards) == 2
     assert len(response.compiled.data_requirements) > 0
     assert len(response.issues) == 0
+    # Verify validation summary
+    assert response.validation_summary["errors"] == 0
+    assert response.validation_summary["cards_validated"] == 2
 
     # Verify compiled cards
     signal_card = next(c for c in response.compiled.cards if c.role == "signal")
