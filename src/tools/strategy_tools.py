@@ -5,9 +5,11 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
+from src.db.archetype_schema_repository import ArchetypeSchemaRepository
 from src.db.card_repository import CardRepository
 from src.db.strategy_repository import StrategyRepository
 from src.models.strategy import Attachment, Strategy
+from src.tools.card_tools import _validate_slots_against_schema
 from src.tools.errors import (
     ErrorCode,
     StructuredToolError,
@@ -82,10 +84,56 @@ class ListStrategiesResponse(BaseModel):
     count: int = Field(..., description="Total number of strategies")
 
 
+class CompiledCard(BaseModel):
+    """Compiled card with effective slots."""
+
+    role: str = Field(..., description="Card role")
+    card_id: str = Field(..., description="Card identifier")
+    card_revision_id: str | None = Field(None, description="Card revision identifier")
+    type: str = Field(..., description="Archetype type")
+    effective_slots: dict[str, Any] = Field(..., description="Merged slots (card + overrides)")
+
+
+class DataRequirement(BaseModel):
+    """Data requirement for a symbol/timeframe combination."""
+
+    symbol: str = Field(..., description="Trading symbol")
+    tf: str = Field(..., description="Timeframe")
+    min_bars: int = Field(..., description="Minimum history bars required")
+    lookback_hours: float = Field(..., description="Lookback time in hours")
+
+
+class Issue(BaseModel):
+    """Validation issue found during compilation."""
+
+    severity: str = Field(..., description="Issue severity: error or warning")
+    code: str = Field(..., description="Issue code")
+    message: str = Field(..., description="Human-readable message")
+    path: str | None = Field(None, description="Path to the problematic element")
+
+
+class CompiledStrategy(BaseModel):
+    """Compiled strategy plan."""
+
+    strategy_id: str = Field(..., description="Strategy identifier")
+    universe: list[str] = Field(..., description="Trading universe")
+    cards: list[CompiledCard] = Field(..., description="Compiled cards with effective slots")
+    data_requirements: list[DataRequirement] = Field(..., description="Data requirements")
+
+
+class CompileStrategyResponse(BaseModel):
+    """Response from compile_strategy tool."""
+
+    status_hint: str = Field(..., description="Status: ready or fix_required")
+    compiled: CompiledStrategy | None = Field(None, description="Compiled strategy (if ready)")
+    issues: list[Issue] = Field(default_factory=list, description="Validation issues")
+
+
 def register_strategy_tools(
     mcp: FastMCP,
     strategy_repo: StrategyRepository,
     card_repo: CardRepository,
+    schema_repo: ArchetypeSchemaRepository,
 ) -> None:
     """Register all strategy management tools with the MCP server.
 
@@ -453,3 +501,248 @@ def register_strategy_tools(
             )
 
         return ListStrategiesResponse(strategies=strategy_dicts, count=len(strategy_dicts))
+
+    @mcp.tool()
+    def compile_strategy(
+        strategy_id: str = Field(..., description="Strategy identifier"),
+    ) -> CompileStrategyResponse:
+        """
+        Compile and validate a strategy into a runnable plan.
+
+        This tool performs preflight checks and resolves all cards into their effective
+        configurations. It validates composition, computes data requirements, and reports
+        any issues that need to be fixed before the strategy can run.
+
+        Recommended workflow:
+        1. Create cards using create_card
+        2. Create strategy using create_strategy
+        3. Attach cards using attach_card
+        4. Compile strategy using compile_strategy to validate and get data requirements
+        5. Fix any issues reported
+        6. Re-compile until status_hint is "ready"
+
+        Args:
+            strategy_id: Strategy identifier
+
+        Returns:
+            CompileStrategyResponse with status_hint, compiled plan, and issues
+
+        Raises:
+            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found (non-retryable)
+
+        Error Handling:
+            Errors include structured information with error_code, retryable flag,
+            recovery_hint, and details for agentic decision-making.
+        """
+        # Get strategy
+        strategy = strategy_repo.get_by_id(strategy_id)
+        if strategy is None:
+            raise not_found_error(
+                resource_type="Strategy",
+                resource_id=strategy_id,
+                recovery_hint="Use list_strategies to see all available strategies.",
+            )
+
+        issues: list[Issue] = []
+        compiled_cards: list[CompiledCard] = []
+        data_requirements_map: dict[tuple[str, str], int] = {}  # (symbol, tf) -> max min_bars
+
+        # Resolve and compile each attachment
+        for attachment in strategy.attachments:
+            if not attachment.enabled:
+                continue
+
+            # Resolve card (handle follow_latest vs pinned)
+            if attachment.follow_latest:
+                card = card_repo.get_by_id(attachment.card_id)
+                if card is None:
+                    issues.append(
+                        Issue(
+                            severity="error",
+                            code="CARD_NOT_FOUND",
+                            message=f"Card {attachment.card_id} not found (follow_latest=true)",
+                            path=f"attachments[{attachment.card_id}]",
+                        )
+                    )
+                    continue
+                card_revision_id = card.updated_at
+            else:
+                # For pinned cards, we'd need to fetch by revision_id
+                # For MVP, we'll just get the latest and use the stored revision_id
+                card = card_repo.get_by_id(attachment.card_id)
+                if card is None:
+                    issues.append(
+                        Issue(
+                            severity="error",
+                            code="CARD_NOT_FOUND",
+                            message=f"Card {attachment.card_id} not found",
+                            path=f"attachments[{attachment.card_id}]",
+                        )
+                    )
+                    continue
+                # In a full implementation, we'd validate card.updated_at matches card_revision_id
+                card_revision_id = attachment.card_revision_id
+
+            # Merge card.slots with attachment.overrides
+            effective_slots = card.slots.copy()
+            if attachment.overrides:
+                # Deep merge overrides
+                def deep_merge(base: dict, override: dict) -> dict:
+                    result = base.copy()
+                    for key, value in override.items():
+                        if (
+                            key in result
+                            and isinstance(result[key], dict)
+                            and isinstance(value, dict)
+                        ):
+                            result[key] = deep_merge(result[key], value)
+                        else:
+                            result[key] = value
+                    return result
+
+                effective_slots = deep_merge(effective_slots, attachment.overrides)
+
+            # Get schema for validation and data requirements
+            schema = schema_repo.get_by_type_id(card.type)
+            if schema is None:
+                issues.append(
+                    Issue(
+                        severity="error",
+                        code="SCHEMA_NOT_FOUND",
+                        message=f"Schema for archetype {card.type} not found",
+                        path=f"attachments[{attachment.card_id}].type",
+                    )
+                )
+                continue
+
+            # Validate effective slots against schema (after merging overrides)
+            validation_errors = _validate_slots_against_schema(
+                effective_slots, schema.json_schema, schema_repo
+            )
+            if validation_errors:
+                # Format validation errors into issues
+                for error_msg in validation_errors:
+                    issues.append(
+                        Issue(
+                            severity="error",
+                            code="SLOT_VALIDATION_ERROR",
+                            message=f"Effective slots for card '{attachment.card_id}' (type '{card.type}') failed schema validation: {error_msg}",
+                            path=f"attachments[{attachment.card_id}].effective_slots",
+                        )
+                    )
+                # Continue processing other cards even if this one fails validation
+                continue
+
+            # Extract symbol and timeframe from effective_slots
+            symbol = None
+            tf = None
+            if "context" in effective_slots:
+                context = effective_slots["context"]
+                symbol = context.get("symbol")
+                tf = context.get("tf")
+
+            if not symbol or not tf:
+                issues.append(
+                    Issue(
+                        severity="error",
+                        code="MISSING_CONTEXT",
+                        message=f"Card {attachment.card_id} missing symbol or tf in context",
+                        path=f"attachments[{attachment.card_id}].effective_slots.context",
+                    )
+                )
+                continue
+
+            # Compute data requirements
+            min_bars = schema.constraints.min_history_bars or 100  # Default fallback
+            key = (symbol, tf)
+            if key not in data_requirements_map or min_bars > data_requirements_map[key]:
+                data_requirements_map[key] = min_bars
+
+            # Create compiled card
+            compiled_cards.append(
+                CompiledCard(
+                    role=attachment.role,
+                    card_id=attachment.card_id,
+                    card_revision_id=card_revision_id,
+                    type=card.type,
+                    effective_slots=effective_slots,
+                )
+            )
+
+        # Validate composition
+        signal_count = sum(1 for card in compiled_cards if card.role == "signal")
+        exit_count = sum(1 for card in compiled_cards if card.role == "exit")
+
+        if signal_count == 0:
+            issues.append(
+                Issue(
+                    severity="error",
+                    code="NO_SIGNALS",
+                    message="Strategy has no signal cards attached",
+                    path="attachments",
+                )
+            )
+
+        if exit_count == 0:
+            issues.append(
+                Issue(
+                    severity="warning",
+                    code="NO_EXITS",
+                    message="Strategy has no exit cards attached (positions may not close automatically)",
+                    path="attachments",
+                )
+            )
+
+        if exit_count > 1:
+            issues.append(
+                Issue(
+                    severity="warning",
+                    code="MULTIPLE_EXITS",
+                    message=f"Strategy has {exit_count} exit cards (may cause conflicts)",
+                    path="attachments",
+                )
+            )
+
+        # Convert data requirements to list
+        data_requirements: list[DataRequirement] = []
+        # Timeframe to hours mapping (simplified)
+        tf_to_hours = {
+            "1m": 1 / 60,
+            "5m": 5 / 60,
+            "15m": 15 / 60,
+            "1h": 1,
+            "4h": 4,
+            "1d": 24,
+        }
+
+        for (symbol, tf), min_bars in data_requirements_map.items():
+            hours_per_bar = tf_to_hours.get(tf, 1)  # Default to 1 hour if unknown
+            lookback_hours = min_bars * hours_per_bar
+            data_requirements.append(
+                DataRequirement(
+                    symbol=symbol,
+                    tf=tf,
+                    min_bars=min_bars,
+                    lookback_hours=lookback_hours,
+                )
+            )
+
+        # Determine status
+        error_count = sum(1 for issue in issues if issue.severity == "error")
+        status_hint = "ready" if error_count == 0 else "fix_required"
+
+        # Build compiled strategy (only if ready)
+        compiled = None
+        if status_hint == "ready":
+            compiled = CompiledStrategy(
+                strategy_id=strategy.id,
+                universe=strategy.universe,
+                cards=compiled_cards,
+                data_requirements=data_requirements,
+            )
+
+        return CompileStrategyResponse(
+            status_hint=status_hint,
+            compiled=compiled,
+            issues=issues,
+        )
