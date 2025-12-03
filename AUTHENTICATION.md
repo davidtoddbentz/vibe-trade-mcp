@@ -100,26 +100,13 @@ curl -H "Authorization: Bearer $TOKEN" \
 ```
 
 If you get a 403 Forbidden, check:
-1. Your email is in `terraform.tfvars` `allowed_invokers`
-2. Terraform has been applied: `make terraform-apply-auto`
+1. Your authentication token is correctly configured in the terraform repository
+2. Terraform has been applied in the [vibe-trade-terraform](../vibe-trade-terraform/) repository
 3. You're using the correct identity token
 
 ## Adding More Users
 
-To grant access to additional users:
-
-1. Edit `terraform/terraform.tfvars`:
-   ```hcl
-   allowed_invokers = [
-     "user:user1@gmail.com",
-     "user:user2@gmail.com",
-   ]
-   ```
-
-2. Apply changes:
-   ```bash
-   make terraform-apply-auto
-   ```
+To grant access to additional users, update the authentication configuration in the [vibe-trade-terraform](../vibe-trade-terraform/) repository and apply the changes.
 
 ## Troubleshooting
 

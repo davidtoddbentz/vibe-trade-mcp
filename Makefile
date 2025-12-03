@@ -1,5 +1,4 @@
 .PHONY: install run emulator test lint format format-check check ci clean \
-	terraform-init terraform-plan terraform-apply terraform-apply-auto terraform-destroy terraform-output terraform-validate terraform-fmt \
 	docker-build docker-push docker-build-push deploy deploy-image deploy-info force-revision
 
 install:
@@ -85,34 +84,10 @@ clean:
 	rm -rf .pytest_cache .coverage htmlcov/ coverage.xml
 	rm -rf *.egg-info build/ dist/
 
-# Terraform commands
-terraform-init:
-	cd terraform && terraform init
-
-terraform-plan:
-	cd terraform && terraform plan
-
-terraform-apply:
-	cd terraform && terraform apply
-
-terraform-apply-auto:
-	cd terraform && terraform apply -auto-approve
-
-terraform-destroy:
-	cd terraform && terraform destroy
-
-terraform-output:
-	cd terraform && terraform output
-
-terraform-validate:
-	cd terraform && terraform validate
-
-terraform-fmt:
-	cd terraform && terraform fmt
-
-# Docker commands - get values from terraform
-TERRAFORM_IMAGE_REPO := $(shell cd terraform && terraform output -raw artifact_registry_url 2>/dev/null || echo "us-central1-docker.pkg.dev/vibe-trade-475704/vibe-trade-mcp")
-IMAGE_TAG := $(TERRAFORM_IMAGE_REPO)/vibe-trade-mcp:latest
+# Docker commands - use environment variable or default
+# Set ARTIFACT_REGISTRY_URL env var or it will use the default
+ARTIFACT_REGISTRY_URL ?= us-central1-docker.pkg.dev/vibe-trade-475704/vibe-trade-mcp
+IMAGE_TAG := $(ARTIFACT_REGISTRY_URL)/vibe-trade-mcp:latest
 
 docker-build:
 	@echo "🏗️  Building Docker image..."
@@ -129,21 +104,21 @@ docker-push:
 docker-build-push: docker-build docker-push
 
 # Deployment workflow
-deploy: docker-build-push terraform-apply-auto force-revision
+# Step 1: Build and push Docker image
+# Step 2: Force Cloud Run to use the new image
+# For infrastructure changes, run 'terraform apply' in vibe-trade-terraform separately
+deploy: docker-build-push force-revision
 	@echo ""
-	@echo "✅ Deployment complete!"
-	@echo ""
-	@echo "📋 Service Information:"
-	@cd terraform && terraform output mcp_endpoint 2>/dev/null || echo "Run 'make terraform-output' for details"
+	@echo "✅ Code deployment complete!"
 
 # Force Cloud Run to create a new revision with the latest image
+# Uses environment variables or defaults
 force-revision:
 	@echo "🔄 Forcing Cloud Run to use latest image..."
-	@cd terraform && \
-		SERVICE_NAME=$$(terraform output -raw service_name 2>/dev/null || echo "vibe-trade-mcp") && \
-		REGION=$$(terraform output -raw region 2>/dev/null || echo "us-central1") && \
-		PROJECT_ID=$$(terraform output -raw project_id 2>/dev/null || echo "vibe-trade-475704") && \
-		IMAGE_REPO=$$(terraform output -raw artifact_registry_url 2>/dev/null || echo "us-central1-docker.pkg.dev/vibe-trade-475704/vibe-trade-mcp") && \
+	@SERVICE_NAME=$${SERVICE_NAME:-vibe-trade-mcp} && \
+		REGION=$${REGION:-us-central1} && \
+		PROJECT_ID=$${PROJECT_ID:-vibe-trade-475704} && \
+		IMAGE_REPO=$${ARTIFACT_REGISTRY_URL:-us-central1-docker.pkg.dev/vibe-trade-475704/vibe-trade-mcp} && \
 		echo "   Service: $$SERVICE_NAME" && \
 		echo "   Region: $$REGION" && \
 		echo "   Image: $$IMAGE_REPO/vibe-trade-mcp:latest" && \
@@ -156,9 +131,4 @@ force-revision:
 deploy-image: docker-build-push
 	@echo ""
 	@echo "✅ Image deployed!"
-	@echo "📋 Run 'make terraform-apply-auto' to update Cloud Run service with new image"
-
-# Get deployment info
-deploy-info:
-	@echo "📋 Service Information:"
-	@cd terraform && terraform output 2>/dev/null || echo "⚠️  Terraform not initialized or no outputs available. Run 'make terraform-init' first."
+	@echo "📋 Run 'make force-revision' to update Cloud Run, or 'terraform apply' in vibe-trade-terraform for infrastructure changes"

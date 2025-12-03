@@ -193,7 +193,9 @@ vibe-trade-mcp/
 
 ## Deployment
 
-See [terraform/README.md](terraform/README.md) for Cloud Run deployment instructions.
+Terraform infrastructure is now in a separate repository: [vibe-trade-terraform](../vibe-trade-terraform/).
+
+See the terraform repository for Cloud Run deployment instructions.
 
 The server automatically:
 - Uses HTTP transport for Cloud Run (reads `PORT` env var)
