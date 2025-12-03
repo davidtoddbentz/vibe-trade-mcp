@@ -27,7 +27,6 @@ def test_create_exit_card_take_profit_stop(card_tools_mcp, schema_repository):
             {
                 "type": "exit.take_profit_stop",
                 "slots": example_slots,
-                "schema_etag": schema.etag,
             },
         )
     )
@@ -61,7 +60,6 @@ def test_create_exit_card_trailing_stop(card_tools_mcp, schema_repository):
             {
                 "type": "exit.trailing_stop",
                 "slots": example_slots,
-                "schema_etag": schema.etag,
             },
         )
     )
@@ -90,7 +88,6 @@ def test_create_exit_card_time_stop(card_tools_mcp, schema_repository):
             {
                 "type": "exit.time_stop",
                 "slots": example_slots,
-                "schema_etag": schema.etag,
             },
         )
     )
@@ -119,7 +116,7 @@ def test_attach_exit_card_to_strategy(strategy_tools_mcp, card_tools_mcp, schema
     strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
 
     # Setup: create exit card
-    exit_schema = schema_repository.get_by_type_id("exit.take_profit_stop")
+    schema_repository.get_by_type_id("exit.take_profit_stop")
     exit_slots = get_valid_slots_for_archetype(schema_repository, "exit.take_profit_stop")
 
     exit_card_result = run_async(
@@ -129,7 +126,6 @@ def test_attach_exit_card_to_strategy(strategy_tools_mcp, card_tools_mcp, schema
             {
                 "type": "exit.take_profit_stop",
                 "slots": exit_slots,
-                "schema_etag": exit_schema.etag,
             },
         )
     )
@@ -174,7 +170,7 @@ def test_strategy_with_entry_and_exit_cards(strategy_tools_mcp, card_tools_mcp, 
     strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
 
     # Setup: create entry card (signal)
-    entry_schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema_repository.get_by_type_id("signal.trend_pullback")
     entry_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     entry_card_result = run_async(
@@ -184,14 +180,13 @@ def test_strategy_with_entry_and_exit_cards(strategy_tools_mcp, card_tools_mcp, 
             {
                 "type": "signal.trend_pullback",
                 "slots": entry_slots,
-                "schema_etag": entry_schema.etag,
             },
         )
     )
     entry_card_id = CreateCardResponse(**entry_card_result).card_id
 
     # Setup: create exit card
-    exit_schema = schema_repository.get_by_type_id("exit.take_profit_stop")
+    schema_repository.get_by_type_id("exit.take_profit_stop")
     exit_slots = get_valid_slots_for_archetype(schema_repository, "exit.take_profit_stop")
 
     exit_card_result = run_async(
@@ -201,7 +196,6 @@ def test_strategy_with_entry_and_exit_cards(strategy_tools_mcp, card_tools_mcp, 
             {
                 "type": "exit.take_profit_stop",
                 "slots": exit_slots,
-                "schema_etag": exit_schema.etag,
             },
         )
     )
@@ -251,7 +245,7 @@ def test_strategy_with_entry_and_exit_cards(strategy_tools_mcp, card_tools_mcp, 
 def test_exit_card_uses_exit_action_spec(card_tools_mcp, schema_repository):
     """Test that exit cards use ExitActionSpec (mode: close/reduce/reverse)."""
     # Setup: create exit card
-    schema = schema_repository.get_by_type_id("exit.take_profit_stop")
+    schema_repository.get_by_type_id("exit.take_profit_stop")
     example_slots = get_valid_slots_for_archetype(schema_repository, "exit.take_profit_stop")
 
     result = run_async(
@@ -261,7 +255,6 @@ def test_exit_card_uses_exit_action_spec(card_tools_mcp, schema_repository):
             {
                 "type": "exit.take_profit_stop",
                 "slots": example_slots,
-                "schema_etag": schema.etag,
             },
         )
     )
@@ -279,7 +272,7 @@ def test_exit_card_uses_exit_action_spec(card_tools_mcp, schema_repository):
 def test_exit_card_tp_sl_event_structure(card_tools_mcp, schema_repository):
     """Test that exit.take_profit_stop uses TPSLEvent structure correctly."""
     # Setup: create exit card
-    schema = schema_repository.get_by_type_id("exit.take_profit_stop")
+    schema_repository.get_by_type_id("exit.take_profit_stop")
     example_slots = get_valid_slots_for_archetype(schema_repository, "exit.take_profit_stop")
 
     result = run_async(
@@ -289,7 +282,6 @@ def test_exit_card_tp_sl_event_structure(card_tools_mcp, schema_repository):
             {
                 "type": "exit.take_profit_stop",
                 "slots": example_slots,
-                "schema_etag": schema.etag,
             },
         )
     )

@@ -14,19 +14,18 @@ from src.db.card_repository import CardRepository
 from src.models.card import Card
 from src.tools.errors import (
     not_found_error,
-    schema_etag_mismatch_error,
     schema_validation_error,
 )
 
 
 class CreateCardRequest(BaseModel):
-    """Request for create_card tool."""
+    """Request for create_card tool (internal use only).
+
+    Note: schema_etag is handled internally by MCP and not exposed in the public API.
+    """
 
     type: str = Field(..., description="Archetype identifier (e.g., 'signal.trend_pullback')")
     slots: dict[str, Any] = Field(..., description="Slot values to validate and store")
-    schema_etag: str = Field(
-        ..., description="ETag of the schema used for validation (must match current schema)"
-    )
 
 
 class CreateCardResponse(BaseModel):
@@ -64,13 +63,13 @@ class ListCardsResponse(BaseModel):
 
 
 class UpdateCardRequest(BaseModel):
-    """Request for update_card tool."""
+    """Request for update_card tool (internal use only).
+
+    Note: schema_etag is handled internally by MCP and not exposed in the public API.
+    """
 
     card_id: str = Field(..., description="Card identifier")
     slots: dict[str, Any] = Field(..., description="Updated slot values")
-    schema_etag: str = Field(
-        ..., description="ETag of the schema used for validation (must match current schema)"
-    )
 
 
 class UpdateCardResponse(BaseModel):
@@ -203,28 +202,23 @@ def register_card_tools(
     def create_card(
         type: str = Field(..., description="Archetype identifier (e.g., 'signal.trend_pullback')"),
         slots: dict[str, Any] = Field(..., description="Slot values to validate and store"),  # noqa: B008
-        schema_etag: str = Field(
-            ...,
-            description="ETag of the schema used for validation (must match current schema). Get this from get_archetype_schema.",
-        ),
     ) -> CreateCardResponse:
         """
         Create a new trading strategy card.
 
         Validates the provided slots against the archetype's JSON schema and stores
-        the card in Firestore. The schema_etag must match the current schema version
-        to ensure the card was validated against the correct schema.
+        the card in Firestore. The schema_etag is automatically set to the current
+        schema version for version tracking (this is handled internally by MCP).
 
         Recommended workflow:
         1. Use get_archetypes to find available archetypes
-        2. Use get_archetype_schema(type) to get the schema, constraints, examples, and schema_etag
-        3. Use the examples in the schema as a reference for valid slot values
-        4. Use the schema_etag from step 2 when creating the card
+        2. Use get_schema_example(type) to get ready-to-use example slots
+        3. Optionally modify the example slots to fit your needs
+        4. Call create_card with type and slots
 
         Args:
             type: Archetype identifier (e.g., 'signal.trend_pullback')
             slots: Slot values to validate and store. Must match the archetype's JSON schema.
-            schema_etag: ETag from get_archetype_schema (proves you validated against the correct schema version)
 
         Returns:
             CreateCardResponse with generated card_id and validated data
@@ -232,7 +226,6 @@ def register_card_tools(
         Raises:
             StructuredToolError: With error codes:
                 - ARCHETYPE_NOT_FOUND: If archetype schema not found (non-retryable)
-                - SCHEMA_ETAG_MISMATCH: If schema_etag doesn't match current schema (non-retryable)
                 - SCHEMA_VALIDATION_ERROR: If slot validation fails (non-retryable)
 
         Error Handling:
@@ -251,13 +244,8 @@ def register_card_tools(
                 recovery_hint="Use get_archetypes to see available archetypes.",
             )
 
-        # Verify schema_etag matches current schema
-        if schema_etag != schema.etag:
-            raise schema_etag_mismatch_error(
-                provided_etag=schema_etag,
-                current_etag=schema.etag,
-                recovery_hint="Please fetch the latest schema with get_archetype_schema.",
-            )
+        # Always use current schema etag - this is internal to MCP
+        schema_etag = schema.etag
 
         # Validate slots against JSON schema
         validation_errors = _validate_slots_against_schema(slots, schema.json_schema, schema_repo)
@@ -350,27 +338,22 @@ def register_card_tools(
     def update_card(
         card_id: str = Field(..., description="Card identifier"),
         slots: dict[str, Any] = Field(..., description="Updated slot values"),  # noqa: B008
-        schema_etag: str = Field(
-            ...,
-            description="ETag of the schema used for validation (must match current schema). Get this from get_archetype_schema.",
-        ),
     ) -> UpdateCardResponse:
         """
         Update an existing card's slots.
 
         Validates the updated slots against the archetype's JSON schema. The schema_etag
-        must match the current schema version.
+        is automatically updated to the current schema version (this is handled internally by MCP).
 
         Recommended workflow:
         1. Use get_card(card_id) to get the current card and its type
-        2. Use get_archetype_schema(type) to get the schema, constraints, examples, and schema_etag
+        2. Use get_archetype_schema(type) to get the schema, constraints, and examples
         3. Use the examples in the schema as a reference for valid slot values
-        4. Use the schema_etag from step 2 when updating the card
+        4. Call update_card with card_id and updated slots
 
         Args:
             card_id: Card identifier
             slots: Updated slot values. Must match the archetype's JSON schema.
-            schema_etag: ETag from get_archetype_schema (proves you validated against the correct schema version)
 
         Returns:
             UpdateCardResponse with updated card data
@@ -379,7 +362,6 @@ def register_card_tools(
             StructuredToolError: With error codes:
                 - CARD_NOT_FOUND: If card not found (non-retryable)
                 - ARCHETYPE_NOT_FOUND: If archetype schema not found (non-retryable)
-                - SCHEMA_ETAG_MISMATCH: If schema_etag doesn't match current schema (non-retryable)
                 - SCHEMA_VALIDATION_ERROR: If slot validation fails (non-retryable)
 
         Error Handling:
@@ -404,13 +386,8 @@ def register_card_tools(
                 recovery_hint="Use get_archetypes to see available archetypes.",
             )
 
-        # Verify schema_etag matches current schema
-        if schema_etag != schema.etag:
-            raise schema_etag_mismatch_error(
-                provided_etag=schema_etag,
-                current_etag=schema.etag,
-                recovery_hint="Please fetch the latest schema with get_archetype_schema.",
-            )
+        # Always use current schema etag - this is internal to MCP
+        schema_etag = schema.etag
 
         # Validate slots against JSON schema
         validation_errors = _validate_slots_against_schema(slots, schema.json_schema, schema_repo)
@@ -480,7 +457,7 @@ def register_card_tools(
         1. Use get_schema_example(type) to get a starting point
         2. Modify the example slots as needed
         3. Use validate_slots_draft(type, slots) to check validity
-        4. If valid, use create_card with the slots and schema_etag from the response
+        4. If valid, use create_card with the slots (schema_etag is handled automatically)
 
         Args:
             type: Archetype identifier

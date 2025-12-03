@@ -95,8 +95,19 @@ class StructuredToolError(ToolError):
     def __str__(self) -> str:
         """Return error message with structured information."""
         msg = super().__str__()
+        # Include structured error information in the message
+        # This ensures agents can see error_code, retryable, and recovery_hint
+        msg += f"\nError code: {self.error_code.value}"
+        msg += f"\nRetryable: {self.retryable}"
         if self.recovery_hint:
             msg += f"\nRecovery hint: {self.recovery_hint}"
+        if self.details:
+            # Include key details that might be helpful
+            if "validation_errors" in self.details:
+                # Validation errors are already in the main message, skip
+                pass
+            elif "type_id" in self.details:
+                msg += f"\nType ID: {self.details['type_id']}"
         return msg
 
 

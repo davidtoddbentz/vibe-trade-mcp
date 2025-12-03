@@ -39,7 +39,6 @@ def test_validate_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repo
             {
                 "type": "signal.trend_pullback",
                 "slots": entry_slots,
-                "schema_etag": entry_schema.etag,
             },
         )
     )
@@ -56,7 +55,6 @@ def test_validate_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repo
             {
                 "type": "exit.take_profit_stop",
                 "slots": exit_slots,
-                "schema_etag": exit_schema.etag,
             },
         )
     )
@@ -119,7 +117,7 @@ def test_validate_strategy_fix_required(strategy_tools_mcp, card_tools_mcp, sche
     )
     strategy_id = strategy_result["strategy_id"]
 
-    entry_schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema_repository.get_by_type_id("signal.trend_pullback")
     entry_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
     entry_card_result = run_async(
         call_tool(
@@ -128,7 +126,6 @@ def test_validate_strategy_fix_required(strategy_tools_mcp, card_tools_mcp, sche
             {
                 "type": "signal.trend_pullback",
                 "slots": entry_slots,
-                "schema_etag": entry_schema.etag,
             },
         )
     )

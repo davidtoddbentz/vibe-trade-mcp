@@ -116,7 +116,7 @@ def test_get_schema_example_can_create_card(trading_tools_mcp, card_tools_mcp):
     )
     example = GetSchemaExampleResponse(**example_result)
 
-    # Run: create card with example slots
+    # Run: create card with example slots (schema_etag is now internal)
     card_result = run_async(
         call_tool(
             card_tools_mcp,
@@ -124,7 +124,6 @@ def test_get_schema_example_can_create_card(trading_tools_mcp, card_tools_mcp):
             {
                 "type": example.type_id,
                 "slots": example.example_slots,
-                "schema_etag": example.schema_etag,
             },
         )
     )
