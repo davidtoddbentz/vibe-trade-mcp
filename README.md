@@ -193,7 +193,9 @@ vibe-trade-mcp/
 
 ## Deployment
 
-See [terraform/README.md](terraform/README.md) for Cloud Run deployment instructions.
+**Code deployments:** Run `make deploy` to build, push, and update Cloud Run with new code.
+
+**Infrastructure changes:** Terraform infrastructure is in a separate repository: [vibe-trade-terraform](../vibe-trade-terraform/). See that repository for infrastructure deployment instructions.
 
 The server automatically:
 - Uses HTTP transport for Cloud Run (reads `PORT` env var)
