@@ -17,21 +17,30 @@ class ArchetypeSchemaRepository:
     The repository owns the conversion from raw JSON format to domain models.
     """
 
-    def __init__(self, schema_file: Path | None = None):
+    def __init__(
+        self,
+        schema_file: Path | None = None,
+        exit_schema_file: Path | None = None,
+    ):
         """Initialize repository.
 
         Args:
-            schema_file: Optional path to schema JSON file. If None, uses default location.
+            schema_file: Optional path to signal schema JSON file. If None, uses default location.
+            exit_schema_file: Optional path to exit schema JSON file. If None, uses default location.
         """
+        project_root = Path(__file__).parent.parent.parent
         if schema_file is None:
-            # Default to data/archetype_schema.json relative to project root
-            project_root = Path(__file__).parent.parent.parent
             schema_file = project_root / "data" / "archetype_schema.json"
+        if exit_schema_file is None:
+            exit_schema_file = project_root / "data" / "exit_archetype_schema.json"
         self.schema_file = schema_file
+        self.exit_schema_file = exit_schema_file
         self._schemas: dict[str, ArchetypeSchema] | None = None
 
     def _load_schemas(self) -> dict[str, ArchetypeSchema]:
-        """Load all schemas from JSON file and cache them.
+        """Load all schemas from JSON files and cache them.
+
+        Merges signal schemas from archetype_schema.json and exit schemas from exit_archetype_schema.json.
 
         Returns:
             Dictionary mapping type_id to ArchetypeSchema domain model
@@ -39,6 +48,9 @@ class ArchetypeSchemaRepository:
         if self._schemas is not None:
             return self._schemas
 
+        self._schemas = {}
+
+        # Load signal schemas
         if not self.schema_file.exists():
             raise FileNotFoundError(f"Schema file not found: {self.schema_file}")
 
@@ -55,10 +67,27 @@ class ArchetypeSchemaRepository:
                 f"Expected list or object with 'schemas' key in {self.schema_file}, got {type(data)}"
             )
 
-        self._schemas = {}
         for schema_data in schema_list:
             schema = ArchetypeSchema.from_dict(schema_data)
             self._schemas[schema.type_id] = schema
+
+        # Load exit schemas (if file exists)
+        if self.exit_schema_file.exists():
+            with open(self.exit_schema_file) as f:
+                exit_data = json.load(f)
+
+            if isinstance(exit_data, dict) and "schemas" in exit_data:
+                exit_schema_list = exit_data["schemas"]
+            elif isinstance(exit_data, list):
+                exit_schema_list = exit_data
+            else:
+                raise ValueError(
+                    f"Expected list or object with 'schemas' key in {self.exit_schema_file}, got {type(exit_data)}"
+                )
+
+            for schema_data in exit_schema_list:
+                schema = ArchetypeSchema.from_dict(schema_data)
+                self._schemas[schema.type_id] = schema
 
         return self._schemas
 

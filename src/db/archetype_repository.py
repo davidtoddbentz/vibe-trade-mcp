@@ -17,21 +17,30 @@ class ArchetypeRepository:
     The repository owns the conversion from raw JSON format to domain models.
     """
 
-    def __init__(self, archetypes_file: Path | None = None):
+    def __init__(
+        self,
+        archetypes_file: Path | None = None,
+        exit_archetypes_file: Path | None = None,
+    ):
         """Initialize repository.
 
         Args:
-            archetypes_file: Optional path to archetypes JSON file. If None, uses default location.
+            archetypes_file: Optional path to signal archetypes JSON file. If None, uses default location.
+            exit_archetypes_file: Optional path to exit archetypes JSON file. If None, uses default location.
         """
+        project_root = Path(__file__).parent.parent.parent
         if archetypes_file is None:
-            # Default to data/archetypes.json relative to project root
-            project_root = Path(__file__).parent.parent.parent
             archetypes_file = project_root / "data" / "archetypes.json"
+        if exit_archetypes_file is None:
+            exit_archetypes_file = project_root / "data" / "exit_archetypes.json"
         self.archetypes_file = archetypes_file
+        self.exit_archetypes_file = exit_archetypes_file
         self._archetypes: dict[str, Archetype] | None = None
 
     def _load_archetypes(self) -> dict[str, Archetype]:
-        """Load all archetypes from JSON file and cache them.
+        """Load all archetypes from JSON files and cache them.
+
+        Merges signal archetypes from archetypes.json and exit archetypes from exit_archetypes.json.
 
         Returns:
             Dictionary mapping archetype ID to Archetype domain model
@@ -39,6 +48,9 @@ class ArchetypeRepository:
         if self._archetypes is not None:
             return self._archetypes
 
+        self._archetypes = {}
+
+        # Load signal archetypes
         if not self.archetypes_file.exists():
             raise FileNotFoundError(f"Archetypes file not found: {self.archetypes_file}")
 
@@ -55,10 +67,27 @@ class ArchetypeRepository:
                 f"Expected list or object with 'archetypes' key in {self.archetypes_file}, got {type(data)}"
             )
 
-        self._archetypes = {}
         for arch_data in archetype_list:
             archetype = Archetype.from_dict(arch_data)
             self._archetypes[archetype.id] = archetype
+
+        # Load exit archetypes (if file exists)
+        if self.exit_archetypes_file.exists():
+            with open(self.exit_archetypes_file) as f:
+                exit_data = json.load(f)
+
+            if isinstance(exit_data, list):
+                exit_archetype_list = exit_data
+            elif isinstance(exit_data, dict) and "archetypes" in exit_data:
+                exit_archetype_list = exit_data["archetypes"]
+            else:
+                raise ValueError(
+                    f"Expected list or object with 'archetypes' key in {self.exit_archetypes_file}, got {type(exit_data)}"
+                )
+
+            for arch_data in exit_archetype_list:
+                archetype = Archetype.from_dict(arch_data)
+                self._archetypes[archetype.id] = archetype
 
         return self._archetypes
 

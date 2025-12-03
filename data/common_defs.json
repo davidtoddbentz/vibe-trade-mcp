@@ -605,6 +605,24 @@
         "mode"
       ],
       "additionalProperties": false
+    },
+    "TPSLEvent": {
+      "type": "object",
+      "properties": {
+        "tp_enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "sl_enabled": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "required": [
+        "tp_enabled",
+        "sl_enabled"
+      ],
+      "additionalProperties": false
     }
   }
 }

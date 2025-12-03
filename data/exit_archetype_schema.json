@@ -1,0 +1,459 @@
+{
+  "schemas": [
+    {
+      "type_id": "exit.take_profit_stop",
+      "schema_version": 1,
+      "etag": "W/\"v2.exit.take_profit_stop\"",
+      "title": "Take Profit / Stop Loss",
+      "summary": "Exit position when TP or SL threshold is reached (ATR or percentage based).",
+      "kind": "exit",
+      "tags": [
+        "spot",
+        "exit",
+        "tp",
+        "sl",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "./exit.take_profit_stop.schema.json",
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "tp_sl": {
+                "$ref": "common_defs.schema.json#/$defs/TPSLEvent"
+              }
+            },
+            "required": [
+              "tp_sl"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
+          },
+          "risk": {
+            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+          }
+        },
+        "required": [
+          "context",
+          "event",
+          "action",
+          "risk"
+        ],
+        "additionalProperties": false
+      },
+      "constraints": {
+        "min_history_bars": 50,
+        "pit_safe": true
+      },
+      "slot_hints": {
+        "preferred_tfs": [
+          "1h",
+          "4h"
+        ],
+        "notes": "TP and SL levels are defined in risk.tp_rr, risk.tp_pct, risk.sl_atr, or risk.sl_pct. The event.tp_sl block enables/disables TP and SL monitoring. Engine exits when risk thresholds are hit."
+      },
+      "examples": [
+        {
+          "human": "BTC 1h: exit long when TP (2:1 RR) or SL (2.0 ATR) is hit",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "BTC-USD"
+            },
+            "event": {
+              "tp_sl": {
+                "tp_enabled": true,
+                "sl_enabled": true
+              }
+            },
+            "action": {
+              "mode": "close"
+            },
+            "risk": {
+              "tp_rr": 2.0,
+              "sl_atr": 2.0
+            }
+          }
+        }
+      ],
+      "updated_at": "2025-12-02T17:58:21Z"
+    },
+    {
+      "type_id": "exit.trailing_stop",
+      "schema_version": 1,
+      "etag": "W/\"v2.exit.trailing_stop\"",
+      "title": "Trailing Stop",
+      "summary": "ATR-based trailing stop that moves with price in favorable direction.",
+      "kind": "exit",
+      "tags": [
+        "spot",
+        "exit",
+        "trailing",
+        "atr",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "./exit.trailing_stop.schema.json",
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "trail_band": {
+                "$ref": "common_defs.schema.json#/$defs/BandSpec"
+              },
+              "trail_trigger": {
+                "$ref": "common_defs.schema.json#/$defs/BandEvent"
+              }
+            },
+            "required": [
+              "trail_band",
+              "trail_trigger"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
+          },
+          "risk": {
+            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+          }
+        },
+        "required": [
+          "context",
+          "event",
+          "action",
+          "risk"
+        ],
+        "additionalProperties": false
+      },
+      "constraints": {
+        "min_history_bars": 100,
+        "pit_safe": true
+      },
+      "slot_hints": {
+        "preferred_tfs": [
+          "1h",
+          "4h"
+        ],
+        "notes": "Trailing stop uses ATR-based band that moves with price. Engine updates the band position as price moves favorably."
+      },
+      "examples": [
+        {
+          "human": "ETH 4h: trailing stop using 2.0 ATR band, exit when price crosses below trailing band",
+          "slots": {
+            "context": {
+              "tf": "4h",
+              "symbol": "ETH-USD"
+            },
+            "event": {
+              "trail_band": {
+                "band": "keltner",
+                "length": 20,
+                "mult": 2.0
+              },
+              "trail_trigger": {
+                "kind": "edge_event",
+                "edge": "lower",
+                "op": "cross_out"
+              }
+            },
+            "action": {
+              "mode": "close"
+            },
+            "risk": {
+              "sl_atr": 2.0
+            }
+          }
+        }
+      ],
+      "updated_at": "2025-12-02T17:58:21Z"
+    },
+    {
+      "type_id": "exit.time_stop",
+      "schema_version": 1,
+      "etag": "W/\"v2.exit.time_stop\"",
+      "title": "Time-Based Exit",
+      "summary": "Exit position after a specified number of bars or time duration.",
+      "kind": "exit",
+      "tags": [
+        "spot",
+        "exit",
+        "time",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "./exit.time_stop.schema.json",
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "time_elapsed": {
+                "type": "boolean",
+                "const": true
+              }
+            },
+            "required": [
+              "time_elapsed"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
+          },
+          "risk": {
+            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+          }
+        },
+        "required": [
+          "context",
+          "event",
+          "action",
+          "risk"
+        ],
+        "additionalProperties": false
+      },
+      "constraints": {
+        "min_history_bars": 10,
+        "pit_safe": true
+      },
+      "slot_hints": {
+        "preferred_tfs": [
+          "15m",
+          "1h",
+          "4h"
+        ],
+        "notes": "Time duration is specified in risk.time_stop_bars. Engine exits when that many bars have elapsed since entry."
+      },
+      "examples": [
+        {
+          "human": "BTC 1h: exit long position after 24 bars (24 hours)",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "BTC-USD"
+            },
+            "event": {
+              "time_elapsed": true
+            },
+            "action": {
+              "mode": "close"
+            },
+            "risk": {
+              "time_stop_bars": 24
+            }
+          }
+        }
+      ],
+      "updated_at": "2025-12-02T17:58:21Z"
+    },
+    {
+      "type_id": "exit.band_exit",
+      "schema_version": 1,
+      "etag": "W/\"v2.exit.band_exit\"",
+      "title": "Band-Based Exit",
+      "summary": "Exit when price touches or crosses a band edge (e.g., opposite band for mean reversion).",
+      "kind": "exit",
+      "tags": [
+        "spot",
+        "exit",
+        "band",
+        "mean-revert",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "./exit.band_exit.schema.json",
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "exit_band": {
+                "$ref": "common_defs.schema.json#/$defs/BandSpec"
+              },
+              "exit_trigger": {
+                "$ref": "common_defs.schema.json#/$defs/BandEvent"
+              }
+            },
+            "required": [
+              "exit_band",
+              "exit_trigger"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
+          },
+          "risk": {
+            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+          }
+        },
+        "required": [
+          "context",
+          "event",
+          "action",
+          "risk"
+        ],
+        "additionalProperties": false
+      },
+      "constraints": {
+        "min_history_bars": 50,
+        "pit_safe": true
+      },
+      "slot_hints": {
+        "preferred_tfs": [
+          "1h",
+          "4h"
+        ],
+        "notes": "Common use: exit long when price touches upper band (mean reversion), or exit short when price touches lower band."
+      },
+      "examples": [
+        {
+          "human": "ETH 1h: exit long when price touches upper Bollinger Band (mean reversion)",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "ETH-USD"
+            },
+            "event": {
+              "exit_band": {
+                "band": "bollinger",
+                "length": 20,
+                "mult": 2.0
+              },
+              "exit_trigger": {
+                "kind": "edge_event",
+                "edge": "upper",
+                "op": "touch"
+              }
+            },
+            "action": {
+              "mode": "close"
+            },
+            "risk": {
+              "sl_atr": 1.5
+            }
+          }
+        }
+      ],
+      "updated_at": "2025-12-02T17:58:21Z"
+    },
+    {
+      "type_id": "exit.structure_break",
+      "schema_version": 1,
+      "etag": "W/\"v2.exit.structure_break\"",
+      "title": "Structure Break Exit",
+      "summary": "Exit on structure break (breakout in opposite direction indicating trend reversal).",
+      "kind": "exit",
+      "tags": [
+        "spot",
+        "exit",
+        "breakout",
+        "structure",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "./exit.structure_break.schema.json",
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "breakout": {
+                "$ref": "common_defs.schema.json#/$defs/BreakoutSpec"
+              }
+            },
+            "required": [
+              "breakout"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
+          },
+          "risk": {
+            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+          }
+        },
+        "required": [
+          "context",
+          "event",
+          "action",
+          "risk"
+        ],
+        "additionalProperties": false
+      },
+      "constraints": {
+        "min_history_bars": 100,
+        "pit_safe": true
+      },
+      "slot_hints": {
+        "preferred_tfs": [
+          "1h",
+          "4h"
+        ],
+        "notes": "Exit when price breaks structure in opposite direction (e.g., exit long on breakdown below recent low)."
+      },
+      "examples": [
+        {
+          "human": "BTC 4h: exit long when price breaks below 50-bar low (structure break)",
+          "slots": {
+            "context": {
+              "tf": "4h",
+              "symbol": "BTC-USD"
+            },
+            "event": {
+              "breakout": {
+                "lookback_bars": 50,
+                "buffer_bps": 5,
+                "confirm": "close_confirm"
+              }
+            },
+            "action": {
+              "mode": "close"
+            },
+            "risk": {
+              "sl_atr": 2.0
+            }
+          }
+        }
+      ],
+      "updated_at": "2025-12-02T17:58:21Z"
+    }
+  ]
+}
