@@ -98,8 +98,8 @@ def strategy_repository(firestore_client):
 
 
 @pytest.fixture
-def strategy_tools_mcp(strategy_repository, card_repository):
+def strategy_tools_mcp(strategy_repository, card_repository, schema_repository):
     """Create an MCP server instance with strategy tools registered."""
     mcp = FastMCP("test-server")
-    register_strategy_tools(mcp, strategy_repository, card_repository)
+    register_strategy_tools(mcp, strategy_repository, card_repository, schema_repository)
     return mcp

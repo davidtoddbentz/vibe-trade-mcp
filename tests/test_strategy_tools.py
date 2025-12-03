@@ -12,6 +12,7 @@ from test_helpers import (
 from src.tools.errors import ErrorCode
 from src.tools.strategy_tools import (
     AttachCardResponse,
+    CompileStrategyResponse,
     CreateStrategyResponse,
     DetachCardResponse,
     GetStrategyResponse,
@@ -638,3 +639,515 @@ def test_attach_card_follow_latest(strategy_tools_mcp, card_tools_mcp, schema_re
     att2 = AttachCardResponse(**result2).attachments[1]
     assert att2["follow_latest"] is False
     assert att2["card_revision_id"] is not None  # Should be pinned to card's updated_at
+
+
+def test_compile_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repository):
+    """Test compiling a strategy with valid cards."""
+    # Setup: create strategy with entry and exit cards
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = strategy_result["strategy_id"]
+
+    # Create entry card
+    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    assert schema is not None
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+
+    entry_card_result = run_async(
+        call_tool(
+            card_tools_mcp,
+            "create_card",
+            {
+                "type": "signal.trend_pullback",
+                "slots": example_slots,
+                "schema_etag": schema.etag,
+            },
+        )
+    )
+    entry_card_id = entry_card_result["card_id"]
+
+    # Create exit card
+    exit_schema = schema_repository.get_by_type_id("exit.take_profit_stop")
+    assert exit_schema is not None
+    exit_example_slots = get_valid_slots_for_archetype(schema_repository, "exit.take_profit_stop")
+
+    exit_card_result = run_async(
+        call_tool(
+            card_tools_mcp,
+            "create_card",
+            {
+                "type": "exit.take_profit_stop",
+                "slots": exit_example_slots,
+                "schema_etag": exit_schema.etag,
+            },
+        )
+    )
+    exit_card_id = exit_card_result["card_id"]
+
+    # Attach cards
+    run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "attach_card",
+            {
+                "strategy_id": strategy_id,
+                "card_id": entry_card_id,
+                "role": "signal",
+            },
+        )
+    )
+    run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "attach_card",
+            {
+                "strategy_id": strategy_id,
+                "card_id": exit_card_id,
+                "role": "exit",
+            },
+        )
+    )
+
+    # Run: compile strategy
+    result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "compile_strategy",
+            {
+                "strategy_id": strategy_id,
+            },
+        )
+    )
+
+    # Assert: verify compilation
+    response = CompileStrategyResponse(**result)
+    assert response.status_hint == "ready"
+    assert response.compiled is not None
+    assert response.compiled.strategy_id == strategy_id
+    assert len(response.compiled.cards) == 2
+    assert len(response.compiled.data_requirements) > 0
+    assert len(response.issues) == 0
+
+    # Verify compiled cards
+    signal_card = next(c for c in response.compiled.cards if c.role == "signal")
+    assert signal_card.card_id == entry_card_id
+    assert signal_card.type == "signal.trend_pullback"
+    assert "context" in signal_card.effective_slots
+
+    exit_card = next(c for c in response.compiled.cards if c.role == "exit")
+    assert exit_card.card_id == exit_card_id
+    assert exit_card.type == "exit.take_profit_stop"
+
+    # Verify data requirements
+    data_req = response.compiled.data_requirements[0]
+    assert data_req.symbol == "BTC-USD"
+    assert data_req.tf == "1h"
+    assert data_req.min_bars > 0
+    assert data_req.lookback_hours > 0
+
+
+def test_compile_strategy_no_signals(strategy_tools_mcp):
+    """Test compiling a strategy with no signal cards."""
+    # Setup: create empty strategy
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Empty Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = strategy_result["strategy_id"]
+
+    # Run: compile strategy
+    result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "compile_strategy",
+            {
+                "strategy_id": strategy_id,
+            },
+        )
+    )
+
+    # Assert: should have error
+    response = CompileStrategyResponse(**result)
+    assert response.status_hint == "fix_required"
+    assert response.compiled is None
+    assert len(response.issues) > 0
+    assert any(issue.code == "NO_SIGNALS" for issue in response.issues)
+
+
+def test_compile_strategy_no_exits(strategy_tools_mcp, card_tools_mcp, schema_repository):
+    """Test compiling a strategy with no exit cards (should warn)."""
+    # Setup: create strategy with only entry card
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "No Exit Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = strategy_result["strategy_id"]
+
+    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    assert schema is not None
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+
+    card_result = run_async(
+        call_tool(
+            card_tools_mcp,
+            "create_card",
+            {
+                "type": "signal.trend_pullback",
+                "slots": example_slots,
+                "schema_etag": schema.etag,
+            },
+        )
+    )
+    card_id = card_result["card_id"]
+
+    run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "attach_card",
+            {
+                "strategy_id": strategy_id,
+                "card_id": card_id,
+                "role": "signal",
+            },
+        )
+    )
+
+    # Run: compile strategy
+    result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "compile_strategy",
+            {
+                "strategy_id": strategy_id,
+            },
+        )
+    )
+
+    # Assert: should have warning but still be ready
+    response = CompileStrategyResponse(**result)
+    assert response.status_hint == "ready"  # Warnings don't block
+    assert response.compiled is not None
+    assert any(
+        issue.code == "NO_EXITS" and issue.severity == "warning" for issue in response.issues
+    )
+
+
+def test_compile_strategy_not_found(strategy_tools_mcp):
+    """Test compiling a non-existent strategy."""
+    # Run: compile non-existent strategy
+    with pytest.raises(ToolError) as exc_info:
+        run_async(
+            call_tool(
+                strategy_tools_mcp,
+                "compile_strategy",
+                {
+                    "strategy_id": "nonexistent",
+                },
+            )
+        )
+
+    # Assert: verify error
+    error = get_structured_error(exc_info.value)
+    assert error.error_code == ErrorCode.STRATEGY_NOT_FOUND
+    assert error.retryable is False
+
+
+def test_compile_strategy_with_overrides(strategy_tools_mcp, card_tools_mcp, schema_repository):
+    """Test compiling a strategy with slot overrides."""
+    # Setup: create strategy and card
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Override Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = strategy_result["strategy_id"]
+
+    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    assert schema is not None
+    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+
+    card_result = run_async(
+        call_tool(
+            card_tools_mcp,
+            "create_card",
+            {
+                "type": "signal.trend_pullback",
+                "slots": example_slots,
+                "schema_etag": schema.etag,
+            },
+        )
+    )
+    card_id = card_result["card_id"]
+
+    # Attach with overrides
+    run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "attach_card",
+            {
+                "strategy_id": strategy_id,
+                "card_id": card_id,
+                "role": "signal",
+                "overrides": {
+                    "context": {
+                        "symbol": "ETH-USD",  # Override symbol
+                        "tf": "4h",  # Override timeframe
+                    },
+                },
+            },
+        )
+    )
+
+    # Run: compile strategy
+    result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "compile_strategy",
+            {
+                "strategy_id": strategy_id,
+            },
+        )
+    )
+
+    # Assert: verify overrides are applied
+    response = CompileStrategyResponse(**result)
+    assert response.status_hint == "ready"
+    assert response.compiled is not None
+    signal_card = response.compiled.cards[0]
+    assert signal_card.effective_slots["context"]["symbol"] == "ETH-USD"
+    assert signal_card.effective_slots["context"]["tf"] == "4h"
+
+
+def test_compile_strategy_invalid_override_range(
+    strategy_tools_mcp, card_tools_mcp, schema_repository
+):
+    """Test compiling a strategy with overrides that violate range constraints."""
+    # Setup: create strategy with valid card
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Strategy with Invalid Override",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = strategy_result["strategy_id"]
+
+    # Create valid entry card
+    entry_schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    assert entry_schema is not None
+    entry_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    entry_card_result = run_async(
+        call_tool(
+            card_tools_mcp,
+            "create_card",
+            {
+                "type": "signal.trend_pullback",
+                "slots": entry_slots,
+                "schema_etag": entry_schema.etag,
+            },
+        )
+    )
+    entry_card_id = entry_card_result["card_id"]
+
+    # Attach card with invalid override (mult > 5.0)
+    run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "attach_card",
+            {
+                "strategy_id": strategy_id,
+                "card_id": entry_card_id,
+                "role": "signal",
+                "overrides": {
+                    "event": {"dip_band": {"mult": 10.0}},  # Max is 5.0
+                },
+            },
+        )
+    )
+
+    # Run: compile strategy
+    compile_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "compile_strategy",
+            {"strategy_id": strategy_id},
+        )
+    )
+
+    # Assert: verify validation error
+    response = CompileStrategyResponse(**compile_result)
+    assert response.status_hint == "fix_required"
+    assert response.compiled is None
+    assert len(response.issues) > 0
+    validation_issue = next((i for i in response.issues if i.code == "SLOT_VALIDATION_ERROR"), None)
+    assert validation_issue is not None
+    assert "mult" in validation_issue.message.lower() or "10" in validation_issue.message
+    assert validation_issue.severity == "error"
+
+
+def test_compile_strategy_invalid_override_required_field(
+    strategy_tools_mcp, card_tools_mcp, schema_repository
+):
+    """Test compiling a strategy with overrides that remove required fields."""
+    # Setup: create strategy with valid card
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Strategy Missing Required Field",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = strategy_result["strategy_id"]
+
+    # Create valid entry card
+    entry_schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    assert entry_schema is not None
+    entry_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    entry_card_result = run_async(
+        call_tool(
+            card_tools_mcp,
+            "create_card",
+            {
+                "type": "signal.trend_pullback",
+                "slots": entry_slots,
+                "schema_etag": entry_schema.etag,
+            },
+        )
+    )
+    entry_card_id = entry_card_result["card_id"]
+
+    # Attach card with override that removes required field (tf)
+    # Note: deep_merge will replace the entire context dict if we pass an empty dict
+    run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "attach_card",
+            {
+                "strategy_id": strategy_id,
+                "card_id": entry_card_id,
+                "role": "signal",
+                "overrides": {
+                    "context": {"tf": None},  # Try to remove tf by setting to None
+                },
+            },
+        )
+    )
+
+    # Run: compile strategy
+    compile_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "compile_strategy",
+            {"strategy_id": strategy_id},
+        )
+    )
+
+    # Assert: verify validation error
+    response = CompileStrategyResponse(**compile_result)
+    assert response.status_hint == "fix_required"
+    assert response.compiled is None
+    assert len(response.issues) > 0
+    # Should have validation error for missing required field
+    validation_issue = next((i for i in response.issues if i.code == "SLOT_VALIDATION_ERROR"), None)
+    assert validation_issue is not None
+    assert validation_issue.severity == "error"
+
+
+def test_compile_strategy_invalid_override_additional_property(
+    strategy_tools_mcp, card_tools_mcp, schema_repository
+):
+    """Test compiling a strategy with overrides that add invalid properties."""
+    # Setup: create strategy with valid card
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Strategy with Invalid Property",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = strategy_result["strategy_id"]
+
+    # Create valid entry card
+    entry_schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    assert entry_schema is not None
+    entry_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    entry_card_result = run_async(
+        call_tool(
+            card_tools_mcp,
+            "create_card",
+            {
+                "type": "signal.trend_pullback",
+                "slots": entry_slots,
+                "schema_etag": entry_schema.etag,
+            },
+        )
+    )
+    entry_card_id = entry_card_result["card_id"]
+
+    # Attach card with override that adds invalid property
+    run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "attach_card",
+            {
+                "strategy_id": strategy_id,
+                "card_id": entry_card_id,
+                "role": "signal",
+                "overrides": {
+                    "invalid_property": "should_not_be_allowed",
+                },
+            },
+        )
+    )
+
+    # Run: compile strategy
+    compile_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "compile_strategy",
+            {"strategy_id": strategy_id},
+        )
+    )
+
+    # Assert: verify validation error
+    response = CompileStrategyResponse(**compile_result)
+    assert response.status_hint == "fix_required"
+    assert response.compiled is None
+    assert len(response.issues) > 0
+    validation_issue = next((i for i in response.issues if i.code == "SLOT_VALIDATION_ERROR"), None)
+    assert validation_issue is not None
+    assert validation_issue.severity == "error"
