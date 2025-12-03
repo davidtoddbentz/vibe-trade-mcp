@@ -117,7 +117,7 @@ def test_validate_strategy_fix_required(strategy_tools_mcp, card_tools_mcp, sche
     )
     strategy_id = strategy_result["strategy_id"]
 
-    entry_schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema_repository.get_by_type_id("signal.trend_pullback")
     entry_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
     entry_card_result = run_async(
         call_tool(

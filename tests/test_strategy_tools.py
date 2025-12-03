@@ -158,7 +158,7 @@ def test_update_strategy_meta_invalid_status(strategy_tools_mcp):
 def test_attach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test attaching a card to a strategy."""
     # Setup: create a card and strategy
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema_repository.get_by_type_id("signal.trend_pullback")
     example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     create_card_result = run_async(
@@ -212,7 +212,7 @@ def test_attach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
 def test_attach_card_invalid_role(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test attaching a card with invalid role fails."""
     # Setup: create a card and strategy
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema_repository.get_by_type_id("signal.trend_pullback")
     example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     create_card_result = run_async(
@@ -297,7 +297,7 @@ def test_attach_card_card_not_found(strategy_tools_mcp):
 def test_attach_card_duplicate(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test attaching the same card twice fails."""
     # Setup: create a card and strategy
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema_repository.get_by_type_id("signal.trend_pullback")
     example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     create_card_result = run_async(
@@ -357,7 +357,7 @@ def test_attach_card_duplicate(strategy_tools_mcp, card_tools_mcp, schema_reposi
 def test_detach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test detaching a card from a strategy."""
     # Setup: create a card and strategy, then attach
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema_repository.get_by_type_id("signal.trend_pullback")
     example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     create_card_result = run_async(
@@ -486,7 +486,7 @@ def test_list_strategies(strategy_tools_mcp):
 def test_attach_card_auto_order(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test that attach_card auto-assigns order when not provided."""
     # Setup: create multiple cards and a strategy
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema_repository.get_by_type_id("signal.trend_pullback")
     example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     card1_result = run_async(
@@ -560,7 +560,7 @@ def test_attach_card_auto_order(strategy_tools_mcp, card_tools_mcp, schema_repos
 def test_attach_card_follow_latest(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test attach_card with follow_latest flag."""
     # Setup: create a card and strategy
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema_repository.get_by_type_id("signal.trend_pullback")
     example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
 
     create_card_result = run_async(
