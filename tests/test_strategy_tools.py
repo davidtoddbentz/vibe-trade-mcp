@@ -168,7 +168,6 @@ def test_attach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
             {
                 "type": "signal.trend_pullback",
                 "slots": example_slots,
-                "schema_etag": schema.etag,
             },
         )
     )
@@ -223,7 +222,6 @@ def test_attach_card_invalid_role(strategy_tools_mcp, card_tools_mcp, schema_rep
             {
                 "type": "signal.trend_pullback",
                 "slots": example_slots,
-                "schema_etag": schema.etag,
             },
         )
     )
@@ -309,7 +307,6 @@ def test_attach_card_duplicate(strategy_tools_mcp, card_tools_mcp, schema_reposi
             {
                 "type": "signal.trend_pullback",
                 "slots": example_slots,
-                "schema_etag": schema.etag,
             },
         )
     )
@@ -370,7 +367,6 @@ def test_detach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
             {
                 "type": "signal.trend_pullback",
                 "slots": example_slots,
-                "schema_etag": schema.etag,
             },
         )
     )
@@ -500,7 +496,6 @@ def test_attach_card_auto_order(strategy_tools_mcp, card_tools_mcp, schema_repos
             {
                 "type": "signal.trend_pullback",
                 "slots": example_slots,
-                "schema_etag": schema.etag,
             },
         )
     )
@@ -513,7 +508,6 @@ def test_attach_card_auto_order(strategy_tools_mcp, card_tools_mcp, schema_repos
             {
                 "type": "signal.trend_pullback",
                 "slots": example_slots,
-                "schema_etag": schema.etag,
             },
         )
     )
@@ -576,7 +570,6 @@ def test_attach_card_follow_latest(strategy_tools_mcp, card_tools_mcp, schema_re
             {
                 "type": "signal.trend_pullback",
                 "slots": example_slots,
-                "schema_etag": schema.etag,
             },
         )
     )
@@ -618,7 +611,6 @@ def test_attach_card_follow_latest(strategy_tools_mcp, card_tools_mcp, schema_re
             {
                 "type": "signal.trend_pullback",
                 "slots": example_slots,
-                "schema_etag": schema.etag,
             },
         )
     )
@@ -668,7 +660,6 @@ def test_compile_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repos
             {
                 "type": "signal.trend_pullback",
                 "slots": example_slots,
-                "schema_etag": schema.etag,
             },
         )
     )
@@ -686,7 +677,6 @@ def test_compile_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repos
             {
                 "type": "exit.take_profit_stop",
                 "slots": exit_example_slots,
-                "schema_etag": exit_schema.etag,
             },
         )
     )
@@ -817,7 +807,6 @@ def test_compile_strategy_no_exits(strategy_tools_mcp, card_tools_mcp, schema_re
             {
                 "type": "signal.trend_pullback",
                 "slots": example_slots,
-                "schema_etag": schema.etag,
             },
         )
     )
@@ -901,7 +890,6 @@ def test_compile_strategy_with_overrides(strategy_tools_mcp, card_tools_mcp, sch
             {
                 "type": "signal.trend_pullback",
                 "slots": example_slots,
-                "schema_etag": schema.etag,
             },
         )
     )
@@ -974,7 +962,6 @@ def test_compile_strategy_invalid_override_range(
             {
                 "type": "signal.trend_pullback",
                 "slots": entry_slots,
-                "schema_etag": entry_schema.etag,
             },
         )
     )
@@ -1044,7 +1031,6 @@ def test_compile_strategy_invalid_override_required_field(
             {
                 "type": "signal.trend_pullback",
                 "slots": entry_slots,
-                "schema_etag": entry_schema.etag,
             },
         )
     )
@@ -1115,7 +1101,6 @@ def test_compile_strategy_invalid_override_additional_property(
             {
                 "type": "signal.trend_pullback",
                 "slots": entry_slots,
-                "schema_etag": entry_schema.etag,
             },
         )
     )

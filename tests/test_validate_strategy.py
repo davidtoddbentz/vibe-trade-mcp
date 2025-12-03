@@ -39,7 +39,6 @@ def test_validate_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repo
             {
                 "type": "signal.trend_pullback",
                 "slots": entry_slots,
-                "schema_etag": entry_schema.etag,
             },
         )
     )
@@ -56,7 +55,6 @@ def test_validate_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repo
             {
                 "type": "exit.take_profit_stop",
                 "slots": exit_slots,
-                "schema_etag": exit_schema.etag,
             },
         )
     )
@@ -128,7 +126,6 @@ def test_validate_strategy_fix_required(strategy_tools_mcp, card_tools_mcp, sche
             {
                 "type": "signal.trend_pullback",
                 "slots": entry_slots,
-                "schema_etag": entry_schema.etag,
             },
         )
     )
