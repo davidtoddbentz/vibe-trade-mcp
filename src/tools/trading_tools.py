@@ -118,10 +118,9 @@ def register_trading_tools(
         if kind is not None:
             valid_kinds = {"entry", "exit", "gate", "overlay"}
             if kind not in valid_kinds:
-                from src.tools.errors import ErrorCode, validation_error
+                from src.tools.errors import validation_error
 
                 raise validation_error(
-                    error_code=ErrorCode.VALIDATION_ERROR,
                     message=f"Invalid kind '{kind}'. Valid values are: {', '.join(sorted(valid_kinds))}",
                     recovery_hint=f"Use get_archetypes() without kind parameter to see all archetypes, or use one of: {', '.join(sorted(valid_kinds))}",
                 )
