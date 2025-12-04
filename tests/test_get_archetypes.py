@@ -168,13 +168,13 @@ def test_get_archetypes_filters_by_kind_overlay(trading_tools_mcp):
 
 def test_get_archetypes_invalid_kind_raises_error(trading_tools_mcp):
     """Test that get_archetypes raises validation error for invalid kind."""
+    import pytest
     from mcp.server.fastmcp.exceptions import ToolError
     from test_helpers import get_structured_error
-    import pytest
 
     with pytest.raises(ToolError):
         run_async(call_tool(trading_tools_mcp, "get_archetypes", {"kind": "invalid"}))
-    
+
     # If we get here, the exception was raised correctly
     # Re-run to get the structured error for validation
     try:
