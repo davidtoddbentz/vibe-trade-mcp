@@ -315,6 +315,85 @@
         "preferred_tfs": []
       },
       "updated_at": "2025-12-02T17:58:21Z"
+    },
+    {
+      "id": "gate.regime",
+      "version": 1,
+      "title": "Regime Gate",
+      "summary": "Allow or block downstream cards when regime metrics align (trend, vol, factors).",
+      "kind": "gate",
+      "tags": [
+        "regime",
+        "trend",
+        "volatility",
+        "macro"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action"
+      ],
+      "schema_etag": "W/\"v1.gate.regime\"",
+      "deprecated": false,
+      "hints": {
+        "preferred_tfs": [
+          "1h",
+          "4h"
+        ]
+      },
+      "updated_at": "2025-12-04T00:00:00Z"
+    },
+    {
+      "id": "gate.event_risk_window",
+      "version": 1,
+      "title": "Event Risk Window Gate",
+      "summary": "Block entries/exits for a configurable pre/post window around catalysts or macro events.",
+      "kind": "gate",
+      "tags": [
+        "event",
+        "risk",
+        "session"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action"
+      ],
+      "schema_etag": "W/\"v1.gate.event_risk_window\"",
+      "deprecated": false,
+      "hints": {
+        "preferred_tfs": [
+          "15m",
+          "1h"
+        ]
+      },
+      "updated_at": "2025-12-04T00:00:00Z"
+    },
+    {
+      "id": "overlay.regime_scaler",
+      "version": 1,
+      "title": "Regime Overlay Scaler",
+      "summary": "Scale risk or size of downstream cards based on regime state.",
+      "kind": "overlay",
+      "tags": [
+        "regime",
+        "overlay",
+        "risk"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action"
+      ],
+      "schema_etag": "W/\"v1.overlay.regime_scaler\"",
+      "deprecated": false,
+      "hints": {
+        "preferred_tfs": [
+          "1h",
+          "4h"
+        ]
+      },
+      "updated_at": "2025-12-04T00:00:00Z"
     }
   ]
 }

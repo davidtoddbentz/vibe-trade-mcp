@@ -84,3 +84,13 @@ def test_get_archetypes_timestamp_format(trading_tools_mcp):
     assert response.as_of is not None
     # Should end with Z or have timezone
     assert response.as_of.endswith("Z") or "+" in response.as_of or "-" in response.as_of[-6:]
+
+
+def test_get_archetypes_includes_gate_and_overlay(trading_tools_mcp):
+    """Ensure catalog exposes new gate/overlay archetypes."""
+    result = run_async(call_tool(trading_tools_mcp, "get_archetypes", {}))
+    response = GetArchetypesResponse(**result)
+
+    kinds = {arch.kind for arch in response.types}
+    assert "gate" in kinds, "catalog should include at least one gate archetype"
+    assert "overlay" in kinds, "catalog should include at least one overlay archetype"

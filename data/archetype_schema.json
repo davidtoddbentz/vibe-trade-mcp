@@ -1127,6 +1127,270 @@
         }
       ],
       "updated_at": "2025-12-02T17:58:21Z"
+    },
+    {
+      "type_id": "gate.regime",
+      "schema_version": 1,
+      "etag": "W/\"v1.gate.regime\"",
+      "title": "Regime Gate",
+      "summary": "Allow or block downstream cards when regime metrics align (trend, volatility, or custom factors).",
+      "kind": "gate",
+      "tags": [
+        "regime",
+        "trend",
+        "volatility"
+      ],
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "./gate.regime.schema.json",
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "regime": {
+                "$ref": "common_defs.schema.json#/$defs/RegimeSpec"
+              }
+            },
+            "required": [
+              "regime"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "$ref": "common_defs.schema.json#/$defs/GateActionSpec"
+          }
+        },
+        "required": [
+          "context",
+          "event",
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "constraints": {
+        "min_history_bars": 150,
+        "pit_safe": true,
+        "warmup_hint": "Use the same history window as your regime metric."
+      },
+      "slot_hints": {
+        "notes": "Set action.target_roles to the cards this gate guards (e.g., signals)."
+      },
+      "examples": [
+        {
+          "human": "Allow breakout entries only when EMA20 > EMA50 on BTC 1h.",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "BTC-USD"
+            },
+            "event": {
+              "regime": {
+                "metric": "trend_ma_relation",
+                "tf": "1h",
+                "op": ">",
+                "value": 0.0,
+                "lookback_bars": 200,
+                "ma_fast": 20,
+                "ma_slow": 50,
+                "notes": "Positive spread implies fast MA above slow MA."
+              }
+            },
+            "action": {
+              "mode": "allow",
+              "target_roles": [
+                "signal"
+              ],
+              "target_ids": [
+                "signal.breakout_trendfollow"
+              ]
+            }
+          }
+        }
+      ],
+      "updated_at": "2025-12-04T00:00:00Z"
+    },
+    {
+      "type_id": "gate.event_risk_window",
+      "schema_version": 1,
+      "etag": "W/\"v1.gate.event_risk_window\"",
+      "title": "Event Risk Window Gate",
+      "summary": "Block or allow cards within a pre/post window around catalysts or macro events.",
+      "kind": "gate",
+      "tags": [
+        "event",
+        "risk",
+        "session"
+      ],
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "./gate.event_risk_window.schema.json",
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "catalyst": {
+                "$ref": "common_defs.schema.json#/$defs/EventSpec"
+              },
+              "pre_event_bars": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5000
+              },
+              "post_event_bars": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5000
+              }
+            },
+            "required": [
+              "catalyst",
+              "pre_event_bars",
+              "post_event_bars"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "$ref": "common_defs.schema.json#/$defs/GateActionSpec"
+          }
+        },
+        "required": [
+          "context",
+          "event",
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "constraints": {
+        "min_history_bars": 20,
+        "pit_safe": true,
+        "warmup_hint": "Event calendar ingestion must be point-in-time safe."
+      },
+      "slot_hints": {
+        "notes": "Use pre/post_event_bars to define blackout windows relative to event start."
+      },
+      "examples": [
+        {
+          "human": "Block mean-reversion entries 8 bars before and 12 bars after AAPL earnings.",
+          "slots": {
+            "context": {
+              "tf": "15m",
+              "symbol": "AAPL"
+            },
+            "event": {
+              "catalyst": {
+                "event_kind": "earnings",
+                "entry_window_bars": 3,
+                "strength_filter": "strong"
+              },
+              "pre_event_bars": 8,
+              "post_event_bars": 12
+            },
+            "action": {
+              "mode": "block",
+              "target_roles": [
+                "signal",
+                "overlay"
+              ],
+              "target_tags": [
+                "mean-revert"
+              ]
+            }
+          }
+        }
+      ],
+      "updated_at": "2025-12-04T00:00:00Z"
+    },
+    {
+      "type_id": "overlay.regime_scaler",
+      "schema_version": 1,
+      "etag": "W/\"v1.overlay.regime_scaler\"",
+      "title": "Regime Overlay Scaler",
+      "summary": "Scale size or risk of downstream cards when regime filters trigger.",
+      "kind": "overlay",
+      "tags": [
+        "regime",
+        "overlay",
+        "risk"
+      ],
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "./overlay.regime_scaler.schema.json",
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "regime": {
+                "$ref": "common_defs.schema.json#/$defs/RegimeSpec"
+              }
+            },
+            "required": [
+              "regime"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "$ref": "common_defs.schema.json#/$defs/OverlayActionSpec"
+          }
+        },
+        "required": [
+          "context",
+          "event",
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "constraints": {
+        "min_history_bars": 150,
+        "pit_safe": true,
+        "warmup_hint": "Overlay uses the same inputs as the regime metric."
+      },
+      "slot_hints": {
+        "notes": "Set scale_risk_frac/scale_size_frac < 1.0 to dampen exposure; >1.0 to lever up."
+      },
+      "examples": [
+        {
+          "human": "Halve signal risk when 4h BB width pctile < 20.",
+          "slots": {
+            "context": {
+              "tf": "4h",
+              "symbol": "ETH-USD"
+            },
+            "event": {
+              "regime": {
+                "metric": "vol_bb_width_pctile",
+                "tf": "4h",
+                "op": "<",
+                "value": 20,
+                "lookback_bars": 200
+              }
+            },
+            "action": {
+              "scale_risk_frac": 0.5,
+              "scale_size_frac": 0.5,
+              "target_roles": [
+                "signal",
+                "exit"
+              ],
+              "target_tags": [
+                "breakout"
+              ]
+            }
+          }
+        }
+      ],
+      "updated_at": "2025-12-04T00:00:00Z"
     }
   ]
 }

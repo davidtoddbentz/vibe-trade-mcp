@@ -167,3 +167,27 @@ def test_get_archetype_schema_examples(trading_tools_mcp):
         assert "slots" in example
         assert isinstance(example["human"], str)
         assert isinstance(example["slots"], dict)
+
+
+def test_get_archetype_schema_gate_regime_structure(trading_tools_mcp):
+    """Gate schemas should omit risk slot and use new specs."""
+    result = run_async(
+        call_tool(
+            trading_tools_mcp,
+            "get_archetype_schema",
+            {"type": "gate.regime"},
+        )
+    )
+
+    response = GetArchetypeSchemaResponse(**result)
+    assert response.type_id == "gate.regime"
+
+    json_schema = response.json_schema
+    required_slots = set(json_schema.get("required", []))
+    assert required_slots == {"context", "event", "action"}
+
+    action_ref = json_schema["properties"]["action"]["$ref"]
+    assert action_ref.endswith("GateActionSpec")
+
+    regime_ref = json_schema["properties"]["event"]["properties"]["regime"]["$ref"]
+    assert regime_ref.endswith("RegimeSpec")

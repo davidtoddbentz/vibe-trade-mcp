@@ -495,6 +495,85 @@
       ],
       "additionalProperties": false
     },
+    "RegimeSpec": {
+      "type": "object",
+      "properties": {
+        "metric": {
+          "enum": [
+            "trend_ma_relation",
+            "trend_adx",
+            "vol_bb_width_pctile",
+            "vol_atr_pct",
+            "custom_factor",
+            "risk_event_prob"
+          ]
+        },
+        "tf": {
+          "$ref": "#/$defs/Timeframe"
+        },
+        "op": {
+          "enum": [
+            ">",
+            ">=",
+            "<",
+            "<=",
+            "between"
+          ]
+        },
+        "value": {
+          "type": "number"
+        },
+        "value_hi": {
+          "type": "number"
+        },
+        "lookback_bars": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000
+        },
+        "ma_fast": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 400
+        },
+        "ma_slow": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 800
+        },
+        "factor_name": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric",
+        "op",
+        "value"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "op": {
+                "const": "between"
+              }
+            },
+            "required": [
+              "op"
+            ]
+          },
+          "then": {
+            "required": [
+              "value_hi"
+            ]
+          }
+        }
+      ]
+    },
     "RiskSpec": {
       "type": "object",
       "properties": {
@@ -603,6 +682,101 @@
       },
       "required": [
         "mode"
+      ],
+      "additionalProperties": false
+    },
+    "GateActionSpec": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "allow",
+            "block"
+          ]
+        },
+        "target_roles": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "signal",
+              "gate",
+              "exit",
+              "sizing",
+              "risk",
+              "overlay"
+            ]
+          },
+          "minItems": 1
+        },
+        "target_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "target_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode",
+        "target_roles"
+      ],
+      "additionalProperties": false
+    },
+    "OverlayActionSpec": {
+      "type": "object",
+      "properties": {
+        "scale_risk_frac": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 5.0,
+          "default": 1.0
+        },
+        "scale_size_frac": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 5.0,
+          "default": 1.0
+        },
+        "target_roles": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "signal",
+              "gate",
+              "exit",
+              "sizing",
+              "risk",
+              "overlay"
+            ]
+          },
+          "minItems": 1
+        },
+        "target_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "target_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "target_roles"
       ],
       "additionalProperties": false
     },
