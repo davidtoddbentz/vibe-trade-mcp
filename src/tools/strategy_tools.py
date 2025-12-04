@@ -678,12 +678,12 @@ def register_strategy_tools(
         entry_count = sum(1 for card in compiled_cards if card.role == "entry")
         exit_count = sum(1 for card in compiled_cards if card.role == "exit")
 
-        if signal_count == 0:
+        if entry_count == 0:
             issues.append(
                 Issue(
                     severity="error",
-                    code="NO_SIGNALS",
-                    message="Strategy has no signal cards attached",
+                    code="NO_ENTRIES",
+                    message="Strategy has no entry cards attached",
                     path="attachments",
                 )
             )
@@ -898,12 +898,12 @@ def register_strategy_tools(
         entry_count = sum(1 for card in compiled_cards if card.role == "entry")
         exit_count = sum(1 for card in compiled_cards if card.role == "exit")
 
-        if signal_count == 0:
+        if entry_count == 0:
             issues.append(
                 Issue(
                     severity="error",
-                    code="NO_SIGNALS",
-                    message="Strategy has no signal cards attached",
+                    code="NO_ENTRIES",
+                    message="Strategy has no entry cards attached",
                     path="attachments",
                 )
             )
