@@ -184,8 +184,8 @@ def test_validate_strategy_not_found(strategy_tools_mcp):
     assert "Use list_strategies" in error.recovery_hint
 
 
-def test_validate_strategy_no_signals(strategy_tools_mcp):
-    """Test validating a strategy with no signals returns fix_required."""
+def test_validate_strategy_no_entries(strategy_tools_mcp):
+    """Test validating a strategy with no entry cards returns fix_required."""
     # Setup: create empty strategy
     strategy_result = run_async(
         call_tool(
@@ -213,4 +213,4 @@ def test_validate_strategy_no_signals(strategy_tools_mcp):
     assert response.status_hint == "fix_required"
     assert response.compiled is None
     assert response.validation_summary["errors"] > 0
-    assert any(i.code == "NO_SIGNALS" for i in response.issues)
+    assert any(i.code == "NO_ENTRIES" for i in response.issues)

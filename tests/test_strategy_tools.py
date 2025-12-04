@@ -747,8 +747,8 @@ def test_compile_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repos
     assert data_req.lookback_hours > 0
 
 
-def test_compile_strategy_no_signals(strategy_tools_mcp):
-    """Test compiling a strategy with no signal cards."""
+def test_compile_strategy_no_entries(strategy_tools_mcp):
+    """Test compiling a strategy with no entry cards."""
     # Setup: create empty strategy
     strategy_result = run_async(
         call_tool(
@@ -778,7 +778,7 @@ def test_compile_strategy_no_signals(strategy_tools_mcp):
     assert response.status_hint == "fix_required"
     assert response.compiled is None
     assert len(response.issues) > 0
-    assert any(issue.code == "NO_SIGNALS" for issue in response.issues)
+    assert any(issue.code == "NO_ENTRIES" for issue in response.issues)
 
 
 def test_compile_strategy_no_exits(strategy_tools_mcp, card_tools_mcp, schema_repository):
