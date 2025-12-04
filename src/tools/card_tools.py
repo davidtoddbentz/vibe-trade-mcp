@@ -217,7 +217,7 @@ def register_card_tools(
         4. Call create_card with type and slots
 
         Args:
-            type: Archetype identifier (e.g., 'signal.trend_pullback')
+            type: Archetype identifier (e.g., 'entry.trend_pullback', 'exit.take_profit_stop', 'gate.regime', 'overlay.regime_scaler')
             slots: Slot values to validate and store. Must match the archetype's JSON schema.
 
         Returns:

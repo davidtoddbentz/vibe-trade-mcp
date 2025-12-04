@@ -142,6 +142,15 @@ def register_trading_tools(mcp: FastMCP) -> None:
 
 - `get_archetypes` - Fetch the catalog of available trading strategy archetypes
 - `get_archetype_schema` - Fetch the JSON Schema for a specific archetype
+- `get_schema_example` - Get ready-to-use example slots for an archetype
+- `create_card` - Create a trading strategy card from an archetype
+- `create_strategy` - Create a new trading strategy
+- `attach_card` - Attach a card to a strategy with a role
+- `compile_strategy` - Compile and validate a strategy
+
+### Documentation
+
+- **[AGENT_GUIDE.md](AGENT_GUIDE.md)** - Comprehensive guide for AI agents on using archetypes (entries, exits, gates, overlays)
 
 ## Project Structure
 

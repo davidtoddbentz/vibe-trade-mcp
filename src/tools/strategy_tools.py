@@ -157,14 +157,21 @@ def register_strategy_tools(
         """
         Create a new trading strategy.
 
-        A strategy is a composition of cards (signals, gates, exits, etc.) with
+        A strategy is a composition of cards (entries, exits, gates, overlays) with
         universe selection. Risk and execution parameters are configured when
         the strategy is run, not at creation time.
 
+        Card types:
+        - entry: Entry signals for opening positions (required - at least one)
+        - exit: Exit rules for closing positions (recommended - at least one)
+        - gate: Conditional filters that allow/block other cards (optional)
+        - overlay: Modifiers that scale risk/size of other cards (optional)
+
         Recommended workflow:
-        1. Create cards using create_card tool
+        1. Create cards using create_card tool (start with entries and exits)
         2. Create strategy with create_strategy
-        3. Attach cards to strategy using attach_card
+        3. Attach cards to strategy using attach_card with appropriate roles and order
+        4. Use compile_strategy to validate before marking as ready
 
         Args:
             name: Strategy name
@@ -327,15 +334,26 @@ def register_strategy_tools(
         """
         Attach a card to a strategy.
 
-        Cards can be attached with different roles (entry, gate, exit, etc.) and
+        Cards can be attached with different roles (entry, gate, exit, overlay) and
         optional slot overrides. The attachment can follow the latest card version
         or be pinned to a specific version.
 
+        Card roles and execution order:
+        - gate: Conditional filters (execute first, order: 1-10) - blocks/allows downstream cards
+        - entry: Entry signals (execute after gates, order: 11-20) - opens positions
+        - exit: Exit rules (execute after entries, order: 21-30) - closes positions
+        - overlay: Risk/size modifiers (execute last, order: 31-40) - scales position sizing
+
+        Important:
+        - Gates must execute BEFORE the cards they guard (lower order number)
+        - Overlays must execute AFTER the cards they modify (higher order number)
+        - Most strategies only need entries and exits (gates and overlays are optional)
+
         Recommended workflow:
-        1. Create cards using create_card
+        1. Create cards using create_card (start with entries and exits)
         2. Create strategy using create_strategy
-        3. Attach cards using attach_card with appropriate roles
-        4. Use validate_strategy or compile_strategy to check for issues
+        3. Attach cards using attach_card with appropriate roles and order
+        4. Use compile_strategy to validate before marking as ready
 
         Args:
             strategy_id: Strategy identifier
@@ -348,7 +366,8 @@ def register_strategy_tools(
                 {"context": {"symbol": "BTC-USD", "tf": "4h"}} (tf is updated, symbol is preserved).
                 To replace an entire nested object, you must provide all its fields.
             follow_latest: If true, use latest card version; if false, pin current version
-            order: Execution order (optional, auto-assigned to next available)
+            order: Execution order (optional, auto-assigned to next available).
+                Use order ranges: gates (1-10), entries (11-20), exits (21-30), overlays (31-40)
             enabled: Whether attachment is enabled (default: true)
 
         Returns:

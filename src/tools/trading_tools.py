@@ -98,10 +98,23 @@ def register_trading_tools(
 
         This lightweight catalog allows an agent to choose an archetype for building
         trading strategies. There are 4 types of archetypes:
-        - entry: Entry signals for opening positions (e.g., trend pullback, breakout)
-        - exit: Exit rules for closing positions (e.g., take profit, stop loss, trailing stop)
-        - gate: Conditional filters that allow/block other cards (e.g., regime gates, event risk windows)
-        - overlay: Modifiers that scale risk/size of other cards (e.g., regime scalers)
+
+        - entry: Entry signals for opening positions (REQUIRED - every strategy needs at least one)
+                 Examples: trend pullback, breakout, momentum
+        - exit: Exit rules for closing positions (RECOMMENDED - most strategies need at least one)
+                Examples: take profit, stop loss, trailing stop, time stop
+        - gate: Conditional filters that allow/block other cards (OPTIONAL - use when you need conditional logic)
+                Examples: regime gates, event risk windows
+                Note: Gates execute before entries/exits and can block their execution
+        - overlay: Modifiers that scale risk/size of other cards (OPTIONAL - use when you need dynamic sizing)
+                  Examples: regime scalers
+                  Note: Overlays execute after entries/exits and modify position sizing
+
+        Usage tips:
+        - Start with entries and exits (most strategies only need these)
+        - Use gates only when you need conditional filtering (e.g., only trade in favorable regimes)
+        - Use overlays only when you need dynamic risk scaling (e.g., reduce size in high volatility)
+        - See AGENT_GUIDE.md for detailed usage patterns and examples
 
         Args:
             kind: Optional filter to return only archetypes of a specific kind.
