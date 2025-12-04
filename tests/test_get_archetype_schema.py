@@ -1,5 +1,7 @@
 """Tests for get_archetype_schema tool."""
 
+from typing import Any
+
 import pytest
 from mcp.server.fastmcp.exceptions import ToolError
 from test_helpers import call_tool, get_structured_error, run_async
@@ -17,13 +19,13 @@ def test_get_archetype_schema_returns_schema(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"type": "signal.trend_pullback"},
+            {"type": "entry.trend_pullback"},
         )
     )
 
     # Assert: verify response structure and content
     response = GetArchetypeSchemaResponse(**result)
-    assert response.type_id == "signal.trend_pullback"
+    assert response.type_id == "entry.trend_pullback"
     assert response.schema_version == 1
     assert response.etag is not None
     assert response.json_schema is not None
@@ -49,7 +51,7 @@ def test_get_archetype_schema_with_etag(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"type": "signal.trend_pullback"},
+            {"type": "entry.trend_pullback"},
         )
     )
     response1 = GetArchetypeSchemaResponse(**result1)
@@ -60,14 +62,14 @@ def test_get_archetype_schema_with_etag(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"type": "signal.trend_pullback", "if_none_match": etag},
+            {"type": "entry.trend_pullback", "if_none_match": etag},
         )
     )
 
     # Assert: should still return the schema (MCP doesn't support 304)
     response2 = GetArchetypeSchemaResponse(**result2)
     assert response2.etag == etag
-    assert response2.type_id == "signal.trend_pullback"
+    assert response2.type_id == "entry.trend_pullback"
 
 
 def test_get_archetype_schema_not_found(trading_tools_mcp):
@@ -80,7 +82,7 @@ def test_get_archetype_schema_not_found(trading_tools_mcp):
             call_tool(
                 trading_tools_mcp,
                 "get_archetype_schema",
-                {"type": "signal.nonexistent"},
+                {"type": "entry.nonexistent"},
             )
         )
     # Verify structured error
@@ -99,7 +101,7 @@ def test_get_archetype_schema_response_structure(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"type": "signal.trend_pullback"},
+            {"type": "entry.trend_pullback"},
         )
     )
 
@@ -134,7 +136,7 @@ def test_get_archetype_schema_constraints(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"type": "signal.trend_pullback"},
+            {"type": "entry.trend_pullback"},
         )
     )
 
@@ -155,7 +157,7 @@ def test_get_archetype_schema_examples(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"type": "signal.trend_pullback"},
+            {"type": "entry.trend_pullback"},
         )
     )
 
@@ -167,3 +169,86 @@ def test_get_archetype_schema_examples(trading_tools_mcp):
         assert "slots" in example
         assert isinstance(example["human"], str)
         assert isinstance(example["slots"], dict)
+
+
+def test_get_archetype_schema_resolves_refs(trading_tools_mcp):
+    """Test that get_archetype_schema resolves all $ref references to common_defs.
+
+    This ensures the schema is self-contained and agents don't see confusing $ref strings.
+    """
+    # Run: call the tool
+    result = run_async(
+        call_tool(
+            trading_tools_mcp,
+            "get_archetype_schema",
+            {"type": "entry.trend_pullback"},
+        )
+    )
+
+    # Assert: verify that $ref references to common_defs are resolved
+    response = GetArchetypeSchemaResponse(**result)
+    json_schema = response.json_schema
+
+    # Helper function to recursively check for unresolved external $ref
+    def has_unresolved_external_ref(obj: Any) -> bool:
+        """Check if there are any unresolved external $ref references."""
+        if isinstance(obj, dict):
+            if "$ref" in obj:
+                ref_value = obj["$ref"]
+                # Check if it's an external reference to common_defs
+                if isinstance(ref_value, str) and "common_defs.schema.json" in ref_value:
+                    return True
+            # Recurse into all values
+            return any(has_unresolved_external_ref(v) for v in obj.values())
+        elif isinstance(obj, list):
+            return any(has_unresolved_external_ref(item) for item in obj)
+        return False
+
+    # Verify no unresolved external references exist
+    assert not has_unresolved_external_ref(json_schema), (
+        "Schema should not contain unresolved $ref references to common_defs.schema.json. "
+        "All references should be resolved to their actual definitions."
+    )
+
+    # Verify that context property is resolved (should have type/properties, not $ref)
+    context_prop = json_schema["properties"]["context"]
+    assert "$ref" not in context_prop or "common_defs.schema.json" not in str(
+        context_prop.get("$ref", "")
+    ), "Context property should be resolved (no external $ref)"
+
+
+def test_get_archetype_schema_gate_regime_structure(trading_tools_mcp):
+    """Gate schemas should omit risk slot and use new specs.
+
+    Note: $ref references are now resolved to their full definitions,
+    so we check for the resolved schema structure instead of $ref strings.
+    """
+    result = run_async(
+        call_tool(
+            trading_tools_mcp,
+            "get_archetype_schema",
+            {"type": "gate.regime"},
+        )
+    )
+
+    response = GetArchetypeSchemaResponse(**result)
+    assert response.type_id == "gate.regime"
+
+    json_schema = response.json_schema
+    required_slots = set(json_schema.get("required", []))
+    assert required_slots == {"context", "event", "action"}
+
+    # After resolution, $ref should be replaced with actual schema definitions
+    # Check that action property exists and has been resolved (no $ref)
+    action_prop = json_schema["properties"]["action"]
+    assert "$ref" not in action_prop, "Action $ref should be resolved"
+    assert "type" in action_prop or "properties" in action_prop, (
+        "Action should have resolved schema"
+    )
+
+    # Check that regime property exists and has been resolved
+    regime_prop = json_schema["properties"]["event"]["properties"]["regime"]
+    assert "$ref" not in regime_prop, "Regime $ref should be resolved"
+    assert "type" in regime_prop or "properties" in regime_prop, (
+        "Regime should have resolved schema"
+    )

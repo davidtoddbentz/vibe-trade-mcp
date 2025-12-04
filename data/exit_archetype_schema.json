@@ -454,6 +454,301 @@
         }
       ],
       "updated_at": "2025-12-02T17:58:21Z"
+    },
+    {
+      "type_id": "exit.squeeze_compression",
+      "schema_version": 1,
+      "etag": "W/\"v1.exit.squeeze_compression\"",
+      "title": "Squeeze Compression Exit",
+      "summary": "Exit when volatility compresses back into squeeze (opposite of squeeze expansion entry).",
+      "kind": "exit",
+      "tags": [
+        "spot",
+        "exit",
+        "volatility",
+        "squeeze",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "./exit.squeeze_compression.schema.json",
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "squeeze": {
+                "$ref": "common_defs.schema.json#/$defs/SqueezeSpec"
+              }
+            },
+            "required": [
+              "squeeze"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
+          },
+          "risk": {
+            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+          }
+        },
+        "required": [
+          "context",
+          "event",
+          "action",
+          "risk"
+        ],
+        "additionalProperties": false
+      },
+      "constraints": {
+        "min_history_bars": 100,
+        "pit_safe": true
+      },
+      "slot_hints": {
+        "preferred_tfs": [
+          "1h",
+          "4h"
+        ],
+        "notes": "Exit when volatility compresses back into squeeze (e.g., BB width pctile drops below threshold). This is the opposite of squeeze expansion entry - exit when the squeeze returns."
+      },
+      "examples": [
+        {
+          "human": "ETH 1h: exit long when BB width pctile drops below 10 (squeeze returns)",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "ETH-USD"
+            },
+            "event": {
+              "squeeze": {
+                "metric": "bb_width_pctile",
+                "pctile_min": 10
+              }
+            },
+            "action": {
+              "mode": "close"
+            },
+            "risk": {
+              "sl_atr": 2.0
+            }
+          }
+        }
+      ],
+      "updated_at": "2025-12-04T00:00:00Z"
+    },
+    {
+      "type_id": "exit.xs_rank_drop",
+      "schema_version": 1,
+      "etag": "W/\"v1.exit.xs_rank_drop\"",
+      "title": "Cross-Sectional Rank Drop Exit",
+      "summary": "Exit position when rank drops below threshold or on rebalance when name falls out of top N.",
+      "kind": "exit",
+      "tags": [
+        "spot",
+        "exit",
+        "portfolio",
+        "momentum",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "./exit.xs_rank_drop.schema.json",
+        "type": "object",
+        "properties": {
+          "context": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "rank_drop": {
+                "$ref": "common_defs.schema.json#/$defs/XSRankSpec"
+              },
+              "exit_on_rebalance": {
+                "type": "boolean",
+                "description": "Exit position if it falls out of top_n on rebalance"
+              },
+              "rank_threshold": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "Exit if rank drops below this threshold (optional, use with exit_on_rebalance=false)"
+              }
+            },
+            "required": [
+              "rank_drop"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
+          },
+          "risk": {
+            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+          }
+        },
+        "required": [
+          "context",
+          "event",
+          "action",
+          "risk"
+        ],
+        "additionalProperties": false
+      },
+      "constraints": {
+        "min_history_bars": 100,
+        "pit_safe": true
+      },
+      "slot_hints": {
+        "preferred_tfs": [
+          "1d",
+          "1w"
+        ],
+        "notes": "Use exit_on_rebalance=true to exit positions that fall out of top_n on rebalance. Use rank_threshold to exit when rank drops below a specific threshold."
+      },
+      "examples": [
+        {
+          "human": "Weekly: exit position if it falls out of top 5 on rebalance",
+          "slots": {
+            "context": {},
+            "event": {
+              "rank_drop": {
+                "universe": [
+                  "BTC-USD",
+                  "ETH-USD",
+                  "SOL-USD",
+                  "ADA-USD"
+                ],
+                "rank_feature": "ret_1w",
+                "top_n": 5,
+                "bottom_n": 0,
+                "rebalance_cadence": "1w",
+                "weights": "equal",
+                "side": "long_only"
+              },
+              "exit_on_rebalance": true
+            },
+            "action": {
+              "mode": "close"
+            },
+            "risk": {
+              "time_stop_bars": 30
+            }
+          }
+        }
+      ],
+      "updated_at": "2025-12-04T00:00:00Z"
+    },
+    {
+      "type_id": "exit.vwap_reversion",
+      "schema_version": 1,
+      "etag": "W/\"v1.exit.vwap_reversion\"",
+      "title": "VWAP Reversion Exit",
+      "summary": "Exit when price returns to anchored VWAP (mean reversion target) or moves too far from VWAP.",
+      "kind": "exit",
+      "tags": [
+        "spot",
+        "exit",
+        "vwap",
+        "mean-revert",
+        "equity",
+        "crypto",
+        "fx"
+      ],
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "./exit.vwap_reversion.schema.json",
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "anchor": {
+                "$ref": "common_defs.schema.json#/$defs/VWAPAnchorSpec"
+              },
+              "dist_sigma_exit": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 10.0,
+                "description": "Exit when price distance from VWAP is less than this sigma (mean reversion target)"
+              },
+              "dist_sigma_stop": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 10.0,
+                "description": "Optional: exit when price moves further than this sigma from VWAP (stop loss)"
+              }
+            },
+            "required": [
+              "anchor",
+              "dist_sigma_exit"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
+          },
+          "risk": {
+            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+          }
+        },
+        "required": [
+          "context",
+          "event",
+          "action",
+          "risk"
+        ],
+        "additionalProperties": false
+      },
+      "constraints": {
+        "min_history_bars": 100,
+        "pit_safe": true
+      },
+      "slot_hints": {
+        "preferred_tfs": [
+          "1h",
+          "4h"
+        ],
+        "notes": "Use dist_sigma_exit to exit when price returns to VWAP (mean reversion target). Optionally use dist_sigma_stop to exit if price moves too far from VWAP."
+      },
+      "examples": [
+        {
+          "human": "BTC 1h: exit long when price returns within 0.5σ of AVWAP (YTD)",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "BTC-USD"
+            },
+            "event": {
+              "anchor": {
+                "anchor": "ytd"
+              },
+              "dist_sigma_exit": 0.5
+            },
+            "action": {
+              "mode": "close"
+            },
+            "risk": {
+              "sl_atr": 1.5
+            }
+          }
+        }
+      ],
+      "updated_at": "2025-12-04T00:00:00Z"
     }
   ]
 }

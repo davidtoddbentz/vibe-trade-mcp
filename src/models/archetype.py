@@ -14,11 +14,11 @@ class ArchetypeHints(BaseModel):
 class Archetype(BaseModel):
     """Trading strategy archetype domain model."""
 
-    id: str = Field(..., description="Archetype identifier (e.g., 'signal.trend_pullback')")
+    id: str = Field(..., description="Archetype identifier (e.g., 'entry.trend_pullback')")
     version: int = Field(..., description="Archetype version number")
     title: str = Field(..., description="Human-readable title")
     summary: str = Field(..., description="Brief description of the archetype")
-    kind: str = Field(..., description="Archetype kind (e.g., 'signal', 'gate')")
+    kind: str = Field(..., description="Archetype kind (e.g., 'entry', 'gate')")
     tags: list[str] = Field(default_factory=list, description="Tags for categorization")
     required_slots: list[str] = Field(..., description="List of required slot names")
     schema_etag: str = Field(..., description="Weak ETag for schema caching")

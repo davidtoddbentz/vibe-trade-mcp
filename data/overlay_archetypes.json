@@ -1,0 +1,31 @@
+{
+  "archetypes": [
+    {
+      "id": "overlay.regime_scaler",
+      "version": 1,
+      "title": "Regime Overlay Scaler",
+      "summary": "Scale risk or size of downstream cards based on regime state.",
+      "kind": "overlay",
+      "tags": [
+        "regime",
+        "overlay",
+        "risk"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action"
+      ],
+      "schema_etag": "W/\"v1.overlay.regime_scaler\"",
+      "deprecated": false,
+      "hints": {
+        "preferred_tfs": [
+          "1h",
+          "4h"
+        ]
+      },
+      "updated_at": "2025-12-04T00:00:00Z"
+    }
+  ]
+}
+

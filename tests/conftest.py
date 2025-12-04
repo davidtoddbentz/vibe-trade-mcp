@@ -19,7 +19,10 @@ from src.tools.trading_tools import register_trading_tools
 @pytest.fixture
 def archetype_repository():
     """Create an ArchetypeRepository for testing (reads from JSON file)."""
-    return ArchetypeRepository()
+    repo = ArchetypeRepository()
+    # Force fresh load by clearing cache
+    repo._archetypes = None
+    return repo
 
 
 @pytest.fixture

@@ -89,7 +89,7 @@ def get_valid_slots_for_archetype(schema_repository, type_id: str) -> dict:
 
     Args:
         schema_repository: Schema repository instance
-        type_id: Archetype identifier (e.g., 'signal.trend_pullback')
+        type_id: Archetype identifier (e.g., 'entry.trend_pullback')
 
     Returns:
         Valid slots dictionary from schema examples

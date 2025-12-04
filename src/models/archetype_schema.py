@@ -23,11 +23,11 @@ class SchemaExample(BaseModel):
 class ArchetypeSchema(BaseModel):
     """Archetype schema domain model with full JSON Schema and metadata."""
 
-    type_id: str = Field(..., description="Archetype identifier (e.g., 'signal.trend_pullback')")
+    type_id: str = Field(..., description="Archetype identifier (e.g., 'entry.trend_pullback')")
     schema_version: int = Field(..., description="Schema version number")
     etag: str = Field(
         ...,
-        description="Weak ETag for schema caching (e.g., 'W/\"seed-v1.signal.trend_pullback\"')",
+        description="Weak ETag for schema caching (e.g., 'W/\"seed-v1.entry.trend_pullback\"')",
     )
     json_schema: dict[str, Any] = Field(..., description="JSON Schema object for validation")
     constraints: SchemaConstraints = Field(

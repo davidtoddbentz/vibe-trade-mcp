@@ -1,0 +1,89 @@
+{
+  "schemas": [
+    {
+      "type_id": "overlay.regime_scaler",
+      "schema_version": 1,
+      "etag": "W/\"v1.overlay.regime_scaler\"",
+      "title": "Regime Overlay Scaler",
+      "summary": "Scale size or risk of downstream cards when regime filters trigger.",
+      "kind": "overlay",
+      "tags": [
+        "regime",
+        "overlay",
+        "risk"
+      ],
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "./overlay.regime_scaler.schema.json",
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "regime": {
+                "$ref": "common_defs.schema.json#/$defs/RegimeSpec"
+              }
+            },
+            "required": [
+              "regime"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "$ref": "common_defs.schema.json#/$defs/OverlayActionSpec"
+          }
+        },
+        "required": [
+          "context",
+          "event",
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "constraints": {
+        "min_history_bars": 150,
+        "pit_safe": true,
+        "warmup_hint": "Overlay uses the same inputs as the regime metric."
+      },
+      "slot_hints": {
+        "notes": "Set scale_risk_frac/scale_size_frac < 1.0 to dampen exposure; >1.0 to lever up."
+      },
+      "examples": [
+        {
+          "human": "Halve signal risk when 4h BB width pctile < 20.",
+          "slots": {
+            "context": {
+              "tf": "4h",
+              "symbol": "ETH-USD"
+            },
+            "event": {
+              "regime": {
+                "metric": "vol_bb_width_pctile",
+                "tf": "4h",
+                "op": "<",
+                "value": 20,
+                "lookback_bars": 200
+              }
+            },
+            "action": {
+              "scale_risk_frac": 0.5,
+              "scale_size_frac": 0.5,
+              "target_roles": [
+                "entry",
+                "exit"
+              ],
+              "target_tags": [
+                "breakout"
+              ]
+            }
+          }
+        }
+      ],
+      "updated_at": "2025-12-04T00:00:00Z"
+    }
+  ]
+}
+

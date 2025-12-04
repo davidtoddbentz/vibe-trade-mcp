@@ -11,7 +11,7 @@ from src.tools.errors import ErrorCode
 def test_validate_slots_draft_valid(card_tools_mcp, schema_repository):
     """Test validating valid slots returns success."""
     # Setup: get valid slots
-    valid_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    valid_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     # Run: validate slots
     result = run_async(
@@ -19,7 +19,7 @@ def test_validate_slots_draft_valid(card_tools_mcp, schema_repository):
             card_tools_mcp,
             "validate_slots_draft",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": valid_slots,
             },
         )
@@ -27,7 +27,7 @@ def test_validate_slots_draft_valid(card_tools_mcp, schema_repository):
 
     # Assert: verify response
     response = ValidateSlotsDraftResponse(**result)
-    assert response.type_id == "signal.trend_pullback"
+    assert response.type_id == "entry.trend_pullback"
     assert response.valid is True
     assert len(response.errors) == 0
     assert response.schema_etag is not None
@@ -36,7 +36,7 @@ def test_validate_slots_draft_valid(card_tools_mcp, schema_repository):
 def test_validate_slots_draft_invalid_range(card_tools_mcp, schema_repository):
     """Test validating slots with invalid range values returns errors."""
     # Setup: get valid slots and modify to invalid value
-    valid_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    valid_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
     valid_slots["event"]["dip_band"]["mult"] = 10.0  # Max is 5.0
 
     # Run: validate slots
@@ -45,7 +45,7 @@ def test_validate_slots_draft_invalid_range(card_tools_mcp, schema_repository):
             card_tools_mcp,
             "validate_slots_draft",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": valid_slots,
             },
         )
@@ -53,7 +53,7 @@ def test_validate_slots_draft_invalid_range(card_tools_mcp, schema_repository):
 
     # Assert: verify response indicates invalid
     response = ValidateSlotsDraftResponse(**result)
-    assert response.type_id == "signal.trend_pullback"
+    assert response.type_id == "entry.trend_pullback"
     assert response.valid is False
     assert len(response.errors) > 0
     assert any("mult" in error.lower() or "10" in error for error in response.errors)
@@ -63,7 +63,7 @@ def test_validate_slots_draft_invalid_range(card_tools_mcp, schema_repository):
 def test_validate_slots_draft_missing_required(card_tools_mcp, schema_repository):
     """Test validating slots with missing required fields returns errors."""
     # Setup: get valid slots and remove required field
-    valid_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    valid_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
     del valid_slots["context"]["tf"]
 
     # Run: validate slots
@@ -72,7 +72,7 @@ def test_validate_slots_draft_missing_required(card_tools_mcp, schema_repository
             card_tools_mcp,
             "validate_slots_draft",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": valid_slots,
             },
         )

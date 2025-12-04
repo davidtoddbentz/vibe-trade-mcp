@@ -24,11 +24,11 @@ from src.tools.errors import ErrorCode
 def test_create_card_valid(card_tools_mcp, schema_repository):
     """Test creating a card with valid slots."""
     # Setup: get a valid schema and its etag
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
 
     # Use example slots from schema (now includes context, event, action, risk)
-    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     # Run: create card
     result = run_async(
@@ -36,7 +36,7 @@ def test_create_card_valid(card_tools_mcp, schema_repository):
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -45,7 +45,7 @@ def test_create_card_valid(card_tools_mcp, schema_repository):
     # Assert: verify response
     response = CreateCardResponse(**result)
     assert response.card_id is not None
-    assert response.type == "signal.trend_pullback"
+    assert response.type == "entry.trend_pullback"
     assert response.slots == example_slots
     assert response.schema_etag == schema.etag
     assert response.created_at is not None
@@ -54,7 +54,7 @@ def test_create_card_valid(card_tools_mcp, schema_repository):
 def test_create_card_invalid_slots(card_tools_mcp, schema_repository):
     """Test creating a card with invalid slots fails validation."""
     # Setup: get a valid schema
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
 
     # Run: try to create card with invalid slots (missing required fields)
@@ -64,7 +64,7 @@ def test_create_card_invalid_slots(card_tools_mcp, schema_repository):
                 card_tools_mcp,
                 "create_card",
                 {
-                    "type": "signal.trend_pullback",
+                    "type": "entry.trend_pullback",
                     "slots": {
                         "context": {"tf": "1h"}
                     },  # Missing required fields (event, action, risk)
@@ -85,12 +85,12 @@ def test_create_card_invalid_slots(card_tools_mcp, schema_repository):
 def test_create_card_invalid_range_values(card_tools_mcp, schema_repository):
     """Test creating a card with values outside allowed ranges fails validation."""
     # Setup: get a valid schema and valid slots
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
 
     # Get valid slots and modify to test range validation
     # Test: event.dip_band.mult above maximum (5.0) - this was the old dip_threshold field
-    valid_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    valid_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
     invalid_slots = copy.deepcopy(valid_slots)
     invalid_slots["event"]["dip_band"]["mult"] = 6.0  # Above maximum 5.0
 
@@ -100,7 +100,7 @@ def test_create_card_invalid_range_values(card_tools_mcp, schema_repository):
                 card_tools_mcp,
                 "create_card",
                 {
-                    "type": "signal.trend_pullback",
+                    "type": "entry.trend_pullback",
                     "slots": invalid_slots,
                 },
             )
@@ -118,7 +118,7 @@ def test_create_card_invalid_range_values(card_tools_mcp, schema_repository):
                 card_tools_mcp,
                 "create_card",
                 {
-                    "type": "signal.trend_pullback",
+                    "type": "entry.trend_pullback",
                     "slots": invalid_slots2,
                 },
             )
@@ -130,10 +130,10 @@ def test_create_card_invalid_range_values(card_tools_mcp, schema_repository):
 def test_create_card_invalid_enum_values(card_tools_mcp, schema_repository):
     """Test creating a card with invalid enum values fails validation."""
     # Setup: get a valid schema and valid slots
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
 
-    valid_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    valid_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     # Test: invalid context.tf enum value
     invalid_slots = copy.deepcopy(valid_slots)
@@ -145,7 +145,7 @@ def test_create_card_invalid_enum_values(card_tools_mcp, schema_repository):
                 card_tools_mcp,
                 "create_card",
                 {
-                    "type": "signal.trend_pullback",
+                    "type": "entry.trend_pullback",
                     "slots": invalid_slots,
                 },
             )
@@ -163,7 +163,7 @@ def test_create_card_invalid_enum_values(card_tools_mcp, schema_repository):
                 card_tools_mcp,
                 "create_card",
                 {
-                    "type": "signal.trend_pullback",
+                    "type": "entry.trend_pullback",
                     "slots": invalid_slots2,
                 },
             )
@@ -175,10 +175,10 @@ def test_create_card_invalid_enum_values(card_tools_mcp, schema_repository):
 def test_create_card_invalid_nested_structure(card_tools_mcp, schema_repository):
     """Test creating a card with invalid nested object structures fails validation."""
     # Setup: get a valid schema and valid slots
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
 
-    valid_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    valid_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     # Test: invalid event.trend_gate structure (missing required op field)
     invalid_slots = copy.deepcopy(valid_slots)
@@ -194,7 +194,7 @@ def test_create_card_invalid_nested_structure(card_tools_mcp, schema_repository)
                 card_tools_mcp,
                 "create_card",
                 {
-                    "type": "signal.trend_pullback",
+                    "type": "entry.trend_pullback",
                     "slots": invalid_slots,
                 },
             )
@@ -211,7 +211,7 @@ def test_create_card_invalid_nested_structure(card_tools_mcp, schema_repository)
                 card_tools_mcp,
                 "create_card",
                 {
-                    "type": "signal.trend_pullback",
+                    "type": "entry.trend_pullback",
                     "slots": invalid_slots2,
                 },
             )
@@ -222,11 +222,11 @@ def test_create_card_invalid_nested_structure(card_tools_mcp, schema_repository)
 def test_create_card_additional_properties(card_tools_mcp, schema_repository):
     """Test creating a card with additional properties fails validation."""
     # Setup: get a valid schema and valid slots
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
 
     # Test: additional property at root level
-    valid_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    valid_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
     invalid_slots = copy.deepcopy(valid_slots)
     invalid_slots["extra_field"] = "not allowed"
 
@@ -236,7 +236,7 @@ def test_create_card_additional_properties(card_tools_mcp, schema_repository):
                 card_tools_mcp,
                 "create_card",
                 {
-                    "type": "signal.trend_pullback",
+                    "type": "entry.trend_pullback",
                     "slots": invalid_slots,
                 },
             )
@@ -250,15 +250,15 @@ def test_create_card_additional_properties(card_tools_mcp, schema_repository):
 def test_update_card_invalid_range_values(card_tools_mcp, schema_repository):
     """Test updating a card with values outside allowed ranges fails validation."""
     # Setup: create a valid card first
-    schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    schema_repository.get_by_type_id("entry.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     create_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -288,15 +288,15 @@ def test_update_card_invalid_range_values(card_tools_mcp, schema_repository):
 def test_get_card(card_tools_mcp, schema_repository):
     """Test getting a card by ID."""
     # Setup: create a card first
-    schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    schema_repository.get_by_type_id("entry.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     create_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -309,7 +309,7 @@ def test_get_card(card_tools_mcp, schema_repository):
     # Assert: verify response
     response = GetCardResponse(**result)
     assert response.card_id == card_id
-    assert response.type == "signal.trend_pullback"
+    assert response.type == "entry.trend_pullback"
     assert response.slots == example_slots
 
 
@@ -323,15 +323,15 @@ def test_get_card_not_found(card_tools_mcp):
 def test_list_cards(card_tools_mcp, schema_repository):
     """Test listing all cards."""
     # Setup: create a couple of cards
-    schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    schema_repository.get_by_type_id("entry.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -349,15 +349,15 @@ def test_list_cards(card_tools_mcp, schema_repository):
 def test_update_card(card_tools_mcp, schema_repository):
     """Test updating a card."""
     # Setup: create a card first
-    schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    schema_repository.get_by_type_id("entry.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     create_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -388,7 +388,7 @@ def test_update_card(card_tools_mcp, schema_repository):
 
 def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repository):
     """Test that error messages include helpful guidance for agents."""
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
 
     # Test: schema not found error includes guidance
@@ -398,7 +398,7 @@ def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repo
                 card_tools_mcp,
                 "create_card",
                 {
-                    "type": "signal.nonexistent",
+                    "type": "entry.nonexistent",
                     "slots": {"context": {"tf": "1h"}},
                 },
             )
@@ -413,7 +413,7 @@ def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repo
     assert structured_error.recovery_hint is not None
 
     # Test: validation error includes guidance to fetch schema
-    valid_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    valid_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
     invalid_slots = copy.deepcopy(valid_slots)
     invalid_slots["event"]["dip_band"]["mult"] = 6.0  # Invalid: above max 5.0
 
@@ -423,14 +423,14 @@ def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repo
                 card_tools_mcp,
                 "create_card",
                 {
-                    "type": "signal.trend_pullback",
+                    "type": "entry.trend_pullback",
                     "slots": invalid_slots,
                 },
             )
         )
     error_msg = str(exc_info.value)
     assert "get_archetype_schema" in error_msg.lower()
-    assert "signal.trend_pullback" in error_msg
+    assert "entry.trend_pullback" in error_msg
     # Verify structured error
     structured_error = get_structured_error(exc_info.value)
     assert structured_error is not None
@@ -449,8 +449,8 @@ def test_update_card_invalid_etag(card_tools_mcp, schema_repository):
 
 def test_update_card_error_messages_include_guidance(card_tools_mcp, schema_repository):
     """Test that update_card error messages include helpful guidance."""
-    schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    schema_repository.get_by_type_id("entry.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     # Create a card first
     create_result = run_async(
@@ -458,7 +458,7 @@ def test_update_card_error_messages_include_guidance(card_tools_mcp, schema_repo
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -482,7 +482,7 @@ def test_update_card_error_messages_include_guidance(card_tools_mcp, schema_repo
         )
     error_msg = str(exc_info.value)
     assert "get_archetype_schema" in error_msg.lower()
-    assert "signal.trend_pullback" in error_msg
+    assert "entry.trend_pullback" in error_msg
 
     # Test: card not found error includes guidance
     with pytest.raises(ToolError) as exc_info:
@@ -517,15 +517,15 @@ def test_get_card_error_includes_guidance(card_tools_mcp):
 def test_delete_card(card_tools_mcp, schema_repository):
     """Test deleting a card."""
     # Setup: create a card first
-    schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    schema_repository.get_by_type_id("entry.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     create_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )

@@ -24,7 +24,7 @@ class CreateCardRequest(BaseModel):
     Note: schema_etag is handled internally by MCP and not exposed in the public API.
     """
 
-    type: str = Field(..., description="Archetype identifier (e.g., 'signal.trend_pullback')")
+    type: str = Field(..., description="Archetype identifier (e.g., 'entry.trend_pullback')")
     slots: dict[str, Any] = Field(..., description="Slot values to validate and store")
 
 
@@ -200,7 +200,7 @@ def register_card_tools(
 
     @mcp.tool()
     def create_card(
-        type: str = Field(..., description="Archetype identifier (e.g., 'signal.trend_pullback')"),
+        type: str = Field(..., description="Archetype identifier (e.g., 'entry.trend_pullback')"),
         slots: dict[str, Any] = Field(..., description="Slot values to validate and store"),  # noqa: B008
     ) -> CreateCardResponse:
         """
@@ -217,7 +217,7 @@ def register_card_tools(
         4. Call create_card with type and slots
 
         Args:
-            type: Archetype identifier (e.g., 'signal.trend_pullback')
+            type: Archetype identifier (e.g., 'entry.trend_pullback', 'exit.take_profit_stop', 'gate.regime', 'overlay.regime_scaler')
             slots: Slot values to validate and store. Must match the archetype's JSON schema.
 
         Returns:
@@ -444,7 +444,7 @@ def register_card_tools(
 
     @mcp.tool()
     def validate_slots_draft(
-        type: str = Field(..., description="Archetype identifier (e.g., 'signal.trend_pullback')"),
+        type: str = Field(..., description="Archetype identifier (e.g., 'entry.trend_pullback')"),
         slots: dict[str, Any] = Field(..., description="Slot values to validate"),  # noqa: B008
     ) -> ValidateSlotsDraftResponse:
         """

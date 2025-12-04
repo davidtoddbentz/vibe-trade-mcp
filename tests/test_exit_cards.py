@@ -170,15 +170,15 @@ def test_strategy_with_entry_and_exit_cards(strategy_tools_mcp, card_tools_mcp, 
     strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
 
     # Setup: create entry card (signal)
-    schema_repository.get_by_type_id("signal.trend_pullback")
-    entry_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    schema_repository.get_by_type_id("entry.trend_pullback")
+    entry_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     entry_card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": entry_slots,
             },
         )
@@ -201,7 +201,7 @@ def test_strategy_with_entry_and_exit_cards(strategy_tools_mcp, card_tools_mcp, 
     )
     exit_card_id = CreateCardResponse(**exit_card_result).card_id
 
-    # Run: attach entry card as "signal"
+    # Run: attach entry card as "entry"
     run_async(
         call_tool(
             strategy_tools_mcp,
@@ -209,7 +209,7 @@ def test_strategy_with_entry_and_exit_cards(strategy_tools_mcp, card_tools_mcp, 
             {
                 "strategy_id": strategy_id,
                 "card_id": entry_card_id,
-                "role": "signal",
+                "role": "entry",
             },
         )
     )
@@ -233,7 +233,7 @@ def test_strategy_with_entry_and_exit_cards(strategy_tools_mcp, card_tools_mcp, 
     assert len(response2.attachments) == 2
 
     # Find entry and exit attachments
-    entry_att = next(att for att in response2.attachments if att["role"] == "signal")
+    entry_att = next(att for att in response2.attachments if att["role"] == "entry")
     exit_att = next(att for att in response2.attachments if att["role"] == "exit")
 
     assert entry_att["card_id"] == entry_card_id

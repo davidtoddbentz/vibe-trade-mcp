@@ -16,14 +16,14 @@ def test_get_schema_example_returns_example(trading_tools_mcp):
             trading_tools_mcp,
             "get_schema_example",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
             },
         )
     )
 
     # Assert: verify response
     response = GetSchemaExampleResponse(**result)
-    assert response.type_id == "signal.trend_pullback"
+    assert response.type_id == "entry.trend_pullback"
     assert response.example_slots is not None
     assert isinstance(response.example_slots, dict)
     assert "context" in response.example_slots
@@ -42,7 +42,7 @@ def test_get_schema_example_specific_index(trading_tools_mcp):
             trading_tools_mcp,
             "get_schema_example",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "example_index": 0,
             },
         )
@@ -50,7 +50,7 @@ def test_get_schema_example_specific_index(trading_tools_mcp):
 
     # Assert: verify response
     response = GetSchemaExampleResponse(**result)
-    assert response.type_id == "signal.trend_pullback"
+    assert response.type_id == "entry.trend_pullback"
     assert response.example_slots is not None
 
 
@@ -85,7 +85,7 @@ def test_get_schema_example_invalid_index(trading_tools_mcp):
                 trading_tools_mcp,
                 "get_schema_example",
                 {
-                    "type": "signal.trend_pullback",
+                    "type": "entry.trend_pullback",
                     "example_index": 999,
                 },
             )
@@ -110,7 +110,7 @@ def test_get_schema_example_can_create_card(trading_tools_mcp, card_tools_mcp):
             trading_tools_mcp,
             "get_schema_example",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
             },
         )
     )
@@ -130,4 +130,4 @@ def test_get_schema_example_can_create_card(trading_tools_mcp, card_tools_mcp):
 
     # Assert: card created successfully
     assert card_result["card_id"] is not None
-    assert card_result["type"] == "signal.trend_pullback"
+    assert card_result["type"] == "entry.trend_pullback"
