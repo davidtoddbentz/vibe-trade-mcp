@@ -173,7 +173,7 @@ def test_get_archetypes_invalid_kind_raises_error(trading_tools_mcp):
 
     with pytest.raises(ToolError) as exc_info:
         run_async(call_tool(trading_tools_mcp, "get_archetypes", {"kind": "invalid"}))
-    
+
     # Verify the error message contains expected content
     error_msg = str(exc_info.value).lower()
     assert "invalid" in error_msg or "valid values" in error_msg
