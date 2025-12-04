@@ -172,13 +172,9 @@ def test_get_archetypes_invalid_kind_raises_error(trading_tools_mcp):
     from mcp.server.fastmcp.exceptions import ToolError
     from test_helpers import get_structured_error
 
-    with pytest.raises(ToolError):
-        run_async(call_tool(trading_tools_mcp, "get_archetypes", {"kind": "invalid"}))
-
-    # If we get here, the exception was raised correctly
-    # Re-run to get the structured error for validation
     try:
         run_async(call_tool(trading_tools_mcp, "get_archetypes", {"kind": "invalid"}))
+        pytest.fail("Should have raised ToolError")
     except ToolError as e:
         structured_error = get_structured_error(e)
         assert structured_error is not None
