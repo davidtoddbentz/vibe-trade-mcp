@@ -16,7 +16,7 @@ class Attachment(BaseModel):
     card_id: str = Field(..., description="Card identifier")
     role: str = Field(
         ...,
-        description="Card role: signal, gate, exit, sizing, risk, or overlay",
+        description="Card role: entry, gate, exit, sizing, risk, or overlay",
     )
     order: int = Field(..., description="Execution order (lower numbers execute first)")
     enabled: bool = Field(default=True, description="Whether attachment is enabled")
@@ -36,7 +36,7 @@ class Attachment(BaseModel):
 class Strategy(BaseModel):
     """Trading strategy domain model.
 
-    A strategy is a composition of cards (signals, gates, exits, etc.) with
+    A strategy is a composition of cards (entries, gates, exits, etc.) with
     universe selection. Risk and execution parameters are configured when
     the strategy is run, not at creation time.
     """

@@ -19,7 +19,7 @@ from src.tools.errors import (
 )
 
 # Valid roles for card attachments
-VALID_ROLES = ["signal", "gate", "exit", "sizing", "risk", "overlay"]
+VALID_ROLES = ["entry", "gate", "exit", "sizing", "risk", "overlay"]
 VALID_STATUSES = ["draft", "ready", "running", "paused", "stopped", "error"]
 
 
@@ -309,7 +309,7 @@ def register_strategy_tools(
         card_id: str = Field(..., description="Card identifier to attach"),
         role: str = Field(
             ...,
-            description="Card role: signal, gate, exit, sizing, risk, or overlay",
+            description="Card role: entry, gate, exit, sizing, risk, or overlay",
         ),
         overrides: dict[str, Any] = Field(  # noqa: B008
             default_factory=dict, description="Slot value overrides (optional)"
@@ -327,7 +327,7 @@ def register_strategy_tools(
         """
         Attach a card to a strategy.
 
-        Cards can be attached with different roles (signal, gate, exit, etc.) and
+        Cards can be attached with different roles (entry, gate, exit, etc.) and
         optional slot overrides. The attachment can follow the latest card version
         or be pinned to a specific version.
 
@@ -340,7 +340,7 @@ def register_strategy_tools(
         Args:
             strategy_id: Strategy identifier
             card_id: Card identifier to attach
-            role: Card role (signal, gate, exit, sizing, risk, or overlay)
+            role: Card role (entry, gate, exit, sizing, risk, or overlay)
             overrides: Slot value overrides to merge with card slots (optional).
                 Overrides use deep merge: nested objects are merged recursively,
                 not replaced. For example, if card has {"context": {"symbol": "BTC-USD", "tf": "1h"}}
@@ -675,7 +675,7 @@ def register_strategy_tools(
             )
 
         # Validate composition
-        signal_count = sum(1 for card in compiled_cards if card.role == "signal")
+        entry_count = sum(1 for card in compiled_cards if card.role == "entry")
         exit_count = sum(1 for card in compiled_cards if card.role == "exit")
 
         if signal_count == 0:
@@ -895,7 +895,7 @@ def register_strategy_tools(
             )
 
         # Validate composition
-        signal_count = sum(1 for card in compiled_cards if card.role == "signal")
+        entry_count = sum(1 for card in compiled_cards if card.role == "entry")
         exit_count = sum(1 for card in compiled_cards if card.role == "exit")
 
         if signal_count == 0:

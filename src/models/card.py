@@ -14,7 +14,7 @@ class Card(BaseModel):
     """
 
     id: str = Field(..., description="Card identifier (Firestore document ID)")
-    type: str = Field(..., description="Archetype identifier (e.g., 'signal.trend_pullback')")
+    type: str = Field(..., description="Archetype identifier (e.g., 'entry.trend_pullback')")
     slots: dict[str, Any] = Field(..., description="Slot values validated against archetype schema")
     schema_etag: str = Field(
         ..., description="ETag of the schema used for validation (for version tracking)"

@@ -29,15 +29,15 @@ def test_validate_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repo
     strategy_id = strategy_result["strategy_id"]
 
     # Create entry card
-    entry_schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    entry_schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert entry_schema is not None
-    entry_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    entry_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
     entry_card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": entry_slots,
             },
         )
@@ -68,7 +68,7 @@ def test_validate_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repo
             {
                 "strategy_id": strategy_id,
                 "card_id": entry_card_id,
-                "role": "signal",
+                "role": "entry",
             },
         )
     )
@@ -117,14 +117,14 @@ def test_validate_strategy_fix_required(strategy_tools_mcp, card_tools_mcp, sche
     )
     strategy_id = strategy_result["strategy_id"]
 
-    schema_repository.get_by_type_id("signal.trend_pullback")
-    entry_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    schema_repository.get_by_type_id("entry.trend_pullback")
+    entry_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
     entry_card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": entry_slots,
             },
         )
@@ -139,7 +139,7 @@ def test_validate_strategy_fix_required(strategy_tools_mcp, card_tools_mcp, sche
             {
                 "strategy_id": strategy_id,
                 "card_id": entry_card_id,
-                "role": "signal",
+                "role": "entry",
                 "overrides": {
                     "event": {"dip_band": {"mult": 10.0}},  # Max is 5.0
                 },

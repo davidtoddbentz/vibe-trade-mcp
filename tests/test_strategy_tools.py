@@ -158,15 +158,15 @@ def test_update_strategy_meta_invalid_status(strategy_tools_mcp):
 def test_attach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test attaching a card to a strategy."""
     # Setup: create a card and strategy
-    schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    schema_repository.get_by_type_id("entry.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     create_card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -192,7 +192,7 @@ def test_attach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
             {
                 "strategy_id": strategy_id,
                 "card_id": card_id,
-                "role": "signal",
+                "role": "entry",
                 "overrides": {"symbol": "ETH-USD"},
             },
         )
@@ -203,7 +203,7 @@ def test_attach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
     assert response.strategy_id == strategy_id
     assert len(response.attachments) == 1
     assert response.attachments[0]["card_id"] == card_id
-    assert response.attachments[0]["role"] == "signal"
+    assert response.attachments[0]["role"] == "entry"
     assert response.attachments[0]["overrides"] == {"symbol": "ETH-USD"}
     assert response.attachments[0]["order"] == 1
     assert response.version == 2  # Version should increment
@@ -212,15 +212,15 @@ def test_attach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
 def test_attach_card_invalid_role(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test attaching a card with invalid role fails."""
     # Setup: create a card and strategy
-    schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    schema_repository.get_by_type_id("entry.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     create_card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -283,7 +283,7 @@ def test_attach_card_card_not_found(strategy_tools_mcp):
                 {
                     "strategy_id": strategy_id,
                     "card_id": "nonexistent-card-id",
-                    "role": "signal",
+                    "role": "entry",
                 },
             )
         )
@@ -297,15 +297,15 @@ def test_attach_card_card_not_found(strategy_tools_mcp):
 def test_attach_card_duplicate(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test attaching the same card twice fails."""
     # Setup: create a card and strategy
-    schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    schema_repository.get_by_type_id("entry.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     create_card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -331,7 +331,7 @@ def test_attach_card_duplicate(strategy_tools_mcp, card_tools_mcp, schema_reposi
             {
                 "strategy_id": strategy_id,
                 "card_id": card_id,
-                "role": "signal",
+                "role": "entry",
             },
         )
     )
@@ -345,7 +345,7 @@ def test_attach_card_duplicate(strategy_tools_mcp, card_tools_mcp, schema_reposi
                 {
                     "strategy_id": strategy_id,
                     "card_id": card_id,
-                    "role": "signal",
+                    "role": "entry",
                 },
             )
         )
@@ -357,15 +357,15 @@ def test_attach_card_duplicate(strategy_tools_mcp, card_tools_mcp, schema_reposi
 def test_detach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test detaching a card from a strategy."""
     # Setup: create a card and strategy, then attach
-    schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    schema_repository.get_by_type_id("entry.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     create_card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -391,7 +391,7 @@ def test_detach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
             {
                 "strategy_id": strategy_id,
                 "card_id": card_id,
-                "role": "signal",
+                "role": "entry",
             },
         )
     )
@@ -486,15 +486,15 @@ def test_list_strategies(strategy_tools_mcp):
 def test_attach_card_auto_order(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test that attach_card auto-assigns order when not provided."""
     # Setup: create multiple cards and a strategy
-    schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    schema_repository.get_by_type_id("entry.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     card1_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -506,7 +506,7 @@ def test_attach_card_auto_order(strategy_tools_mcp, card_tools_mcp, schema_repos
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -532,7 +532,7 @@ def test_attach_card_auto_order(strategy_tools_mcp, card_tools_mcp, schema_repos
             {
                 "strategy_id": strategy_id,
                 "card_id": card1_id,
-                "role": "signal",
+                "role": "entry",
             },
         )
     )
@@ -560,15 +560,15 @@ def test_attach_card_auto_order(strategy_tools_mcp, card_tools_mcp, schema_repos
 def test_attach_card_follow_latest(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test attach_card with follow_latest flag."""
     # Setup: create a card and strategy
-    schema_repository.get_by_type_id("signal.trend_pullback")
-    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    schema_repository.get_by_type_id("entry.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     create_card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -594,7 +594,7 @@ def test_attach_card_follow_latest(strategy_tools_mcp, card_tools_mcp, schema_re
             {
                 "strategy_id": strategy_id,
                 "card_id": card_id,
-                "role": "signal",
+                "role": "entry",
                 "follow_latest": True,
             },
         )
@@ -609,7 +609,7 @@ def test_attach_card_follow_latest(strategy_tools_mcp, card_tools_mcp, schema_re
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -649,16 +649,16 @@ def test_compile_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repos
     strategy_id = strategy_result["strategy_id"]
 
     # Create entry card
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
-    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     entry_card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -690,7 +690,7 @@ def test_compile_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repos
             {
                 "strategy_id": strategy_id,
                 "card_id": entry_card_id,
-                "role": "signal",
+                "role": "entry",
             },
         )
     )
@@ -730,10 +730,10 @@ def test_compile_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repos
     assert response.validation_summary["cards_validated"] == 2
 
     # Verify compiled cards
-    signal_card = next(c for c in response.compiled.cards if c.role == "signal")
-    assert signal_card.card_id == entry_card_id
-    assert signal_card.type == "signal.trend_pullback"
-    assert "context" in signal_card.effective_slots
+    entry_card = next(c for c in response.compiled.cards if c.role == "entry")
+    assert entry_card.card_id == entry_card_id
+    assert entry_card.type == "entry.trend_pullback"
+    assert "context" in entry_card.effective_slots
 
     exit_card = next(c for c in response.compiled.cards if c.role == "exit")
     assert exit_card.card_id == exit_card_id
@@ -796,16 +796,16 @@ def test_compile_strategy_no_exits(strategy_tools_mcp, card_tools_mcp, schema_re
     )
     strategy_id = strategy_result["strategy_id"]
 
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
-    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -819,7 +819,7 @@ def test_compile_strategy_no_exits(strategy_tools_mcp, card_tools_mcp, schema_re
             {
                 "strategy_id": strategy_id,
                 "card_id": card_id,
-                "role": "signal",
+                "role": "entry",
             },
         )
     )
@@ -879,16 +879,16 @@ def test_compile_strategy_with_overrides(strategy_tools_mcp, card_tools_mcp, sch
     )
     strategy_id = strategy_result["strategy_id"]
 
-    schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
-    example_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
@@ -903,7 +903,7 @@ def test_compile_strategy_with_overrides(strategy_tools_mcp, card_tools_mcp, sch
             {
                 "strategy_id": strategy_id,
                 "card_id": card_id,
-                "role": "signal",
+                "role": "entry",
                 "overrides": {
                     "context": {
                         "symbol": "ETH-USD",  # Override symbol
@@ -929,9 +929,9 @@ def test_compile_strategy_with_overrides(strategy_tools_mcp, card_tools_mcp, sch
     response = CompileStrategyResponse(**result)
     assert response.status_hint == "ready"
     assert response.compiled is not None
-    signal_card = response.compiled.cards[0]
-    assert signal_card.effective_slots["context"]["symbol"] == "ETH-USD"
-    assert signal_card.effective_slots["context"]["tf"] == "4h"
+    entry_card = response.compiled.cards[0]
+    assert entry_card.effective_slots["context"]["symbol"] == "ETH-USD"
+    assert entry_card.effective_slots["context"]["tf"] == "4h"
 
 
 def test_compile_strategy_invalid_override_range(
@@ -952,15 +952,15 @@ def test_compile_strategy_invalid_override_range(
     strategy_id = strategy_result["strategy_id"]
 
     # Create valid entry card
-    entry_schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    entry_schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert entry_schema is not None
-    entry_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    entry_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
     entry_card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": entry_slots,
             },
         )
@@ -975,7 +975,7 @@ def test_compile_strategy_invalid_override_range(
             {
                 "strategy_id": strategy_id,
                 "card_id": entry_card_id,
-                "role": "signal",
+                "role": "entry",
                 "overrides": {
                     "event": {"dip_band": {"mult": 10.0}},  # Max is 5.0
                 },
@@ -1021,15 +1021,15 @@ def test_compile_strategy_invalid_override_required_field(
     strategy_id = strategy_result["strategy_id"]
 
     # Create valid entry card
-    entry_schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    entry_schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert entry_schema is not None
-    entry_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    entry_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
     entry_card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": entry_slots,
             },
         )
@@ -1045,7 +1045,7 @@ def test_compile_strategy_invalid_override_required_field(
             {
                 "strategy_id": strategy_id,
                 "card_id": entry_card_id,
-                "role": "signal",
+                "role": "entry",
                 "overrides": {
                     "context": {"tf": None},  # Try to remove tf by setting to None
                 },
@@ -1091,15 +1091,15 @@ def test_compile_strategy_invalid_override_additional_property(
     strategy_id = strategy_result["strategy_id"]
 
     # Create valid entry card
-    entry_schema = schema_repository.get_by_type_id("signal.trend_pullback")
+    entry_schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert entry_schema is not None
-    entry_slots = get_valid_slots_for_archetype(schema_repository, "signal.trend_pullback")
+    entry_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
     entry_card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "signal.trend_pullback",
+                "type": "entry.trend_pullback",
                 "slots": entry_slots,
             },
         )
@@ -1114,7 +1114,7 @@ def test_compile_strategy_invalid_override_additional_property(
             {
                 "strategy_id": strategy_id,
                 "card_id": entry_card_id,
-                "role": "signal",
+                "role": "entry",
                 "overrides": {
                     "invalid_property": "should_not_be_allowed",
                 },

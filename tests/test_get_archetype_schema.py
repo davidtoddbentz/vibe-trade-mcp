@@ -17,13 +17,13 @@ def test_get_archetype_schema_returns_schema(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"type": "signal.trend_pullback"},
+            {"type": "entry.trend_pullback"},
         )
     )
 
     # Assert: verify response structure and content
     response = GetArchetypeSchemaResponse(**result)
-    assert response.type_id == "signal.trend_pullback"
+    assert response.type_id == "entry.trend_pullback"
     assert response.schema_version == 1
     assert response.etag is not None
     assert response.json_schema is not None
@@ -49,7 +49,7 @@ def test_get_archetype_schema_with_etag(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"type": "signal.trend_pullback"},
+            {"type": "entry.trend_pullback"},
         )
     )
     response1 = GetArchetypeSchemaResponse(**result1)
@@ -60,14 +60,14 @@ def test_get_archetype_schema_with_etag(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"type": "signal.trend_pullback", "if_none_match": etag},
+            {"type": "entry.trend_pullback", "if_none_match": etag},
         )
     )
 
     # Assert: should still return the schema (MCP doesn't support 304)
     response2 = GetArchetypeSchemaResponse(**result2)
     assert response2.etag == etag
-    assert response2.type_id == "signal.trend_pullback"
+    assert response2.type_id == "entry.trend_pullback"
 
 
 def test_get_archetype_schema_not_found(trading_tools_mcp):
@@ -80,7 +80,7 @@ def test_get_archetype_schema_not_found(trading_tools_mcp):
             call_tool(
                 trading_tools_mcp,
                 "get_archetype_schema",
-                {"type": "signal.nonexistent"},
+                {"type": "entry.nonexistent"},
             )
         )
     # Verify structured error
@@ -99,7 +99,7 @@ def test_get_archetype_schema_response_structure(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"type": "signal.trend_pullback"},
+            {"type": "entry.trend_pullback"},
         )
     )
 
@@ -134,7 +134,7 @@ def test_get_archetype_schema_constraints(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"type": "signal.trend_pullback"},
+            {"type": "entry.trend_pullback"},
         )
     )
 
@@ -155,7 +155,7 @@ def test_get_archetype_schema_examples(trading_tools_mcp):
         call_tool(
             trading_tools_mcp,
             "get_archetype_schema",
-            {"type": "signal.trend_pullback"},
+            {"type": "entry.trend_pullback"},
         )
     )
 

@@ -698,7 +698,7 @@
           "type": "array",
           "items": {
             "enum": [
-              "signal",
+              "entry",
               "gate",
               "exit",
               "sizing",
@@ -749,7 +749,7 @@
           "type": "array",
           "items": {
             "enum": [
-              "signal",
+              "entry",
               "gate",
               "exit",
               "sizing",

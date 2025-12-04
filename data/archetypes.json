@@ -1,11 +1,11 @@
 {
   "archetypes": [
     {
-      "id": "signal.trend_pullback",
+      "id": "entry.trend_pullback",
       "version": 1,
       "title": "Trend Pullback",
       "summary": "Enter with trend on dips/rallies gated by MA relation or ADX.",
-      "kind": "signal",
+      "kind": "entry",
       "tags": [
         "spot",
         "trend",
@@ -20,7 +20,7 @@
         "action",
         "risk"
       ],
-      "schema_etag": "W/\"v2.signal.trend_pullback\"",
+      "schema_etag": "W/\"v2.entry.trend_pullback\"",
       "deprecated": false,
       "hints": {
         "preferred_tfs": [
@@ -31,11 +31,11 @@
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
-      "id": "signal.range_mean_reversion",
+      "id": "entry.range_mean_reversion",
       "version": 1,
       "title": "Range Mean-Reversion",
       "summary": "Fade extremes back toward the mean within a range regime.",
-      "kind": "signal",
+      "kind": "entry",
       "tags": [
         "spot",
         "range",
@@ -50,7 +50,7 @@
         "action",
         "risk"
       ],
-      "schema_etag": "W/\"v2.signal.range_mean_reversion\"",
+      "schema_etag": "W/\"v2.entry.range_mean_reversion\"",
       "deprecated": false,
       "hints": {
         "preferred_tfs": [
@@ -61,11 +61,11 @@
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
-      "id": "signal.breakout_trendfollow",
+      "id": "entry.breakout_trendfollow",
       "version": 1,
       "title": "Breakout Trend-Follow",
       "summary": "Enter on N-bar breakouts with optional buffer/confirm; with-trend bias.",
-      "kind": "signal",
+      "kind": "entry",
       "tags": [
         "spot",
         "breakout",
@@ -80,7 +80,7 @@
         "action",
         "risk"
       ],
-      "schema_etag": "W/\"v2.signal.breakout_trendfollow\"",
+      "schema_etag": "W/\"v2.entry.breakout_trendfollow\"",
       "deprecated": false,
       "hints": {
         "preferred_tfs": [
@@ -91,11 +91,11 @@
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
-      "id": "signal.breakout_retest",
+      "id": "entry.breakout_retest",
       "version": 1,
       "title": "Breakout Retest",
       "summary": "After a breakout, enter on retest pullback and continuation.",
-      "kind": "signal",
+      "kind": "entry",
       "tags": [
         "spot",
         "breakout",
@@ -110,7 +110,7 @@
         "action",
         "risk"
       ],
-      "schema_etag": "W/\"v2.signal.breakout_retest\"",
+      "schema_etag": "W/\"v2.entry.breakout_retest\"",
       "deprecated": false,
       "hints": {
         "preferred_tfs": [
@@ -121,11 +121,11 @@
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
-      "id": "signal.squeeze_expansion",
+      "id": "entry.squeeze_expansion",
       "version": 1,
       "title": "Squeeze \u2192 Expansion",
       "summary": "Detect volatility compression then enter on expansion with breakout rule.",
-      "kind": "signal",
+      "kind": "entry",
       "tags": [
         "spot",
         "volatility",
@@ -141,7 +141,7 @@
         "action",
         "risk"
       ],
-      "schema_etag": "W/\"v2.signal.squeeze_expansion\"",
+      "schema_etag": "W/\"v2.entry.squeeze_expansion\"",
       "deprecated": false,
       "hints": {
         "preferred_tfs": [
@@ -152,11 +152,11 @@
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
-      "id": "signal.xs_momentum",
+      "id": "entry.xs_momentum",
       "version": 1,
       "title": "Cross-Sectional Momentum",
       "summary": "Periodic rebalance into strongest names by a rank feature.",
-      "kind": "signal",
+      "kind": "entry",
       "tags": [
         "spot",
         "portfolio",
@@ -171,7 +171,7 @@
         "action",
         "risk"
       ],
-      "schema_etag": "W/\"v2.signal.xs_momentum\"",
+      "schema_etag": "W/\"v2.entry.xs_momentum\"",
       "deprecated": false,
       "hints": {
         "preferred_tfs": []
@@ -179,11 +179,11 @@
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
-      "id": "signal.pairs_relative_value",
+      "id": "entry.pairs_relative_value",
       "version": 1,
       "title": "Pairs / Relative-Value",
       "summary": "Trade spread between A and B using z-score triggers.",
-      "kind": "signal",
+      "kind": "entry",
       "tags": [
         "spot",
         "pairs",
@@ -198,7 +198,7 @@
         "action",
         "risk"
       ],
-      "schema_etag": "W/\"v2.signal.pairs_relative_value\"",
+      "schema_etag": "W/\"v2.entry.pairs_relative_value\"",
       "deprecated": false,
       "hints": {
         "preferred_tfs": []
@@ -206,11 +206,11 @@
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
-      "id": "signal.intermarket_trigger",
+      "id": "entry.intermarket_trigger",
       "version": 1,
       "title": "Intermarket Trigger (Leader\u2192Follower)",
       "summary": "Trade follower when leader moves per trigger within a window.",
-      "kind": "signal",
+      "kind": "entry",
       "tags": [
         "spot",
         "intermarket",
@@ -225,7 +225,7 @@
         "action",
         "risk"
       ],
-      "schema_etag": "W/\"v2.signal.intermarket_trigger\"",
+      "schema_etag": "W/\"v2.entry.intermarket_trigger\"",
       "deprecated": false,
       "hints": {
         "preferred_tfs": []
@@ -233,11 +233,11 @@
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
-      "id": "signal.avwap_reversion",
+      "id": "entry.avwap_reversion",
       "version": 1,
       "title": "Anchored VWAP Reversion",
       "summary": "Trade toward anchored VWAP when distance exceeds sigma threshold.",
-      "kind": "signal",
+      "kind": "entry",
       "tags": [
         "spot",
         "vwap",
@@ -252,7 +252,7 @@
         "action",
         "risk"
       ],
-      "schema_etag": "W/\"v2.signal.avwap_reversion\"",
+      "schema_etag": "W/\"v2.entry.avwap_reversion\"",
       "deprecated": false,
       "hints": {
         "preferred_tfs": [
@@ -263,11 +263,11 @@
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
-      "id": "signal.event_followthrough",
+      "id": "entry.event_followthrough",
       "version": 1,
       "title": "Event / Catalyst Follow-Through",
       "summary": "Enter after a discrete catalyst within an entry window and strength filter.",
-      "kind": "signal",
+      "kind": "entry",
       "tags": [
         "spot",
         "event",
@@ -282,7 +282,7 @@
         "action",
         "risk"
       ],
-      "schema_etag": "W/\"v2.signal.event_followthrough\"",
+      "schema_etag": "W/\"v2.entry.event_followthrough\"",
       "deprecated": false,
       "hints": {
         "preferred_tfs": []
@@ -290,11 +290,11 @@
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
-      "id": "signal.gap_play",
+      "id": "entry.gap_play",
       "version": 1,
       "title": "Gap Play (Open)",
       "summary": "Trade session gap: gap-fade or gap-and-go with session gate.",
-      "kind": "signal",
+      "kind": "entry",
       "tags": [
         "spot",
         "session",
@@ -309,91 +309,12 @@
         "action",
         "risk"
       ],
-      "schema_etag": "W/\"v2.signal.gap_play\"",
+      "schema_etag": "W/\"v2.entry.gap_play\"",
       "deprecated": false,
       "hints": {
         "preferred_tfs": []
       },
       "updated_at": "2025-12-02T17:58:21Z"
-    },
-    {
-      "id": "gate.regime",
-      "version": 1,
-      "title": "Regime Gate",
-      "summary": "Allow or block downstream cards when regime metrics align (trend, vol, factors).",
-      "kind": "gate",
-      "tags": [
-        "regime",
-        "trend",
-        "volatility",
-        "macro"
-      ],
-      "required_slots": [
-        "context",
-        "event",
-        "action"
-      ],
-      "schema_etag": "W/\"v1.gate.regime\"",
-      "deprecated": false,
-      "hints": {
-        "preferred_tfs": [
-          "1h",
-          "4h"
-        ]
-      },
-      "updated_at": "2025-12-04T00:00:00Z"
-    },
-    {
-      "id": "gate.event_risk_window",
-      "version": 1,
-      "title": "Event Risk Window Gate",
-      "summary": "Block entries/exits for a configurable pre/post window around catalysts or macro events.",
-      "kind": "gate",
-      "tags": [
-        "event",
-        "risk",
-        "session"
-      ],
-      "required_slots": [
-        "context",
-        "event",
-        "action"
-      ],
-      "schema_etag": "W/\"v1.gate.event_risk_window\"",
-      "deprecated": false,
-      "hints": {
-        "preferred_tfs": [
-          "15m",
-          "1h"
-        ]
-      },
-      "updated_at": "2025-12-04T00:00:00Z"
-    },
-    {
-      "id": "overlay.regime_scaler",
-      "version": 1,
-      "title": "Regime Overlay Scaler",
-      "summary": "Scale risk or size of downstream cards based on regime state.",
-      "kind": "overlay",
-      "tags": [
-        "regime",
-        "overlay",
-        "risk"
-      ],
-      "required_slots": [
-        "context",
-        "event",
-        "action"
-      ],
-      "schema_etag": "W/\"v1.overlay.regime_scaler\"",
-      "deprecated": false,
-      "hints": {
-        "preferred_tfs": [
-          "1h",
-          "4h"
-        ]
-      },
-      "updated_at": "2025-12-04T00:00:00Z"
     }
   ]
 }

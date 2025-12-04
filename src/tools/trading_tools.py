@@ -20,7 +20,7 @@ class ArchetypeInfo(BaseModel):
     version: int = Field(..., description="Archetype version number")
     title: str = Field(..., description="Human-readable title")
     summary: str = Field(..., description="Brief description")
-    kind: str = Field(..., description="Archetype kind (e.g., 'signal', 'gate')")
+    kind: str = Field(..., description="Archetype kind (e.g., 'entry', 'gate')")
     tags: list[str] = Field(default_factory=list, description="Tags for categorization")
     required_slots: list[str] = Field(..., description="List of required slot names")
     schema_etag: str = Field(..., description="Weak ETag for schema caching")
@@ -87,13 +87,26 @@ def register_trading_tools(
     """
 
     @mcp.tool()
-    def get_archetypes() -> GetArchetypesResponse:
+    def get_archetypes(
+        kind: str | None = Field(
+            None,
+            description="Optional filter by archetype kind. Valid values: 'entry', 'exit', 'gate', 'overlay'. If not provided, returns all archetypes.",
+        ),
+    ) -> GetArchetypesResponse:
         """
         Fetch the catalog of available trading strategy archetypes.
 
         This lightweight catalog allows an agent to choose an archetype for building
-        trading strategies. Each archetype represents a type of trading signal, risk
-        management rule, or execution strategy.
+        trading strategies. There are 4 types of archetypes:
+        - entry: Entry signals for opening positions (e.g., trend pullback, breakout)
+        - exit: Exit rules for closing positions (e.g., take profit, stop loss, trailing stop)
+        - gate: Conditional filters that allow/block other cards (e.g., regime gates, event risk windows)
+        - overlay: Modifiers that scale risk/size of other cards (e.g., regime scalers)
+
+        Args:
+            kind: Optional filter to return only archetypes of a specific kind.
+                  Valid values: 'entry', 'exit', 'gate', 'overlay'.
+                  If not provided, returns all archetypes.
 
         Returns:
             GetArchetypesResponse containing a list of archetypes with metadata
@@ -101,7 +114,20 @@ def register_trading_tools(
         # 1. Fetch domain models from repository (repository handles DB conversion)
         archetypes = archetype_repo.get_non_deprecated()
 
-        # 2. Convert to API response models (only expose what's needed)
+        # 2. Filter by kind if provided
+        if kind is not None:
+            valid_kinds = {"entry", "exit", "gate", "overlay"}
+            if kind not in valid_kinds:
+                from src.tools.errors import ErrorCode, validation_error
+
+                raise validation_error(
+                    error_code=ErrorCode.VALIDATION_ERROR,
+                    message=f"Invalid kind '{kind}'. Valid values are: {', '.join(sorted(valid_kinds))}",
+                    recovery_hint=f"Use get_archetypes() without kind parameter to see all archetypes, or use one of: {', '.join(sorted(valid_kinds))}",
+                )
+            archetypes = [arch for arch in archetypes if arch.kind == kind]
+
+        # 3. Convert to API response models (only expose what's needed)
         archetype_infos = [
             ArchetypeInfo(
                 id=arch.id,
@@ -125,7 +151,7 @@ def register_trading_tools(
 
     @mcp.tool()
     def get_archetype_schema(
-        type: str = Field(..., description="Archetype identifier (e.g., 'signal.trend_pullback')"),
+        type: str = Field(..., description="Archetype identifier (e.g., 'entry.trend_pullback')"),
         if_none_match: str | None = Field(
             None,
             description="Optional ETag for conditional requests. If provided and matches, indicates client already has this version.",
@@ -200,7 +226,7 @@ def register_trading_tools(
 
     @mcp.tool()
     def get_schema_example(
-        type: str = Field(..., description="Archetype identifier (e.g., 'signal.trend_pullback')"),
+        type: str = Field(..., description="Archetype identifier (e.g., 'entry.trend_pullback')"),
         example_index: int = Field(
             0, description="Index of example to return (default: 0 for first example)"
         ),
