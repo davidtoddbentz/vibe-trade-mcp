@@ -212,9 +212,9 @@ def test_get_archetype_schema_resolves_refs(trading_tools_mcp):
 
     # Verify that context property is resolved (should have type/properties, not $ref)
     context_prop = json_schema["properties"]["context"]
-    assert "$ref" not in context_prop or "common_defs.schema.json" not in str(context_prop.get("$ref", "")), (
-        "Context property should be resolved (no external $ref)"
-    )
+    assert "$ref" not in context_prop or "common_defs.schema.json" not in str(
+        context_prop.get("$ref", "")
+    ), "Context property should be resolved (no external $ref)"
 
 
 def test_get_archetype_schema_gate_regime_structure(trading_tools_mcp):
@@ -242,9 +242,13 @@ def test_get_archetype_schema_gate_regime_structure(trading_tools_mcp):
     # Check that action property exists and has been resolved (no $ref)
     action_prop = json_schema["properties"]["action"]
     assert "$ref" not in action_prop, "Action $ref should be resolved"
-    assert "type" in action_prop or "properties" in action_prop, "Action should have resolved schema"
+    assert "type" in action_prop or "properties" in action_prop, (
+        "Action should have resolved schema"
+    )
 
     # Check that regime property exists and has been resolved
     regime_prop = json_schema["properties"]["event"]["properties"]["regime"]
     assert "$ref" not in regime_prop, "Regime $ref should be resolved"
-    assert "type" in regime_prop or "properties" in regime_prop, "Regime should have resolved schema"
+    assert "type" in regime_prop or "properties" in regime_prop, (
+        "Regime should have resolved schema"
+    )

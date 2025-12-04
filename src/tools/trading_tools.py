@@ -152,13 +152,19 @@ def _resolve_schema_references(schema: dict[str, Any]) -> dict[str, Any]:
                             try:
                                 ref_value = item["$ref"]
                                 # Handle relative references
-                                if ref_value.startswith("#") and base_uri and "common_defs" in base_uri:
+                                if (
+                                    ref_value.startswith("#")
+                                    and base_uri
+                                    and "common_defs" in base_uri
+                                ):
                                     full_ref = base_uri.split("#")[0] + ref_value
                                     resolved = resolver.resolve(full_ref)
                                 else:
                                     resolved = resolver.resolve(ref_value)
                                 resolved_uri, resolved_schema = resolved
-                                nested_base = resolved_uri if "common_defs" in resolved_uri else base_uri
+                                nested_base = (
+                                    resolved_uri if "common_defs" in resolved_uri else base_uri
+                                )
                                 resolved_allof.append(resolve_refs(resolved_schema, nested_base))
                             except Exception:
                                 resolved_allof.append(resolve_refs(item, base_uri))
@@ -178,13 +184,19 @@ def _resolve_schema_references(schema: dict[str, Any]) -> dict[str, Any]:
                             try:
                                 ref_value = value
                                 # Handle relative references
-                                if ref_value.startswith("#") and base_uri and "common_defs" in base_uri:
+                                if (
+                                    ref_value.startswith("#")
+                                    and base_uri
+                                    and "common_defs" in base_uri
+                                ):
                                     full_ref = base_uri.split("#")[0] + ref_value
                                     resolved = resolver.resolve(full_ref)
                                 else:
                                     resolved = resolver.resolve(ref_value)
                                 resolved_uri, resolved_schema = resolved
-                                nested_base = resolved_uri if "common_defs" in resolved_uri else base_uri
+                                nested_base = (
+                                    resolved_uri if "common_defs" in resolved_uri else base_uri
+                                )
                                 resolved_schema = resolve_refs(resolved_schema, nested_base)
                                 if isinstance(resolved_schema, dict):
                                     new_obj.update(resolved_schema)
