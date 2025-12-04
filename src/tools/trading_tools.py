@@ -1,7 +1,12 @@
 """Trading strategy tools for MCP server."""
 
+import json
+from copy import deepcopy
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
 
+from jsonschema import RefResolver
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
@@ -73,6 +78,134 @@ class GetSchemaExampleResponse(BaseModel):
     schema_etag: str = Field(
         ..., description="Schema ETag to use when creating card with these slots"
     )
+
+
+def _resolve_schema_references(schema: dict[str, Any]) -> dict[str, Any]:
+    """Resolve all $ref references in a JSON Schema to their actual definitions.
+
+    This function loads common_defs.json and resolves all external references
+    like "common_defs.schema.json#/$defs/ContextSpec" to their actual schema definitions.
+    This makes the schema self-contained and easier for agents to understand.
+
+    Args:
+        schema: JSON Schema dictionary that may contain $ref references
+
+    Returns:
+        A new schema dictionary with all $ref references resolved
+    """
+    # Load common_defs.json to resolve external $ref references
+    project_root = Path(__file__).parent.parent.parent
+    common_defs_path = project_root / "data" / "common_defs.json"
+
+    try:
+        with open(common_defs_path) as f:
+            common_defs = json.load(f)
+    except FileNotFoundError:
+        # If common_defs.json doesn't exist, return schema as-is
+        return deepcopy(schema)
+
+    # Create a resolver that can resolve references to common_defs
+    # Also add common_defs to the store with its $id so internal refs can be resolved
+    store = {"common_defs.schema.json": common_defs}
+    # Create a base schema for the resolver (can be empty, just needs the store)
+    base_schema = {"$id": schema.get("$id", "./schema.json")}
+    resolver = RefResolver.from_schema(base_schema, store=store)
+
+    def resolve_refs(obj: Any, base_uri: str = "") -> Any:
+        """Recursively resolve all $ref references in the schema.
+
+        Args:
+            obj: The object to resolve references in
+            base_uri: Base URI for resolving relative references (used for internal refs)
+        """
+        if isinstance(obj, dict):
+            # If this is a $ref, resolve it
+            if "$ref" in obj and len(obj) == 1:
+                # Pure $ref object - resolve it
+                ref_value = obj["$ref"]
+                try:
+                    # Handle relative references (starting with #)
+                    # If we have a base_uri from common_defs, resolve relative to it
+                    if ref_value.startswith("#") and base_uri and "common_defs" in base_uri:
+                        # Resolve relative to common_defs base URI
+                        full_ref = base_uri.split("#")[0] + ref_value
+                        resolved = resolver.resolve(full_ref)
+                    else:
+                        # External reference or absolute reference
+                        resolved = resolver.resolve(ref_value)
+                    # Resolve any nested references in the resolved value
+                    # Track the URI of the resolved schema for nested refs
+                    resolved_uri, resolved_schema = resolved
+                    # Use the resolved URI as base for nested refs if it's from common_defs
+                    nested_base = resolved_uri if "common_defs" in resolved_uri else base_uri
+                    return resolve_refs(resolved_schema, nested_base)
+                except Exception:
+                    # If resolution fails, return as-is
+                    return obj
+            elif "$ref" in obj:
+                # Object with $ref and other properties (like allOf)
+                # For allOf, we need to handle it specially
+                if "allOf" in obj:
+                    resolved_allof = []
+                    for item in obj["allOf"]:
+                        if isinstance(item, dict) and "$ref" in item:
+                            try:
+                                ref_value = item["$ref"]
+                                # Handle relative references
+                                if ref_value.startswith("#") and base_uri and "common_defs" in base_uri:
+                                    full_ref = base_uri.split("#")[0] + ref_value
+                                    resolved = resolver.resolve(full_ref)
+                                else:
+                                    resolved = resolver.resolve(ref_value)
+                                resolved_uri, resolved_schema = resolved
+                                nested_base = resolved_uri if "common_defs" in resolved_uri else base_uri
+                                resolved_allof.append(resolve_refs(resolved_schema, nested_base))
+                            except Exception:
+                                resolved_allof.append(resolve_refs(item, base_uri))
+                        else:
+                            resolved_allof.append(resolve_refs(item, base_uri))
+                    # Merge allOf items into the parent object
+                    result = {k: v for k, v in obj.items() if k not in ("allOf", "$ref")}
+                    for item in resolved_allof:
+                        if isinstance(item, dict):
+                            result.update(item)
+                    return result
+                else:
+                    # Other $ref cases - try to resolve but keep other properties
+                    new_obj = {}
+                    for key, value in obj.items():
+                        if key == "$ref":
+                            try:
+                                ref_value = value
+                                # Handle relative references
+                                if ref_value.startswith("#") and base_uri and "common_defs" in base_uri:
+                                    full_ref = base_uri.split("#")[0] + ref_value
+                                    resolved = resolver.resolve(full_ref)
+                                else:
+                                    resolved = resolver.resolve(ref_value)
+                                resolved_uri, resolved_schema = resolved
+                                nested_base = resolved_uri if "common_defs" in resolved_uri else base_uri
+                                resolved_schema = resolve_refs(resolved_schema, nested_base)
+                                if isinstance(resolved_schema, dict):
+                                    new_obj.update(resolved_schema)
+                            except Exception:
+                                new_obj[key] = value
+                        else:
+                            new_obj[key] = resolve_refs(value, base_uri)
+                    return new_obj
+            else:
+                # Regular dict - recurse into all values
+                return {key: resolve_refs(value, base_uri) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            # List - recurse into all items
+            return [resolve_refs(item, base_uri) for item in obj]
+        else:
+            # Primitive value - return as-is
+            return obj
+
+    # Create a deep copy to avoid mutating the original
+    resolved_schema = deepcopy(schema)
+    return resolve_refs(resolved_schema)
 
 
 def register_trading_tools(
@@ -214,12 +347,15 @@ def register_trading_tools(
             # For MCP, we still return the schema but the client can check the etag
             pass
 
+        # Resolve all $ref references to make schema self-contained for agents
+        resolved_schema = _resolve_schema_references(schema.json_schema)
+
         # Convert domain model to API response
         return GetArchetypeSchemaResponse(
             type_id=schema.type_id,
             schema_version=schema.schema_version,
             etag=schema.etag,
-            json_schema=schema.json_schema,
+            json_schema=resolved_schema,
             constraints={
                 "min_history_bars": schema.constraints.min_history_bars,
                 "pit_safe": schema.constraints.pit_safe,
