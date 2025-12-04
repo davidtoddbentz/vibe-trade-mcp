@@ -177,4 +177,6 @@ def test_get_archetypes_invalid_kind_raises_error(trading_tools_mcp):
     # Verify the error message contains expected content
     error_msg = str(exc_info.value).lower()
     assert "invalid" in error_msg or "valid values" in error_msg
-    assert "entry" in error_msg or "exit" in error_msg or "gate" in error_msg or "overlay" in error_msg
+    assert (
+        "entry" in error_msg or "exit" in error_msg or "gate" in error_msg or "overlay" in error_msg
+    )
