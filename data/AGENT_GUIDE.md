@@ -19,6 +19,16 @@ The recommended workflow for creating a trading strategy is:
 
 Each tool's "Recommended workflow" section references this canonical workflow. Most strategies only need steps 1-5 (entries and exits). Gates and overlays are optional additions.
 
+## Where does risk live?
+
+**Entries define signals and direction. Exits and overlays define risk. Entry.risk is optional override.**
+
+- **Entry cards**: Define when to open a position and in which direction. Entry cards can optionally include a `risk` block to override default risk settings (e.g., wider stops for breakouts), but this is not required.
+- **Exit cards**: Define when to close positions and **require** a `risk` block for exits that need thresholds (take profit, stop loss, time stops). Risk thresholds (tp_pct, sl_atr, tp_rr, etc.) are configured in the exit card's `risk` block.
+- **Overlay cards**: Modify position sizing/risk dynamically based on conditions (e.g., reduce size in high volatility).
+
+By default, risk (stops, take profits, time stops) is configured in exit cards. Entry cards can optionally override risk parameters, but they don't have to – you can keep entries "signal-only".
+
 ## Archetype Types Overview
 
 There are **4 types of archetypes**, each serving a specific purpose in trading strategies:
@@ -238,6 +248,184 @@ Cards execute in a fixed order based on their role (you don't need to specify th
 4. **Overlays** - Modify position sizing/risk (execute last)
 
 Execution order is automatically determined by role - gates always execute before entries/exits, and overlays always execute after the cards they modify.
+
+## Full Strategy Document Example
+
+Here's a complete strategy document showing how cards are composed with target roles/ids:
+
+```json
+{
+  "id": "strategy_123",
+  "name": "Trend Pullback with Regime Filter",
+  "universe": ["BTC-USD", "ETH-USD"],
+  "status": "ready",
+  "attachments": [
+    {
+      "card_id": "gate_card_1",
+      "role": "gate",
+      "enabled": true,
+      "follow_latest": false
+    },
+    {
+      "card_id": "entry_card_1",
+      "role": "entry",
+      "enabled": true,
+      "follow_latest": false
+    },
+    {
+      "card_id": "exit_card_1",
+      "role": "exit",
+      "enabled": true,
+      "follow_latest": false
+    },
+    {
+      "card_id": "exit_card_2",
+      "role": "exit",
+      "enabled": true,
+      "follow_latest": false
+    },
+    {
+      "card_id": "overlay_card_1",
+      "role": "overlay",
+      "enabled": true,
+      "follow_latest": false
+    }
+  ]
+}
+```
+
+**Gate card** (`gate_card_1`):
+```json
+{
+  "type": "gate.regime",
+  "slots": {
+    "context": { "tf": "1h", "symbol": "BTC-USD" },
+    "event": {
+      "regime": {
+        "metric": "trend_ma_relation",
+        "tf": "1h",
+        "op": ">",
+        "value": 0.0,
+        "ma_fast": 20,
+        "ma_slow": 50
+      }
+    },
+    "action": {
+      "mode": "allow",
+      "target_roles": ["entry"]
+    }
+  }
+}
+```
+
+**Entry card** (`entry_card_1`):
+```json
+{
+  "type": "entry.trend_pullback",
+  "slots": {
+    "context": { "tf": "1h", "symbol": "BTC-USD" },
+    "event": {
+      "dip": {
+        "kind": "distance",
+        "mode": "band_mult",
+        "side": "away_lower",
+        "thresh": 1.5
+      },
+      "dip_band": {
+        "band": "bollinger",
+        "length": 24,
+        "mult": 2.0
+      },
+      "trend_gate": {
+        "fast": 20,
+        "slow": 50,
+        "op": ">"
+      }
+    },
+    "action": {
+      "direction": "long",
+      "confirm": "close_confirm"
+    }
+  }
+}
+```
+
+**Exit card 1** (`exit_card_1` - Take Profit):
+```json
+{
+  "type": "exit.take_profit_stop",
+  "slots": {
+    "context": { "tf": "1h", "symbol": "BTC-USD" },
+    "event": {
+      "tp_sl": {
+        "tp_enabled": true,
+        "sl_enabled": false
+      }
+    },
+    "action": {
+      "mode": "close"
+    },
+    "risk": {
+      "tp_rr": 2.0
+    }
+  }
+}
+```
+
+**Exit card 2** (`exit_card_2` - Stop Loss):
+```json
+{
+  "type": "exit.take_profit_stop",
+  "slots": {
+    "context": { "tf": "1h", "symbol": "BTC-USD" },
+    "event": {
+      "tp_sl": {
+        "tp_enabled": false,
+        "sl_enabled": true
+      }
+    },
+    "action": {
+      "mode": "close"
+    },
+    "risk": {
+      "sl_atr": 1.5
+    }
+  }
+}
+```
+
+**Overlay card** (`overlay_card_1`):
+```json
+{
+  "type": "overlay.regime_scaler",
+  "slots": {
+    "context": { "tf": "1h", "symbol": "BTC-USD" },
+    "event": {
+      "regime": {
+        "metric": "vol_bb_width_pctile",
+        "tf": "1h",
+        "op": ">",
+        "value": 80,
+        "lookback_bars": 200
+      }
+    },
+    "action": {
+      "target_roles": ["entry"],
+      "scale_risk_frac": 0.5,
+      "scale_size_frac": 0.5
+    }
+  }
+}
+```
+
+**Composition notes**:
+- The gate (`gate_card_1`) guards entries via `action.target_roles: ["entry"]`
+- The entry (`entry_card_1`) defines the signal (trend pullback)
+- Exit 1 (`exit_card_1`) takes profit at 2R (risk-reward ratio)
+- Exit 2 (`exit_card_2`) stops loss at 1.5 ATR
+- The overlay (`overlay_card_1`) reduces position size by 50% when volatility is high, targeting entries via `action.target_roles: ["entry"]`
+
+Execution order is automatic: gate → entry → exits → overlay.
 
 ## Common Patterns
 

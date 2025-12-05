@@ -26,7 +26,8 @@
         "preferred_tfs": [
           "1h",
           "4h"
-        ]
+        ],
+        "notes": "Risk is configured in the card's risk block; see schema."
       },
       "updated_at": "2025-12-02T17:58:21Z"
     },
@@ -56,7 +57,8 @@
         "preferred_tfs": [
           "1h",
           "4h"
-        ]
+        ],
+        "notes": "Risk is configured in the card's risk block; see schema."
       },
       "updated_at": "2025-12-02T17:58:21Z"
     },
@@ -116,7 +118,8 @@
         "preferred_tfs": [
           "1h",
           "4h"
-        ]
+        ],
+        "notes": "Risk is configured in the card's risk block; see schema."
       },
       "updated_at": "2025-12-02T17:58:21Z"
     },
@@ -146,7 +149,8 @@
         "preferred_tfs": [
           "1h",
           "4h"
-        ]
+        ],
+        "notes": "Risk is configured in the card's risk block; see schema."
       },
       "updated_at": "2025-12-02T17:58:21Z"
     },
@@ -176,7 +180,8 @@
         "preferred_tfs": [
           "1h",
           "4h"
-        ]
+        ],
+        "notes": "Risk is configured in the card's risk block; see schema."
       },
       "updated_at": "2025-12-04T00:00:00Z"
     },
@@ -236,7 +241,8 @@
         "preferred_tfs": [
           "1h",
           "4h"
-        ]
+        ],
+        "notes": "Risk is configured in the card's risk block; see schema."
       },
       "updated_at": "2025-12-04T00:00:00Z"
     }
