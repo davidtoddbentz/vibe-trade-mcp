@@ -150,7 +150,7 @@
           "1h",
           "4h"
         ],
-        "notes": "Trailing stop uses ATR-based band that moves with price. Engine updates the band position as price moves favorably."
+        "notes": "Trailing stop uses ATR-based band that moves with price. Engine updates the band position as price moves favorably. IMPORTANT: event.trail_band.length is in BARS, not days. Effective lookback = tf × length. Examples: 20 bars × 1h ≈ 20 hours, 24 bars × 1h ≈ 1 day. event.trail_band.mult: values >2 are rare, >2.5 are very rare."
       },
       "examples": [
         {
@@ -330,7 +330,7 @@
           "1h",
           "4h"
         ],
-        "notes": "Common use: exit long when price touches upper band (mean reversion), or exit short when price touches lower band."
+        "notes": "Common use: exit long when price touches upper band (mean reversion), or exit short when price touches lower band. IMPORTANT: event.exit_band.length is in BARS, not days. Effective lookback = tf × length. Examples: 20 bars × 1h ≈ 20 hours, 24 bars × 1h ≈ 1 day, 720 bars × 1h ≈ 30 days. event.exit_band.mult: values >2 are rare, >2.5 are very rare, >3 are extreme/dramatic."
       },
       "examples": [
         {

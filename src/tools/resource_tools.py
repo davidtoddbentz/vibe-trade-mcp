@@ -6,6 +6,7 @@ without needing to call tools first.
 """
 
 import json
+from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
@@ -77,6 +78,23 @@ def register_archetype_resources(
             return read_schemas_resource
 
         make_schemas_handler(kind)
+
+    # Register AGENT_GUIDE.md as a resource
+    @mcp.resource(
+        uri="agent-guide://readme",
+        name="Agent Guide",
+        description="Comprehensive guide for AI agents on using trading strategy archetypes (entries, exits, gates, overlays) with usage patterns and examples",
+        mime_type="text/markdown",
+    )
+    def read_agent_guide() -> str:
+        """Read AGENT_GUIDE.md resource."""
+        project_root = Path(__file__).parent.parent.parent
+        guide_path = project_root / "AGENT_GUIDE.md"
+        try:
+            with open(guide_path) as f:
+                return f.read()
+        except FileNotFoundError:
+            return "# Agent Guide\n\nGuide not found. Please check the repository."
 
 
 def _get_archetypes_json(repo: ArchetypeRepository, kind: str) -> str:

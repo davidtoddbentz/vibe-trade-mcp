@@ -31,7 +31,7 @@
       "id": "gate.event_risk_window",
       "version": 1,
       "title": "Event Risk Window Gate",
-      "summary": "Block entries/exits for a configurable pre/post window around catalysts or macro events.",
+      "summary": "Block or allow cards within a pre/post window around catalysts or macro events. Can also restrict to specific days of the week (e.g., Sunday-only, block Saturday/Monday). Use for day-of-week filtering like 'only trade on Sundays' or 'block trading on Mondays'.",
       "kind": "gate",
       "tags": [
         "event",

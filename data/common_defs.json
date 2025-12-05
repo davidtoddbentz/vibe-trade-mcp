@@ -33,6 +33,7 @@
     },
     "BandSpec": {
       "type": "object",
+      "description": "Band specification for technical indicators. IMPORTANT: 'length' is in BARS, not days. Effective lookback horizon = tf × length (e.g., 720 bars × 1h ≈ 30 days, 24 bars × 1h ≈ 1 day). When user says '150 days', convert to bars based on timeframe: 150 days on 1h = 150 × 24 = 3600 bars.",
       "properties": {
         "band": {
           "$ref": "#/$defs/BandKind"
@@ -40,12 +41,14 @@
         "length": {
           "type": "integer",
           "minimum": 5,
-          "maximum": 400
+          "maximum": 400,
+          "description": "Number of BARS for the lookback window (NOT days). Effective horizon = tf × length. Examples: 24 bars × 1h ≈ 1 day, 720 bars × 1h ≈ 30 days, 150 bars × 1h ≈ 6.25 days. To convert user's 'days' to bars: days × (bars_per_day for tf). For 1h: 1 day = 24 bars, 30 days = 720 bars, 150 days = 3600 bars."
         },
         "mult": {
           "type": "number",
           "minimum": 0.1,
-          "maximum": 5.0
+          "maximum": 5.0,
+          "description": "Standard deviation multiplier for band width. Values >2 are rare events, >2.5 are very rare, >3 are extreme/dramatic outliers."
         }
       },
       "required": [
