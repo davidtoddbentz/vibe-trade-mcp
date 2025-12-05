@@ -42,8 +42,6 @@ def register_archetype_resources(
     """
     # Register archetype catalog resources
     for kind in ["entry", "exit", "gate", "overlay", "all"]:
-        uri = f"archetypes://{kind}"
-        
         # Register read handler for this resource (capture kind in closure)
         # Using @mcp.resource decorator which handles Resource creation correctly
         def make_archetypes_handler(k: str):
@@ -57,13 +55,11 @@ def register_archetype_resources(
                 """Read archetype catalog resource."""
                 return _get_archetypes_json(archetype_repo, k)
             return read_archetypes_resource
-        
+
         make_archetypes_handler(kind)
-    
+
     # Register schema resources
     for kind in ["entry", "exit", "gate", "overlay", "all"]:
-        uri = f"archetype-schemas://{kind}"
-        
         # Register read handler for this resource (capture kind in closure)
         # Using @mcp.resource decorator which handles Resource creation correctly
         def make_schemas_handler(k: str):
@@ -77,7 +73,7 @@ def register_archetype_resources(
                 """Read archetype schema resource."""
                 return _get_schemas_json(schema_repo, k)
             return read_schemas_resource
-        
+
         make_schemas_handler(kind)
 
 
@@ -108,27 +104,27 @@ def _get_archetypes_json(repo: ArchetypeRepository, kind: str) -> str:
 
 def _schema_to_dict(schema: Any, resolve_refs: bool = True) -> dict[str, Any]:
     """Convert an ArchetypeSchema model to a dictionary.
-    
+
     This is shared logic used by both get_archetype_schema tool and resource handlers.
     Optionally resolves $ref references to make schemas self-contained for agents.
-    
+
     Args:
         schema: ArchetypeSchema domain model
         resolve_refs: If True, resolve $ref references in json_schema (default: True)
-    
+
     Returns:
         Dictionary representation of the schema, matching the original JSON structure
     """
     schema_dict = schema.model_dump()
-    
+
     # Extract kind from type_id and add it to match original JSON structure
     schema_kind = schema.type_id.split(".", 1)[0]
     schema_dict["kind"] = schema_kind
-    
+
     # Resolve $ref references if requested (makes schema self-contained for agents)
     if resolve_refs:
         schema_dict["json_schema"] = _resolve_schema_references(schema.json_schema)
-    
+
     return schema_dict
 
 
