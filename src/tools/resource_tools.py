@@ -54,6 +54,7 @@ def register_archetype_resources(
             def read_archetypes_resource() -> str:
                 """Read archetype catalog resource."""
                 return _get_archetypes_json(archetype_repo, k)
+
             return read_archetypes_resource
 
         make_archetypes_handler(kind)
@@ -72,6 +73,7 @@ def register_archetype_resources(
             def read_schemas_resource() -> str:
                 """Read archetype schema resource."""
                 return _get_schemas_json(schema_repo, k)
+
             return read_schemas_resource
 
         make_schemas_handler(kind)
@@ -148,15 +150,10 @@ def _get_schemas_json(repo: ArchetypeSchemaRepository, kind: str) -> str:
     if kind == "all":
         schemas = all_schemas
     else:
-        schemas = [
-            schema
-            for schema in all_schemas
-            if schema.type_id.split(".", 1)[0] == kind
-        ]
+        schemas = [schema for schema in all_schemas if schema.type_id.split(".", 1)[0] == kind]
 
     # Convert to dict format using shared function (resolves $ref references)
     schemas_data = [_schema_to_dict(schema) for schema in schemas]
 
     # Return as JSON with same structure as data files
     return json.dumps({"schemas": schemas_data}, indent=2)
-

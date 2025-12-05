@@ -39,7 +39,15 @@ def test_archetype_resources():
             # Verify structure
             if archetypes:
                 first = archetypes[0]
-                required_fields = ["id", "version", "title", "summary", "kind", "tags", "required_slots"]
+                required_fields = [
+                    "id",
+                    "version",
+                    "title",
+                    "summary",
+                    "kind",
+                    "tags",
+                    "required_slots",
+                ]
                 for field in required_fields:
                     assert field in first, f"Missing required field: {field}"
 
@@ -85,6 +93,7 @@ def test_schema_resources():
         except Exception as e:
             print(f"    ❌ Error: {e}")
             import traceback
+
             traceback.print_exc()
             return False
 
@@ -117,4 +126,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

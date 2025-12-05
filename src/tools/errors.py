@@ -183,9 +183,7 @@ def schema_validation_error(
         StructuredToolError with SCHEMA_VALIDATION_ERROR code
     """
     if not recovery_hint:
-        recovery_hint = (
-            f"Browse archetype-schemas://{type_id.split('.', 1)[0]} resource to see valid values, constraints, and examples."
-        )
+        recovery_hint = f"Browse archetype-schemas://{type_id.split('.', 1)[0]} resource to see valid values, constraints, and examples."
 
     error_details = "\n".join(f"  - {err}" for err in errors)
     message = f"Slot validation failed for archetype '{type_id}':\n{error_details}"
@@ -213,7 +211,9 @@ def schema_etag_mismatch_error(
         StructuredToolError with SCHEMA_ETAG_MISMATCH code
     """
     if not recovery_hint:
-        recovery_hint = "Please browse the archetype-schemas://all resource to fetch the latest schema."
+        recovery_hint = (
+            "Please browse the archetype-schemas://all resource to fetch the latest schema."
+        )
 
     message = f"Schema ETag mismatch. Provided: {provided_etag}, Current: {current_etag}."
 
