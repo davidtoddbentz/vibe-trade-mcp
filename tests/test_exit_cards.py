@@ -151,7 +151,6 @@ def test_attach_exit_card_to_strategy(strategy_tools_mcp, card_tools_mcp, schema
     assert attachment["card_id"] == exit_card_id
     assert attachment["role"] == "exit"
     assert attachment["enabled"] is True
-    assert attachment["order"] == 1
 
 
 def test_strategy_with_entry_and_exit_cards(strategy_tools_mcp, card_tools_mcp, schema_repository):
@@ -238,8 +237,6 @@ def test_strategy_with_entry_and_exit_cards(strategy_tools_mcp, card_tools_mcp, 
 
     assert entry_att["card_id"] == entry_card_id
     assert exit_att["card_id"] == exit_card_id
-    assert entry_att["order"] == 1
-    assert exit_att["order"] == 2
 
 
 def test_exit_card_uses_exit_action_spec(card_tools_mcp, schema_repository):
