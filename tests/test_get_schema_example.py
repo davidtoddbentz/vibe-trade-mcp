@@ -73,7 +73,7 @@ def test_get_schema_example_not_found(trading_tools_mcp):
     assert structured_error is not None
     assert structured_error.error_code == ErrorCode.SCHEMA_NOT_FOUND
     assert structured_error.retryable is False
-    assert "get_archetypes" in structured_error.recovery_hint.lower()
+    assert "browse" in structured_error.recovery_hint.lower() or "archetypes://" in structured_error.recovery_hint.lower()
 
 
 def test_get_schema_example_invalid_index(trading_tools_mcp):

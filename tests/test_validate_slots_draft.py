@@ -105,4 +105,4 @@ def test_validate_slots_draft_not_found(card_tools_mcp):
     assert structured_error is not None
     assert structured_error.error_code == ErrorCode.ARCHETYPE_NOT_FOUND
     assert structured_error.retryable is False
-    assert "get_archetypes" in structured_error.recovery_hint.lower()
+    assert "browse" in structured_error.recovery_hint.lower() or "archetypes://" in structured_error.recovery_hint.lower()
