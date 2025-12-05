@@ -12,7 +12,7 @@ The recommended workflow for creating a trading strategy is:
 4. **Negotiate/modify slots** - Present key slots to the user in plain language, confirm or adjust, optionally validate with `validate_slots_draft`
 5. **Create card** - Use `create_card(type, slots)` to create the card
 6. **Create strategy** - Use `create_strategy(name, universe)` to create a new strategy
-7. **Attach cards** - Use `attach_card(strategy_id, card_id, role, order)` to attach cards, or use `create_card` with `strategy_id` for auto-attachment
+7. **Attach cards** - Use `attach_card(strategy_id, card_id, role)` to attach cards. Execution order is automatically determined by role.
 8. **Validate/compile** - Use `validate_strategy` or `compile_strategy` to check for issues
 9. **Fix issues** - Address any issues reported, then re-compile
 10. **Mark ready** - Once `compile_strategy` returns `status_hint='ready'`, optionally use `update_strategy_meta` to set `status='ready'`
@@ -77,7 +77,7 @@ There are **4 types of archetypes**, each serving a specific purpose in trading 
 1. Use `get_archetypes(kind="gate")` to see available gates
 2. Create a gate card with `action.target_roles` set to the roles you want to guard
 3. Attach to strategy with `attach_card(strategy_id, card_id, role="gate")`
-4. Set the gate's `order` to be **lower** than the cards it guards (gates execute first)
+4. Gates automatically execute before the cards they guard (execution order is determined by role)
 
 **Example gate configuration**:
 ```json
@@ -116,7 +116,7 @@ There are **4 types of archetypes**, each serving a specific purpose in trading 
 1. Use `get_archetypes(kind="overlay")` to see available overlays
 2. Create an overlay card with `action.target_roles` set to the roles you want to modify
 3. Attach to strategy with `attach_card(strategy_id, card_id, role="overlay")`
-4. Set the overlay's `order` to be **higher** than the cards it modifies (overlays execute after)
+4. Overlays automatically execute after the cards they modify (execution order is determined by role)
 
 **Example overlay configuration**:
 ```json
@@ -192,28 +192,25 @@ strategy = create_strategy(
 
 ### Step 5: Attach Cards to Strategy
 ```python
-# Attach gate first (order=1) - gates execute before entries
+# Attach gate - gates automatically execute before entries
 attach_card(
     strategy_id=strategy.strategy_id,
     card_id=gate_card.card_id,
-    role="gate",
-    order=1
+    role="gate"
 )
 
-# Attach entry (order=2) - entries execute after gates
+# Attach entry - entries automatically execute after gates
 attach_card(
     strategy_id=strategy.strategy_id,
     card_id=entry_card.card_id,
-    role="entry",
-    order=2
+    role="entry"
 )
 
-# Attach exit (order=3) - exits execute after entries
+# Attach exit - exits automatically execute after entries
 attach_card(
     strategy_id=strategy.strategy_id,
     card_id=exit_card.card_id,
-    role="exit",
-    order=3
+    role="exit"
 )
 ```
 
@@ -233,18 +230,14 @@ else:
 
 ## Execution Order
 
-Cards execute in order based on their `order` field (lower numbers execute first):
+Cards execute in a fixed order based on their role (you don't need to specify this):
 
-1. **Gates** (order: 1-10) - Check conditions, allow/block downstream cards
-2. **Entries** (order: 11-20) - Generate signals to open positions
-3. **Exits** (order: 21-30) - Generate signals to close positions
-4. **Overlays** (order: 31-40) - Modify position sizing/risk
+1. **Gates** - Check conditions, allow/block downstream cards (execute first)
+2. **Entries** - Generate signals to open positions (execute after gates)
+3. **Exits** - Generate signals to close positions (execute after entries)
+4. **Overlays** - Modify position sizing/risk (execute last)
 
-**Best Practice**: Use order ranges to keep things organized:
-- Gates: 1-10
-- Entries: 11-20
-- Exits: 21-30
-- Overlays: 31-40
+Execution order is automatically determined by role - gates always execute before entries/exits, and overlays always execute after the cards they modify.
 
 ## Common Patterns
 
@@ -275,7 +268,7 @@ Cards execute in order based on their `order` field (lower numbers execute first
 1. **Always start with entries and exits** - These are the core of any strategy
 2. **Gates are optional** - Only use when you need conditional filtering
 3. **Overlays are optional** - Only use when you need dynamic risk scaling
-4. **Check execution order** - Make sure gates execute before entries, overlays execute after
+4. **Execution order is automatic** - Gates automatically execute before entries/exits, overlays automatically execute after
 5. **Use `compile_strategy`** - Always compile before marking strategy as "ready"
 6. **Read schema examples** - Use `get_schema_example` to get valid slot configurations
 7. **Validate slots** - Use `validate_slots_draft` before creating cards to catch errors early
@@ -288,7 +281,7 @@ Cards execute in order based on their `order` field (lower numbers execute first
 - `validate_slots_draft(type_id, slots)` - Validate slots before creating card
 - `create_card(type, slots)` - Create a card from an archetype
 - `create_strategy(name, universe)` - Create a new strategy
-- `attach_card(strategy_id, card_id, role, order)` - Attach card to strategy
+- `attach_card(strategy_id, card_id, role)` - Attach card to strategy (execution order determined by role)
 - `compile_strategy(strategy_id)` - Compile and validate strategy
 - `validate_strategy(strategy_id)` - Check if strategy is ready to run
 

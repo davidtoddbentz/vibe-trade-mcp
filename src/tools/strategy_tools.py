@@ -177,7 +177,7 @@ def register_strategy_tools(
         Recommended workflow (see "Canonical agent workflow" in AGENT_GUIDE.md):
         1. Create cards using create_card tool (start with entries and exits)
         2. Create strategy with create_strategy
-        3. Attach cards to strategy using attach_card with appropriate roles and order
+        3. Attach cards to strategy using attach_card with appropriate roles
         4. Use compile_strategy to validate before marking as ready
 
         Args:
@@ -339,31 +339,24 @@ def register_strategy_tools(
             default=False,
             description="If true, use latest card version; if false, pin current version",
         ),
-        order: int | None = Field(
-            None,
-            description="Execution order (optional, auto-assigned if not provided)",
-        ),
         enabled: bool = Field(default=True, description="Whether attachment is enabled"),
     ) -> AttachCardResponse:
         """
         Attach a card to a strategy.
 
-        Cards are attached with a **role** (entry, gate, exit, overlay) that controls execution order:
-        - gate: Conditional filters, execute **first** (orders 1-10) and can block entries/exits.
-        - entry: Entry signals, execute **after gates** (orders 11-20), open positions.
-        - exit: Exit rules, execute **after entries** (orders 21-30), close/reduce positions.
-        - overlay: Risk/size modifiers, execute **last** (orders 31-40), scale position size.
+        Cards are attached with a **role** (entry, gate, exit, overlay) that determines execution order:
+        - gate: Conditional filters, execute **first** and can block entries/exits.
+        - entry: Entry signals, execute **after gates**, open positions.
+        - exit: Exit rules, execute **after entries**, close/reduce positions.
+        - overlay: Risk/size modifiers, execute **last**, scale position size.
 
-        If you don't specify `order`, the backend assigns the next available value in the correct range for that role.
-        If you specify `order`, it **must** be in the allowed range for the role or the call will fail with `SCHEMA_VALIDATION_ERROR`.
+        Execution order is automatically determined by role - you don't need to specify it.
 
         **Agent behavior:**
         - For simple user requests, attach exactly:
           * 1-2 `entry` cards
           * 1-2 `exit` cards
           * optionally 0-2 `gate` or `overlay` cards when the user explicitly describes filters or dynamic sizing.
-        - Ensure all gates have lower `order` than any entries/exits they control.
-        - Ensure all overlays have higher `order` than the cards they modify.
 
         Recommended workflow:
         1. Create cards using create_card (start with entries and exits)
@@ -384,14 +377,6 @@ def register_strategy_tools(
             follow_latest: If true, use latest card version; if false, pin current version.
                 Use `follow_latest = true` when user expects ongoing improvements to propagate;
                 use `false` when they want a stable, reproducible configuration for backtests or production runs.
-            order: Execution order (optional, auto-assigned to next available in role's range).
-                If provided, must be in the allowed range for the role:
-                - gates: 1-10
-                - entries: 11-20
-                - exits: 21-30
-                - overlays: 31-40
-                If omitted, the backend assigns the next available value in the correct range for that role.
-                If out of range, returns SCHEMA_VALIDATION_ERROR.
             enabled: Whether attachment is enabled (default: true)
 
         Returns:
@@ -400,7 +385,6 @@ def register_strategy_tools(
         Raises:
             StructuredToolError: With error codes:
                 - INVALID_ROLE: If role is invalid (non-retryable)
-                - SCHEMA_VALIDATION_ERROR: If order is outside allowed range for role (non-retryable)
                 - STRATEGY_NOT_FOUND: If strategy not found (non-retryable)
                 - CARD_NOT_FOUND: If card not found (non-retryable)
                 - DUPLICATE_ATTACHMENT: If card is already attached (non-retryable)
@@ -446,52 +430,6 @@ def register_strategy_tools(
                     details={"card_id": card_id, "strategy_id": strategy_id},
                 )
 
-        # Validate order range if provided
-        if order is not None:
-            role_ranges = {
-                "gate": (1, 10),
-                "entry": (11, 20),
-                "exit": (21, 30),
-                "overlay": (31, 40),
-            }
-            min_order, max_order = role_ranges.get(role, (1, 1000))
-            if order < min_order or order > max_order:
-                from src.tools.errors import schema_validation_error
-
-                raise schema_validation_error(
-                    type_id=role,
-                    errors=[
-                        f"Order {order} is outside allowed range for role '{role}'. "
-                        f"Allowed range: {min_order}-{max_order}."
-                    ],
-                    recovery_hint=f"Use an order between {min_order} and {max_order} for role '{role}', or omit order to auto-assign.",
-                )
-
-        # Determine order (auto-assign if not provided)
-        if order is None:
-            # Auto-assign within the role's range
-            role_ranges = {
-                "gate": (1, 10),
-                "entry": (11, 20),
-                "exit": (21, 30),
-                "overlay": (31, 40),
-            }
-            min_order, max_order = role_ranges.get(role, (1, 1000))
-
-            # Find next available order in the role's range
-            existing_orders = {att.order for att in strategy.attachments if att.role == role}
-            for candidate_order in range(min_order, max_order + 1):
-                if candidate_order not in existing_orders:
-                    order = candidate_order
-                    break
-            else:
-                # If all orders in range are taken, use the next value after max_order
-                # This is a fallback - in practice, strategies shouldn't have this many cards of one role
-                if strategy.attachments:
-                    order = max(att.order for att in strategy.attachments) + 1
-                else:
-                    order = min_order
-
         # Determine card_revision_id (use updated_at as simple revision identifier for MVP)
         card_revision_id = None
         if not follow_latest:
@@ -501,7 +439,6 @@ def register_strategy_tools(
         attachment = Attachment(
             card_id=card_id,
             role=role,
-            order=order,
             enabled=enabled,
             overrides=overrides,
             follow_latest=follow_latest,
