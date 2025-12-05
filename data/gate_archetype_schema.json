@@ -120,6 +120,24 @@
                 "type": "integer",
                 "minimum": 0,
                 "maximum": 5000
+              },
+              "days_of_week": {
+                "type": "array",
+                "description": "Optional list of days of week this gate applies to (e.g., ['Sun', 'Mon']).",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "Mon",
+                    "Tue",
+                    "Wed",
+                    "Thu",
+                    "Fri",
+                    "Sat",
+                    "Sun"
+                  ]
+                },
+                "minItems": 1,
+                "uniqueItems": true
               }
             },
             "required": [

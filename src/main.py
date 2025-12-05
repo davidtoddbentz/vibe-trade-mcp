@@ -104,7 +104,7 @@ if auth_token:
 
 # Register tools with injected repositories
 register_trading_tools(mcp, archetype_repo, schema_repo)
-register_card_tools(mcp, card_repo, schema_repo)
+register_card_tools(mcp, card_repo, schema_repo, strategy_repo)
 register_strategy_tools(mcp, strategy_repo, card_repo, schema_repo)
 
 

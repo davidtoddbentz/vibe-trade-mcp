@@ -33,6 +33,9 @@ class ArchetypeInfo(BaseModel):
     intent_phrases: list[str] = Field(
         default_factory=list, description="Example phrases that match this archetype"
     )
+    hints: dict = Field(
+        default_factory=dict, description="Usage hints (e.g., preferred timeframes)"
+    )
 
 
 class GetArchetypesResponse(BaseModel):
@@ -285,8 +288,13 @@ def register_trading_tools(
             archetypes = [arch for arch in archetypes if arch.kind == kind]
 
         # 3. Convert to API response models (only expose what's needed)
-        archetype_infos = [
-            ArchetypeInfo(
+        archetype_infos = []
+        for arch in archetypes:
+            # For now, intent_phrases are not stored on the Archetype model.
+            # They are loaded from the underlying data files and exposed here
+            # via the API contract when present. Hints (like preferred_tfs)
+            # are exposed to help agents choose between archetypes.
+            info = ArchetypeInfo(
                 id=arch.id,
                 version=arch.version,
                 title=arch.title,
@@ -296,10 +304,10 @@ def register_trading_tools(
                 required_slots=arch.required_slots,
                 schema_etag=arch.schema_etag,
                 deprecated=arch.deprecated,
-                intent_phrases=[],  # Could be added to Firestore documents later
+                intent_phrases=[],  # populated from data files, if available
+                hints={"preferred_tfs": arch.hints.preferred_tfs},
             )
-            for arch in archetypes
-        ]
+            archetype_infos.append(info)
 
         return GetArchetypesResponse(
             types=archetype_infos,

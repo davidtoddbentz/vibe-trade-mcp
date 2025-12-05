@@ -28,6 +28,13 @@
           "4h"
         ]
       },
+      "intent_phrases": [
+        "buy the dip in an existing uptrend",
+        "enter on pullbacks during a bullish trend",
+        "sell short on rallies during a clear downtrend",
+        "enter with the dominant trend after a retracement",
+        "trade pullbacks toward a moving average in a trending market"
+      ],
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
@@ -58,6 +65,12 @@
           "1h"
         ]
       },
+      "intent_phrases": [
+        "fade the highs and lows inside a sideways range",
+        "buy near support and sell near resistance in a choppy market",
+        "mean-reversion within a clear trading range",
+        "sell when price spikes to the top of the range and buy near the bottom"
+      ],
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
@@ -88,6 +101,12 @@
           "4h"
         ]
       },
+      "intent_phrases": [
+        "enter when price breaks out to new highs with the trend",
+        "buy breakouts above recent resistance",
+        "go short when price breaks below recent support in a downtrend",
+        "trend-following breakout entries after consolidation"
+      ],
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
@@ -118,6 +137,12 @@
           "4h"
         ]
       },
+      "intent_phrases": [
+        "wait for a breakout and then enter on the pullback to the breakout level",
+        "buy the retest of a broken resistance that turns into support",
+        "sell the retest of a broken support that turns into resistance",
+        "enter only after price confirms the breakout by retesting the level"
+      ],
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
@@ -149,6 +174,12 @@
           "4h"
         ]
       },
+      "intent_phrases": [
+        "enter when volatility has been very low and then suddenly expands",
+        "trade breakouts out of a tight volatility squeeze",
+        "buy when price explodes out of a narrow range after compression",
+        "enter on volatility expansion following a squeeze"
+      ],
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
@@ -176,6 +207,12 @@
       "hints": {
         "preferred_tfs": []
       },
+      "intent_phrases": [
+        "allocate into the strongest performers in a basket",
+        "rebalance into top momentum coins or stocks",
+        "periodically buy the assets with the highest relative strength",
+        "cross-sectional momentum rotation across a universe"
+      ],
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
@@ -203,6 +240,12 @@
       "hints": {
         "preferred_tfs": []
       },
+      "intent_phrases": [
+        "trade the spread between two correlated assets",
+        "go long one asset and short another when their spread is stretched",
+        "pairs trading based on z-score of the price ratio",
+        "relative-value mean reversion between two instruments"
+      ],
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
@@ -230,6 +273,12 @@
       "hints": {
         "preferred_tfs": []
       },
+      "intent_phrases": [
+        "trade one market when another market moves first",
+        "use a leader asset to trigger trades in a follower asset",
+        "enter BTC when ETH makes a strong move, or vice versa",
+        "intermarket trigger based on a signal in a different symbol"
+      ],
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
@@ -260,6 +309,12 @@
           "4h"
         ]
       },
+      "intent_phrases": [
+        "fade price back toward an anchored VWAP level",
+        "buy when price is too far below anchored VWAP",
+        "sell when price runs too far above anchored VWAP",
+        "mean-reversion around an anchored VWAP after large deviations"
+      ],
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
@@ -287,6 +342,12 @@
       "hints": {
         "preferred_tfs": []
       },
+      "intent_phrases": [
+        "enter after a news event if the move continues",
+        "trade follow-through after a catalyst like earnings or macro data",
+        "buy when price continues in the direction of the event move",
+        "enter only if the post-event reaction has enough strength"
+      ],
       "updated_at": "2025-12-02T17:58:21Z"
     },
     {
@@ -314,6 +375,12 @@
       "hints": {
         "preferred_tfs": []
       },
+      "intent_phrases": [
+        "trade the gap at the session open",
+        "fade or follow opening gaps between sessions",
+        "buy when the market gaps down and then reverses",
+        "sell when the market gaps up and then fails"
+      ],
       "updated_at": "2025-12-02T17:58:21Z"
     }
   ]

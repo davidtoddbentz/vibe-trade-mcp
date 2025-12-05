@@ -55,10 +55,10 @@ run:
 	uv run main'
 
 test:
-	uv run pytest tests/ -v
+	uv run python -m pytest tests/ -v
 
 test-cov:
-	uv run pytest tests/ --cov=src --cov-report=term-missing --cov-report=html --cov-fail-under=60
+	uv run python -m pytest tests/ --cov=src --cov-report=term-missing --cov-report=html --cov-fail-under=60
 
 lint:
 	uv run ruff check .

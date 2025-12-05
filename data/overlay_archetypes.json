@@ -24,6 +24,12 @@
           "4h"
         ]
       },
+      "intent_phrases": [
+        "reduce position size in high volatility regimes",
+        "scale up risk in more favorable regimes and down in risky ones",
+        "dynamically adjust position size based on regime conditions",
+        "use a regime-based multiplier on entries or exits"
+      ],
       "updated_at": "2025-12-04T00:00:00Z"
     }
   ]

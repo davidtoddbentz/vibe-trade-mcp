@@ -25,6 +25,12 @@
           "4h"
         ]
       },
+      "intent_phrases": [
+        "only trade when the market is in a certain regime like trending or ranging",
+        "allow entries only when volatility or trend conditions are favorable",
+        "block trades when the regime is not what we want",
+        "filter signals based on trend strength or volatility regime"
+      ],
       "updated_at": "2025-12-04T00:00:00Z"
     },
     {
@@ -51,6 +57,12 @@
           "1h"
         ]
       },
+      "intent_phrases": [
+        "avoid trading around major events or news releases",
+        "block entries and exits in a window before and after catalysts",
+        "do not trade during specific high-risk time windows",
+        "suspend signals around scheduled announcements"
+      ],
       "updated_at": "2025-12-04T00:00:00Z"
     }
   ]
