@@ -46,12 +46,12 @@
           "action": {
             "allOf": [
               {
-                "$ref": "common_defs.schema.json#/$defs/ThrottledEntryActionSpec"
+                "$ref": "common_defs.schema.json#/$defs/EntryActionSpec"
               }
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -156,7 +156,7 @@
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -262,7 +262,7 @@
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -352,7 +352,7 @@
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -442,7 +442,7 @@
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -550,7 +550,7 @@
             "additionalProperties": false
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -672,7 +672,7 @@
             "additionalProperties": false
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -767,7 +767,7 @@
             "additionalProperties": false
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -871,7 +871,7 @@
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -980,7 +980,7 @@
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -1075,7 +1075,7 @@
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [

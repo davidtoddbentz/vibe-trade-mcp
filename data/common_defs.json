@@ -596,9 +596,9 @@
         }
       ]
     },
-    "RiskSpec": {
+    "ExitRiskSpec": {
       "type": "object",
-      "description": "Risk management parameters for position sizing, take profit, stop loss, and time-based exits. At least one threshold must be provided when used by exits that require risk settings.",
+      "description": "Exit risk parameters for take profit, stop loss, and time-based exits. Used only in exit cards. At least one threshold must be provided when used by exits that require risk settings.",
       "properties": {
         "tp_pct": {
           "type": "number",
@@ -651,20 +651,7 @@
     },
     "EntryActionSpec": {
       "type": "object",
-      "properties": {
-        "direction": {
-          "$ref": "#/$defs/Direction"
-        },
-        "confirm": {
-          "$ref": "#/$defs/Confirm"
-        }
-      },
-      "required": [
-        "direction"
-      ]
-    },
-    "ThrottledEntryActionSpec": {
-      "type": "object",
+      "description": "Entry action specification. Defines direction and optional throttling/cooldown controls.",
       "properties": {
         "direction": {
           "$ref": "#/$defs/Direction"
@@ -675,12 +662,14 @@
         "cooldown_bars": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 1000
+          "maximum": 1000,
+          "description": "Optional: minimum bars between consecutive entries (throttling). Set to 0 or omit to disable."
         },
         "max_entries_per_day": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 50
+          "maximum": 50,
+          "description": "Optional: maximum number of entries per day (daily cap). Set to 0 or omit to disable."
         }
       },
       "required": [

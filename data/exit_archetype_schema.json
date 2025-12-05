@@ -40,7 +40,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -196,7 +196,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -289,7 +289,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -400,7 +400,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -492,7 +492,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -579,7 +579,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -678,7 +678,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -785,7 +785,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
