@@ -216,6 +216,10 @@ def register_card_tools(
         3. Optionally modify the example slots to fit your needs
         4. Call create_card with type and slots
 
+        **Terminology:**
+        - **type**: specific archetype identifier (e.g. `entry.trend_pullback`).
+        - **kind**: broad archetype category extracted from type (e.g., `entry.trend_pullback` → `entry`).
+
         Args:
             type: Archetype identifier (e.g., 'entry.trend_pullback', 'exit.take_profit_stop', 'gate.regime', 'overlay.regime_scaler')
             slots: Slot values to validate and store. Must match the archetype's JSON schema.
@@ -458,6 +462,13 @@ def register_card_tools(
         2. Modify the example slots as needed
         3. Use validate_slots_draft(type, slots) to check validity
         4. If valid, use create_card with the slots (schema_etag is handled automatically)
+
+        **Agent behavior:**
+        - Use this when you're iterating with the user and want to check if the configuration
+          is valid before committing it.
+        - If validation fails, interpret error details into trader language
+          ("Your stop is tighter than the minimum allowed for this archetype", etc.) and
+          suggest a concrete change.
 
         Args:
             type: Archetype identifier

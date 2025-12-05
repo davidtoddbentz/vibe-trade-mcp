@@ -2,6 +2,23 @@
 
 This guide explains how AI agents should use the different archetype types when creating trading strategies.
 
+## Canonical Agent Workflow
+
+The recommended workflow for creating a trading strategy is:
+
+1. **Discover archetypes** - Browse `archetypes://{kind}` or `archetypes://all` resources to find available archetypes
+2. **Choose one** - Select an archetype that matches the user's intent
+3. **Get example slots** - Use `get_schema_example(type)` to get ready-to-use example slots
+4. **Negotiate/modify slots** - Present key slots to the user in plain language, confirm or adjust, optionally validate with `validate_slots_draft`
+5. **Create card** - Use `create_card(type, slots)` to create the card
+6. **Create strategy** - Use `create_strategy(name, universe)` to create a new strategy
+7. **Attach cards** - Use `attach_card(strategy_id, card_id, role, order)` to attach cards, or use `create_card` with `strategy_id` for auto-attachment
+8. **Validate/compile** - Use `validate_strategy` or `compile_strategy` to check for issues
+9. **Fix issues** - Address any issues reported, then re-compile
+10. **Mark ready** - Once `compile_strategy` returns `status_hint='ready'`, optionally use `update_strategy_meta` to set `status='ready'`
+
+Each tool's "Recommended workflow" section references this canonical workflow. Most strategies only need steps 1-5 (entries and exits). Gates and overlays are optional additions.
+
 ## Archetype Types Overview
 
 There are **4 types of archetypes**, each serving a specific purpose in trading strategies:

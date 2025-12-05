@@ -262,6 +262,18 @@ def register_trading_tools(
         - Use overlays only when you need dynamic risk scaling (e.g., reduce size in high volatility)
         - See AGENT_GUIDE.md for detailed usage patterns and examples
 
+        **Agent behavior:**
+        - When the user describes an informal strategy (e.g., "fade parabolic moves in BTC on the 1h"),
+          map their intent to one or more archetype kinds first.
+        - If you're unsure, default to listing common `entry` and `exit` archetypes and ask the user
+          which fits best.
+        - Prefer a small shortlist of plausible archetypes (2-4) instead of dumping all.
+
+        **Terminology:**
+        - **kind**: broad archetype category (`entry`, `exit`, `gate`, `overlay`).
+        - **type**: specific archetype identifier (e.g. `entry.trend_pullback`).
+        - **role**: how a card is attached in a strategy; for now identical to `kind` (`entry`, `exit`, `gate`, `overlay`).
+
         Args:
             kind: Optional filter to return only archetypes of a specific kind.
                   Valid values: 'entry', 'exit', 'gate', 'overlay'.
@@ -412,6 +424,13 @@ def register_trading_tools(
         4. Optionally modify the example slots to fit your needs
         5. Use create_card with the slots and schema_etag from this response
 
+        **Agent behavior:**
+        - Use this to propose a concrete starting configuration to the user.
+        - Present key slots (like timeframe, stop distance, position size rules) in plain language
+          and confirm or adjust with the user before creating a card.
+        - If the user is vague ("I like trend pullbacks"), ask targeted questions about timeframe,
+          risk per trade, and instruments, then adjust the example slots.
+
         Args:
             type: Archetype identifier (must be discovered from resources first)
             example_index: Index of example to return (0-based, defaults to 0)
@@ -420,8 +439,8 @@ def register_trading_tools(
             GetSchemaExampleResponse with ready-to-use example slots
 
         Raises:
-            StructuredToolError: With error code SCHEMA_NOT_FOUND if archetype schema not found (non-retryable)
-            StructuredToolError: With error code VALIDATION_ERROR if example_index is out of range (non-retryable)
+            StructuredToolError: With error code ARCHETYPE_NOT_FOUND if archetype schema not found (non-retryable)
+            StructuredToolError: With error code SCHEMA_VALIDATION_ERROR if example_index is out of range (non-retryable)
 
         Error Handling:
             Errors include structured information with error_code, retryable flag,
@@ -432,18 +451,20 @@ def register_trading_tools(
 
         if schema is None:
             raise not_found_error(
-                resource_type="Schema",
+                resource_type="Archetype",
                 resource_id=type,
                 recovery_hint="Browse archetypes://all resource to see available archetypes.",
             )
 
         # Check if example_index is valid
         if example_index < 0 or example_index >= len(schema.examples):
-            from src.tools.errors import ErrorCode, validation_error
+            from src.tools.errors import schema_validation_error
 
-            raise validation_error(
-                error_code=ErrorCode.VALIDATION_ERROR,
-                message=f"Example index {example_index} is out of range. Schema has {len(schema.examples)} example(s).",
+            raise schema_validation_error(
+                type_id=type,
+                errors=[
+                    f"Example index {example_index} is out of range. Schema has {len(schema.examples)} example(s)."
+                ],
                 recovery_hint=f"Browse archetype-schemas://{type.split('.', 1)[0]} resource to see all available examples, or use index 0-{len(schema.examples) - 1}.",
             )
 

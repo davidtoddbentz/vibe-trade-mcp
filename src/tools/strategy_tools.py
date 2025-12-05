@@ -19,9 +19,10 @@ from src.tools.errors import (
 )
 
 # Valid roles for card attachments
-# Note: "sizing" and "risk" roles are reserved for future use. Currently, no archetypes exist for these roles.
-# Only "entry", "exit", "gate", and "overlay" have corresponding archetypes.
-VALID_ROLES = ["entry", "gate", "exit", "sizing", "risk", "overlay"]
+# There are 4 roles that map directly to archetype kinds: entry, exit, gate, overlay
+# Risk is controlled via overlays (dynamic scalers) and external run-time parameters.
+# There is no separate 'risk' or 'sizing' card role.
+VALID_ROLES = ["entry", "gate", "exit", "overlay"]
 VALID_STATUSES = ["draft", "ready", "running", "paused", "stopped", "error"]
 
 
@@ -160,16 +161,20 @@ def register_strategy_tools(
         Create a new trading strategy.
 
         A strategy is a composition of cards (entries, exits, gates, overlays) with
-        universe selection. Risk and execution parameters are configured when
-        the strategy is run, not at creation time.
+        universe selection. Risk is controlled via overlays (dynamic scalers) and
+        external run-time parameters. There is no separate 'risk' card role.
 
-        Card types:
+        Card roles (4 total, map directly to archetype kinds):
         - entry: Entry signals for opening positions (required - at least one)
         - exit: Exit rules for closing positions (recommended - at least one)
         - gate: Conditional filters that allow/block other cards (optional)
-        - overlay: Modifiers that scale risk/size of other cards (optional)
+        - overlay: Risk/size modifiers that scale position sizing dynamically (optional)
 
-        Recommended workflow:
+        **Agent behavior:**
+        - Ask user if they want multiple entries, multiple exits, or regime filters.
+        - If they don't care, default to minimal: 1 entry + 1 exit, no gate/overlay.
+
+        Recommended workflow (see "Canonical agent workflow" in AGENT_GUIDE.md):
         1. Create cards using create_card tool (start with entries and exits)
         2. Create strategy with create_strategy
         3. Attach cards to strategy using attach_card with appropriate roles and order
@@ -178,7 +183,10 @@ def register_strategy_tools(
         Args:
             name: Strategy name
             owner_id: Owner identifier (optional)
-            universe: List of trading symbols (e.g., ['BTC-USD'])
+            universe: List of trading symbols (e.g., ['BTC-USD']). If omitted, the strategy
+                will be created with an empty universe and will not be runnable until a universe
+                is set via update_strategy_meta or another tool. Most strategies should have at
+                least one symbol before compilation.
 
         Returns:
             CreateStrategyResponse with generated strategy_id and initial configuration
@@ -260,6 +268,10 @@ def register_strategy_tools(
 
         Updates only the fields provided. Other fields remain unchanged.
 
+        **Agent behavior:**
+        - Only set `status='ready'` after successful `compile_strategy` with `status_hint='ready'`.
+        - Do not set `running`, `paused`, or `stopped` unless explicitly instructed by the user.
+
         Args:
             strategy_id: Strategy identifier
             name: Strategy name (optional)
@@ -336,21 +348,22 @@ def register_strategy_tools(
         """
         Attach a card to a strategy.
 
-        Cards can be attached with different roles (entry, gate, exit, overlay) and
-        optional slot overrides. The attachment can follow the latest card version
-        or be pinned to a specific version.
+        Cards are attached with a **role** (entry, gate, exit, overlay) that controls execution order:
+        - gate: Conditional filters, execute **first** (orders 1-10) and can block entries/exits.
+        - entry: Entry signals, execute **after gates** (orders 11-20), open positions.
+        - exit: Exit rules, execute **after entries** (orders 21-30), close/reduce positions.
+        - overlay: Risk/size modifiers, execute **last** (orders 31-40), scale position size.
 
-        Card roles and execution order:
-        - gate: Conditional filters (execute first, order: 1-10) - blocks/allows downstream cards
-        - entry: Entry signals (execute after gates, order: 11-20) - opens positions
-        - exit: Exit rules (execute after entries, order: 21-30) - closes positions
-        - overlay: Risk/size modifiers (execute last, order: 31-40) - scales position sizing
+        If you don't specify `order`, the backend assigns the next available value in the correct range for that role.
+        If you specify `order`, it **must** be in the allowed range for the role or the call will fail with `SCHEMA_VALIDATION_ERROR`.
 
-        Important:
-        - Gates must execute BEFORE the cards they guard (lower order number)
-        - Overlays must execute AFTER the cards they modify (higher order number)
-        - Most strategies only need entries and exits (gates and overlays are optional)
-        - Order ranges (1-10, 11-20, etc.) are conventions for organization. If order is not specified, the server auto-assigns starting from 1 and increments. The engine only cares about relative ordering, not specific ranges.
+        **Agent behavior:**
+        - For simple user requests, attach exactly:
+          * 1-2 `entry` cards
+          * 1-2 `exit` cards
+          * optionally 0-2 `gate` or `overlay` cards when the user explicitly describes filters or dynamic sizing.
+        - Ensure all gates have lower `order` than any entries/exits they control.
+        - Ensure all overlays have higher `order` than the cards they modify.
 
         Recommended workflow:
         1. Create cards using create_card (start with entries and exits)
@@ -361,18 +374,24 @@ def register_strategy_tools(
         Args:
             strategy_id: Strategy identifier
             card_id: Card identifier to attach
-            role: Card role (entry, gate, exit, sizing, risk, or overlay). Note: "sizing" and "risk" roles are reserved for future use - currently no archetypes exist for these roles. Use "entry", "exit", "gate", or "overlay".
+            role: Card role: entry, gate, exit, or overlay. There are 4 roles that map directly to archetype kinds.
             overrides: Slot value overrides to merge with card slots (optional).
                 Overrides use deep merge: nested objects are merged recursively,
                 not replaced. For example, if card has {"context": {"symbol": "BTC-USD", "tf": "1h"}}
                 and you provide {"context": {"tf": "4h"}}, the result is
                 {"context": {"symbol": "BTC-USD", "tf": "4h"}} (tf is updated, symbol is preserved).
                 To replace an entire nested object, you must provide all its fields.
-            follow_latest: If true, use latest card version; if false, pin current version
-            order: Execution order (optional, auto-assigned to next available starting from 1).
-                Conventionally use order ranges: gates (1-10), entries (11-20), exits (21-30), overlays (31-40).
-                However, if not specified, the server auto-assigns starting from 1 and increments.
-                The engine only cares about relative ordering, not specific ranges.
+            follow_latest: If true, use latest card version; if false, pin current version.
+                Use `follow_latest = true` when user expects ongoing improvements to propagate;
+                use `false` when they want a stable, reproducible configuration for backtests or production runs.
+            order: Execution order (optional, auto-assigned to next available in role's range).
+                If provided, must be in the allowed range for the role:
+                - gates: 1-10
+                - entries: 11-20
+                - exits: 21-30
+                - overlays: 31-40
+                If omitted, the backend assigns the next available value in the correct range for that role.
+                If out of range, returns SCHEMA_VALIDATION_ERROR.
             enabled: Whether attachment is enabled (default: true)
 
         Returns:
@@ -381,6 +400,7 @@ def register_strategy_tools(
         Raises:
             StructuredToolError: With error codes:
                 - INVALID_ROLE: If role is invalid (non-retryable)
+                - SCHEMA_VALIDATION_ERROR: If order is outside allowed range for role (non-retryable)
                 - STRATEGY_NOT_FOUND: If strategy not found (non-retryable)
                 - CARD_NOT_FOUND: If card not found (non-retryable)
                 - DUPLICATE_ATTACHMENT: If card is already attached (non-retryable)
@@ -426,13 +446,51 @@ def register_strategy_tools(
                     details={"card_id": card_id, "strategy_id": strategy_id},
                 )
 
+        # Validate order range if provided
+        if order is not None:
+            role_ranges = {
+                "gate": (1, 10),
+                "entry": (11, 20),
+                "exit": (21, 30),
+                "overlay": (31, 40),
+            }
+            min_order, max_order = role_ranges.get(role, (1, 1000))
+            if order < min_order or order > max_order:
+                from src.tools.errors import schema_validation_error
+
+                raise schema_validation_error(
+                    type_id=role,
+                    errors=[
+                        f"Order {order} is outside allowed range for role '{role}'. "
+                        f"Allowed range: {min_order}-{max_order}."
+                    ],
+                    recovery_hint=f"Use an order between {min_order} and {max_order} for role '{role}', or omit order to auto-assign.",
+                )
+
         # Determine order (auto-assign if not provided)
         if order is None:
-            if strategy.attachments:
-                max_order = max(att.order for att in strategy.attachments)
-                order = max_order + 1
+            # Auto-assign within the role's range
+            role_ranges = {
+                "gate": (1, 10),
+                "entry": (11, 20),
+                "exit": (21, 30),
+                "overlay": (31, 40),
+            }
+            min_order, max_order = role_ranges.get(role, (1, 1000))
+
+            # Find next available order in the role's range
+            existing_orders = {att.order for att in strategy.attachments if att.role == role}
+            for candidate_order in range(min_order, max_order + 1):
+                if candidate_order not in existing_orders:
+                    order = candidate_order
+                    break
             else:
-                order = 1
+                # If all orders in range are taken, use the next value after max_order
+                # This is a fallback - in practice, strategies shouldn't have this many cards of one role
+                if strategy.attachments:
+                    order = max(att.order for att in strategy.attachments) + 1
+                else:
+                    order = min_order
 
         # Determine card_revision_id (use updated_at as simple revision identifier for MVP)
         card_revision_id = None
@@ -762,6 +820,15 @@ def register_strategy_tools(
         configurations. It validates composition, computes data requirements, and reports
         any issues that need to be fixed before the strategy can run.
 
+        If universe is empty, compile_strategy will return `status_hint='fix_required'` and
+        an issue explaining that no symbols are configured.
+
+        **Agent behavior:**
+        - After compile_strategy with `status_hint != 'ready'`, explain issues and propose
+          one concrete fix at a time (rather than changing many things silently).
+        - Ask user if they want multiple entries, multiple exits, or regime filters.
+        - If they don't care, default to minimal: 1 entry + 1 exit, no gate/overlay.
+
         Recommended workflow:
         1. Create cards using create_card
         2. Create strategy using create_strategy
@@ -915,6 +982,17 @@ def register_strategy_tools(
                     card_revision_id=card_revision_id,
                     type=card.type,
                     effective_slots=effective_slots,
+                )
+            )
+
+        # Validate universe
+        if not strategy.universe:
+            issues.append(
+                Issue(
+                    severity="error",
+                    code="EMPTY_UNIVERSE",
+                    message="Strategy has no symbols in universe. Set universe via update_strategy_meta before compilation.",
+                    path="universe",
                 )
             )
 
