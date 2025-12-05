@@ -288,12 +288,38 @@ def register_trading_tools(
             archetypes = [arch for arch in archetypes if arch.kind == kind]
 
         # 3. Convert to API response models (only expose what's needed)
+        # Load intent_phrases from JSON files (not stored in Archetype domain model)
+        import json
+        from pathlib import Path
+
+        project_root = Path(__file__).parent.parent.parent
+        intent_phrases_map: dict[str, list[str]] = {}
+
+        # Load intent_phrases from all archetype JSON files
+        for file_path in [
+            project_root / "data" / "archetypes.json",
+            project_root / "data" / "exit_archetypes.json",
+            project_root / "data" / "gate_archetypes.json",
+            project_root / "data" / "overlay_archetypes.json",
+        ]:
+            if file_path.exists():
+                try:
+                    with open(file_path) as f:
+                        data = json.load(f)
+                    archetype_list = data.get("archetypes", data if isinstance(data, list) else [])
+                    for arch_data in archetype_list:
+                        arch_id = arch_data.get("id")
+                        if arch_id:
+                            intent_phrases_map[arch_id] = arch_data.get("intent_phrases", [])
+                except Exception:
+                    # If loading fails, continue without intent_phrases for that file
+                    pass
+
         archetype_infos = []
         for arch in archetypes:
-            # For now, intent_phrases are not stored on the Archetype model.
-            # They are loaded from the underlying data files and exposed here
-            # via the API contract when present. Hints (like preferred_tfs)
-            # are exposed to help agents choose between archetypes.
+            # Get intent_phrases from loaded map, default to empty list
+            intent_phrases = intent_phrases_map.get(arch.id, [])
+            
             info = ArchetypeInfo(
                 id=arch.id,
                 version=arch.version,
@@ -304,7 +330,7 @@ def register_trading_tools(
                 required_slots=arch.required_slots,
                 schema_etag=arch.schema_etag,
                 deprecated=arch.deprecated,
-                intent_phrases=[],  # populated from data files, if available
+                intent_phrases=intent_phrases,
                 hints={"preferred_tfs": arch.hints.preferred_tfs},
             )
             archetype_infos.append(info)

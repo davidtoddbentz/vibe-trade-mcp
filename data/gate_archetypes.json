@@ -37,7 +37,7 @@
       "id": "gate.event_risk_window",
       "version": 1,
       "title": "Event Risk Window Gate",
-      "summary": "Block entries/exits for a configurable pre/post window around catalysts or macro events.",
+      "summary": "Block entries/exits for a configurable pre/post window around catalysts or macro events. Can also restrict to specific days of the week (e.g., Sunday-only, block Saturday/Monday).",
       "kind": "gate",
       "tags": [
         "event",
@@ -61,7 +61,11 @@
         "avoid trading around major events or news releases",
         "block entries and exits in a window before and after catalysts",
         "do not trade during specific high-risk time windows",
-        "suspend signals around scheduled announcements"
+        "suspend signals around scheduled announcements",
+        "only trade on certain days of the week like Sunday",
+        "block trading on specific days like Saturday or Monday morning",
+        "allow entries only on Sunday but not on other days",
+        "restrict trading to specific days of the week"
       ],
       "updated_at": "2025-12-04T00:00:00Z"
     }

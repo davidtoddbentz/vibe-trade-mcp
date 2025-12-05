@@ -90,7 +90,7 @@
       "schema_version": 1,
       "etag": "W/\"v1.gate.event_risk_window\"",
       "title": "Event Risk Window Gate",
-      "summary": "Block or allow cards within a pre/post window around catalysts or macro events.",
+      "summary": "Block or allow cards within a pre/post window around catalysts or macro events. Can also restrict to specific days of the week (e.g., Sunday-only, block Saturday/Monday).",
       "kind": "gate",
       "tags": [
         "event",
@@ -164,7 +164,7 @@
         "warmup_hint": "Event calendar ingestion must be point-in-time safe."
       },
       "slot_hints": {
-        "notes": "Use pre/post_event_bars to define blackout windows relative to event start."
+        "notes": "Use pre/post_event_bars to define blackout windows relative to event start. Use days_of_week to restrict gate to specific days (e.g., ['Sun'] for Sunday-only, ['Mon'] for Monday-only)."
       },
       "examples": [
         {
@@ -191,6 +191,61 @@
               ],
               "target_tags": [
                 "mean-revert"
+              ]
+            }
+          }
+        },
+        {
+          "human": "Allow entries only on Sunday for BTC. Block entries on all other days.",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "BTC-USD"
+            },
+            "event": {
+              "catalyst": {
+                "event_kind": "session",
+                "entry_window_bars": 1,
+                "strength_filter": "any"
+              },
+              "pre_event_bars": 0,
+              "post_event_bars": 0,
+              "days_of_week": [
+                "Sun"
+              ]
+            },
+            "action": {
+              "mode": "allow",
+              "target_roles": [
+                "entry"
+              ]
+            }
+          }
+        },
+        {
+          "human": "Block entries on Saturday and Monday morning for ETH. Allow entries on other days.",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "ETH-USD"
+            },
+            "event": {
+              "catalyst": {
+                "event_kind": "session",
+                "entry_window_bars": 1,
+                "strength_filter": "any"
+              },
+              "pre_event_bars": 0,
+              "post_event_bars": 0,
+              "days_of_week": [
+                "Sat",
+                "Mon"
+              ]
+            },
+            "action": {
+              "mode": "block",
+              "target_roles": [
+                "entry"
               ]
             }
           }
