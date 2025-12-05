@@ -89,7 +89,7 @@ def register_archetype_resources(
     def read_agent_guide() -> str:
         """Read AGENT_GUIDE.md resource."""
         project_root = Path(__file__).parent.parent.parent
-        guide_path = project_root / "AGENT_GUIDE.md"
+        guide_path = project_root / "data" / "AGENT_GUIDE.md"
         try:
             with open(guide_path) as f:
                 return f.read()
