@@ -330,7 +330,7 @@ def register_strategy_tools(
         card_id: str = Field(..., description="Card identifier to attach"),
         role: str = Field(
             ...,
-            description="Card role: entry, gate, exit, sizing, risk, or overlay",
+            description="Card role: entry, gate, exit, or overlay. There are 4 roles that map directly to archetype kinds.",
         ),
         overrides: dict[str, Any] = Field(  # noqa: B008
             default_factory=dict, description="Slot value overrides (optional)"
@@ -358,10 +358,10 @@ def register_strategy_tools(
           * 1-2 `exit` cards
           * optionally 0-2 `gate` or `overlay` cards when the user explicitly describes filters or dynamic sizing.
 
-        Recommended workflow:
+        Recommended workflow (see "Canonical agent workflow" in AGENT_GUIDE.md):
         1. Create cards using create_card (start with entries and exits)
         2. Create strategy using create_strategy
-        3. Attach cards using attach_card with appropriate roles and order
+        3. Attach cards using attach_card with appropriate roles
         4. Use compile_strategy to validate before marking as ready
 
         Args:
