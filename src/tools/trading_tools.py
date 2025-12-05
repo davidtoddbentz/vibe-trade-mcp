@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from src.db.archetype_repository import ArchetypeRepository
 from src.db.archetype_schema_repository import ArchetypeSchemaRepository
-from src.tools.errors import not_found_error
+from src.tools.errors import ErrorCode, StructuredToolError, not_found_error
 
 
 class ArchetypeInfo(BaseModel):
@@ -231,8 +231,8 @@ def register_trading_tools(
     repositories (and therefore which databases/backends) are used.
     """
 
-    # DISABLED: Use archetypes://{kind} resources instead
-    # @mcp.tool()
+    # Note: Also available as archetypes://{kind} resources for browsing
+    @mcp.tool()
     def get_archetypes(
         kind: str | None = Field(
             None,
@@ -319,8 +319,8 @@ def register_trading_tools(
             as_of=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         )
 
-    # DISABLED: Use archetype-schemas://{kind} resources instead
-    # @mcp.tool()
+    # Note: Also available as archetype-schemas://{kind} resources for browsing
+    @mcp.tool()
     def get_archetype_schema(
         type: str = Field(..., description="Archetype identifier (e.g., 'entry.trend_pullback')"),
         if_none_match: str | None = Field(
@@ -359,10 +359,12 @@ def register_trading_tools(
         schema = schema_repo.get_by_type_id(type)
 
         if schema is None:
-            raise not_found_error(
-                resource_type="Schema",
-                resource_id=type,
+            raise StructuredToolError(
+                message=f"Archetype schema not found: {type}",
+                error_code=ErrorCode.ARCHETYPE_NOT_FOUND,
+                retryable=False,
                 recovery_hint="Use get_archetypes to see available archetypes.",
+                details={"type_id": type},
             )
 
         # Check if client already has this version (ETag matching)
