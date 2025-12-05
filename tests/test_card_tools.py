@@ -404,7 +404,11 @@ def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repo
             )
         )
     error_msg = str(exc_info.value)
-    assert "get_archetypes" in error_msg.lower()
+    assert (
+        "browse" in error_msg.lower()
+        or "archetypes://" in error_msg.lower()
+        or "valid values" in error_msg.lower()
+    )
     # Verify structured error
     structured_error = get_structured_error(exc_info.value)
     assert structured_error is not None
@@ -429,7 +433,7 @@ def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repo
             )
         )
     error_msg = str(exc_info.value)
-    assert "get_archetype_schema" in error_msg.lower()
+    assert "browse" in error_msg.lower() or "archetype-schemas://" in error_msg.lower()
     assert "entry.trend_pullback" in error_msg
     # Verify structured error
     structured_error = get_structured_error(exc_info.value)

@@ -179,6 +179,138 @@
         }
       ],
       "updated_at": "2025-12-04T00:00:00Z"
+    },
+    {
+      "type_id": "gate.time_filter",
+      "schema_version": 1,
+      "etag": "W/\"v1.gate.time_filter\"",
+      "title": "Time Filter Gate",
+      "summary": "Allow or block downstream cards based on time filters (day of week, hours, date of month).",
+      "kind": "gate",
+      "tags": [
+        "time",
+        "session",
+        "schedule"
+      ],
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "./gate.time_filter.schema.json",
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "time_filter": {
+                "$ref": "common_defs.schema.json#/$defs/TimeFilterSpec"
+              }
+            },
+            "required": [
+              "time_filter"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "$ref": "common_defs.schema.json#/$defs/GateActionSpec"
+          }
+        },
+        "required": [
+          "context",
+          "event",
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "constraints": {
+        "min_history_bars": 0,
+        "pit_safe": true,
+        "warmup_hint": "Time filters are evaluated in real-time based on current timestamp."
+      },
+      "slot_hints": {
+        "notes": "Set action.target_roles to the cards this gate guards. At least one of days_of_week, time_window, or days_of_month must be specified in time_filter."
+      },
+      "examples": [
+        {
+          "human": "Allow entries only on weekdays (Monday-Friday) between 9:30 AM and 4:00 PM Eastern time.",
+          "slots": {
+            "context": {
+              "tf": "15m",
+              "symbol": "SPY"
+            },
+            "event": {
+              "time_filter": {
+                "days_of_week": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday"
+                ],
+                "time_window": "0930-1600",
+                "timezone": "America/New_York"
+              }
+            },
+            "action": {
+              "mode": "allow",
+              "target_roles": [
+                "entry"
+              ]
+            }
+          }
+        },
+        {
+          "human": "Block all trading on the first and last day of each month.",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "BTC-USD"
+            },
+            "event": {
+              "time_filter": {
+                "days_of_month": [
+                  1,
+                  31
+                ]
+              }
+            },
+            "action": {
+              "mode": "block",
+              "target_roles": [
+                "entry",
+                "exit"
+              ]
+            }
+          }
+        },
+        {
+          "human": "Allow entries only on Tuesdays and Thursdays during market hours.",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "AAPL"
+            },
+            "event": {
+              "time_filter": {
+                "days_of_week": [
+                  "tuesday",
+                  "thursday"
+                ],
+                "time_window": "0930-1600",
+                "timezone": "America/New_York"
+              }
+            },
+            "action": {
+              "mode": "allow",
+              "target_roles": [
+                "entry"
+              ]
+            }
+          }
+        }
+      ],
+      "updated_at": "2025-12-04T00:00:00Z"
     }
   ]
 }

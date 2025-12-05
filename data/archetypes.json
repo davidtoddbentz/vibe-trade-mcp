@@ -17,8 +17,7 @@
       "required_slots": [
         "context",
         "event",
-        "action",
-        "risk"
+        "action"
       ],
       "schema_etag": "W/\"v2.entry.trend_pullback\"",
       "deprecated": false,
@@ -47,8 +46,7 @@
       "required_slots": [
         "context",
         "event",
-        "action",
-        "risk"
+        "action"
       ],
       "schema_etag": "W/\"v2.entry.range_mean_reversion\"",
       "deprecated": false,
@@ -77,8 +75,7 @@
       "required_slots": [
         "context",
         "event",
-        "action",
-        "risk"
+        "action"
       ],
       "schema_etag": "W/\"v2.entry.breakout_trendfollow\"",
       "deprecated": false,
@@ -107,8 +104,7 @@
       "required_slots": [
         "context",
         "event",
-        "action",
-        "risk"
+        "action"
       ],
       "schema_etag": "W/\"v2.entry.breakout_retest\"",
       "deprecated": false,
@@ -138,8 +134,7 @@
       "required_slots": [
         "context",
         "event",
-        "action",
-        "risk"
+        "action"
       ],
       "schema_etag": "W/\"v2.entry.squeeze_expansion\"",
       "deprecated": false,
@@ -168,8 +163,7 @@
       "required_slots": [
         "context",
         "event",
-        "action",
-        "risk"
+        "action"
       ],
       "schema_etag": "W/\"v2.entry.xs_momentum\"",
       "deprecated": false,
@@ -195,8 +189,7 @@
       "required_slots": [
         "context",
         "event",
-        "action",
-        "risk"
+        "action"
       ],
       "schema_etag": "W/\"v2.entry.pairs_relative_value\"",
       "deprecated": false,
@@ -222,8 +215,7 @@
       "required_slots": [
         "context",
         "event",
-        "action",
-        "risk"
+        "action"
       ],
       "schema_etag": "W/\"v2.entry.intermarket_trigger\"",
       "deprecated": false,
@@ -249,8 +241,7 @@
       "required_slots": [
         "context",
         "event",
-        "action",
-        "risk"
+        "action"
       ],
       "schema_etag": "W/\"v2.entry.avwap_reversion\"",
       "deprecated": false,
@@ -279,8 +270,7 @@
       "required_slots": [
         "context",
         "event",
-        "action",
-        "risk"
+        "action"
       ],
       "schema_etag": "W/\"v2.entry.event_followthrough\"",
       "deprecated": false,
@@ -306,8 +296,7 @@
       "required_slots": [
         "context",
         "event",
-        "action",
-        "risk"
+        "action"
       ],
       "schema_etag": "W/\"v2.entry.gap_play\"",
       "deprecated": false,

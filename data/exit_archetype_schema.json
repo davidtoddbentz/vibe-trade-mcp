@@ -46,8 +46,7 @@
         "required": [
           "context",
           "event",
-          "action",
-          "risk"
+          "action"
         ],
         "additionalProperties": false
       },
@@ -138,8 +137,7 @@
         "required": [
           "context",
           "event",
-          "action",
-          "risk"
+          "action"
         ],
         "additionalProperties": false
       },
@@ -231,8 +229,7 @@
         "required": [
           "context",
           "event",
-          "action",
-          "risk"
+          "action"
         ],
         "additionalProperties": false
       },
@@ -320,8 +317,7 @@
         "required": [
           "context",
           "event",
-          "action",
-          "risk"
+          "action"
         ],
         "additionalProperties": false
       },
@@ -413,8 +409,7 @@
         "required": [
           "context",
           "event",
-          "action",
-          "risk"
+          "action"
         ],
         "additionalProperties": false
       },
@@ -501,8 +496,7 @@
         "required": [
           "context",
           "event",
-          "action",
-          "risk"
+          "action"
         ],
         "additionalProperties": false
       },
@@ -601,8 +595,7 @@
         "required": [
           "context",
           "event",
-          "action",
-          "risk"
+          "action"
         ],
         "additionalProperties": false
       },
@@ -709,8 +702,7 @@
         "required": [
           "context",
           "event",
-          "action",
-          "risk"
+          "action"
         ],
         "additionalProperties": false
       },
