@@ -70,7 +70,7 @@
           "1h",
           "4h"
         ],
-        "notes": "IMPORTANT: event.dip_band.length is in BARS, not days. Effective lookback = tf × length. Examples: 24 bars × 1h ≈ 1 day, 720 bars × 1h ≈ 30 days. To convert user's 'days' to bars: for 1h timeframe, 1 day = 24 bars, 30 days = 720 bars, 150 days = 3600 bars. event.dip_band.mult: values >2 are rare, >2.5 are very rare, >3 are extreme/dramatic."
+        "notes": "See BandSpec docs for bars→days conversion. event.dip_band.mult: values >2 are rare, >2.5 are very rare, >3 are extreme/dramatic."
       },
       "examples": [
         {
@@ -175,7 +175,7 @@
           "15m",
           "1h"
         ],
-        "notes": "IMPORTANT: event.band.length is in BARS, not days. Effective lookback = tf × length. Examples: 20 bars × 15m ≈ 5 hours, 24 bars × 1h ≈ 1 day, 720 bars × 1h ≈ 30 days. To convert user's 'days' to bars: for 1h timeframe, 1 day = 24 bars, 30 days = 720 bars, 150 days = 3600 bars. event.band.mult: values >2 are rare, >2.5 are very rare, >3 are extreme/dramatic."
+        "notes": "See BandSpec docs for bars→days conversion. event.band.mult: values >2 are rare, >2.5 are very rare, >3 are extreme/dramatic."
       },
       "examples": [
         {
@@ -512,6 +512,7 @@
         "properties": {
           "context": {
             "type": "object",
+            "description": "Special context for portfolio entry: empty object (no tf/symbol). Timeframe and universe are defined in event.rebalance (XSRankSpec), not in context.",
             "properties": {},
             "required": [],
             "additionalProperties": false
@@ -564,7 +565,7 @@
         "pit_safe": true
       },
       "slot_hints": {
-        "notes": "event.rebalance.universe defines the symbols; tf not required."
+        "notes": "Special context: empty object (no tf/symbol). event.rebalance.universe defines the symbols; tf is not required. This is a portfolio-level entry, not a per-symbol chart entry. For rank semantics: rank is 1-based (1 = highest rank, lower = stronger). If side='long_short' and bottom_n is omitted, it defaults to top_n."
       },
       "examples": [
         {
@@ -994,7 +995,7 @@
         "pit_safe": true
       },
       "slot_hints": {
-        "notes": "Strength filter comes from your ingestion/event scoring pipeline."
+        "notes": "Event-driven context: symbol required, tf not required (time driven by event timing). Strength filter comes from your ingestion/event scoring pipeline."
       },
       "examples": [
         {

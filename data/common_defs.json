@@ -245,13 +245,15 @@
     },
     "XSRankSpec": {
       "type": "object",
+      "description": "Cross-sectional ranking specification for portfolio entry/exit. Ranks symbols by feature and selects top/bottom N for long/short positions.",
       "properties": {
         "universe": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "minItems": 1
+          "minItems": 1,
+          "description": "List of symbols to rank (e.g., ['BTC-USD', 'ETH-USD', 'SOL-USD'])."
         },
         "rank_feature": {
           "enum": [
@@ -260,35 +262,41 @@
             "hv_ratio",
             "rsi",
             "ema_slope"
-          ]
+          ],
+          "description": "Feature to rank by: ret_1d (1-day return), ret_1w (1-week return), hv_ratio (historical volatility ratio), rsi (RSI), ema_slope (EMA slope)."
         },
         "top_n": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 100
+          "maximum": 100,
+          "description": "Number of top-ranked symbols to select for long positions. Rank is 1-based (1 = highest rank, lower = stronger)."
         },
         "bottom_n": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 100
+          "maximum": 100,
+          "description": "Number of bottom-ranked symbols to select for short positions (when side='long_short'). If omitted and side='long_short', defaults to top_n. Set to 0 or omit for long_only strategies."
         },
         "rebalance_cadence": {
           "enum": [
             "1d",
             "1w"
-          ]
+          ],
+          "description": "How often to rebalance the portfolio: 1d (daily) or 1w (weekly)."
         },
         "weights": {
           "enum": [
             "equal",
             "rank"
-          ]
+          ],
+          "description": "Position sizing: equal (equal weight) or rank (weight by rank, higher rank = larger position)."
         },
         "side": {
           "enum": [
             "long_only",
             "long_short"
-          ]
+          ],
+          "description": "Position direction: long_only (only long top N) or long_short (long top N, short bottom N)."
         }
       },
       "required": [
@@ -500,6 +508,7 @@
     },
     "RegimeSpec": {
       "type": "object",
+      "description": "Regime detection specification for gates and overlays. Defines a condition on trend, volatility, or custom factors.",
       "properties": {
         "metric": {
           "enum": [
@@ -509,10 +518,12 @@
             "vol_atr_pct",
             "custom_factor",
             "risk_event_prob"
-          ]
+          ],
+          "description": "Regime metric type: trend_ma_relation (spread of fast MA - slow MA, positive = uptrend), trend_adx (Average Directional Index, >25 = strong trend), vol_bb_width_pctile (percentile rank of BB width vs lookback), vol_atr_pct (ATR as % of price), custom_factor (externally supplied factor), risk_event_prob (probability of risk events)."
         },
         "tf": {
-          "$ref": "#/$defs/Timeframe"
+          "$ref": "#/$defs/Timeframe",
+          "description": "Timeframe for regime metric calculation."
         },
         "op": {
           "enum": [
@@ -521,34 +532,42 @@
             "<",
             "<=",
             "between"
-          ]
+          ],
+          "description": "Comparison operator. Use 'between' with value and value_hi for range checks."
         },
         "value": {
-          "type": "number"
+          "type": "number",
+          "description": "Threshold value for comparison. For 'between', this is the lower bound."
         },
         "value_hi": {
-          "type": "number"
+          "type": "number",
+          "description": "Upper bound for 'between' operator (required when op='between')."
         },
         "lookback_bars": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 5000
+          "maximum": 5000,
+          "description": "Lookback window in bars for percentile/metric calculation (e.g., for vol_bb_width_pctile)."
         },
         "ma_fast": {
           "type": "integer",
           "minimum": 2,
-          "maximum": 400
+          "maximum": 400,
+          "description": "Fast moving average period (required for trend_ma_relation metric)."
         },
         "ma_slow": {
           "type": "integer",
           "minimum": 2,
-          "maximum": 800
+          "maximum": 800,
+          "description": "Slow moving average period (required for trend_ma_relation metric)."
         },
         "factor_name": {
-          "type": "string"
+          "type": "string",
+          "description": "Name of custom factor (required for custom_factor metric)."
         },
         "notes": {
-          "type": "string"
+          "type": "string",
+          "description": "Optional notes about this regime condition."
         }
       },
       "required": [
@@ -579,31 +598,37 @@
     },
     "RiskSpec": {
       "type": "object",
+      "description": "Risk management parameters for position sizing, take profit, stop loss, and time-based exits. At least one threshold must be provided when used by exits that require risk settings.",
       "properties": {
         "tp_pct": {
           "type": "number",
           "minimum": 0.1,
-          "maximum": 100.0
+          "maximum": 100.0,
+          "description": "Take profit in % from entry price (e.g., 5 = +5% move from entry price)."
         },
         "sl_pct": {
           "type": "number",
           "minimum": 0.1,
-          "maximum": 100.0
+          "maximum": 100.0,
+          "description": "Stop loss in % from entry price (e.g., 2 = -2% move from entry price)."
         },
         "tp_rr": {
           "type": "number",
           "minimum": 0.1,
-          "maximum": 20.0
+          "maximum": 20.0,
+          "description": "Take profit as risk-reward ratio (e.g., 2.0 = TP at 2× the stop loss distance). If sl_atr=1.5, then tp_rr=2.0 means TP at 3.0 ATR from entry."
         },
         "sl_atr": {
           "type": "number",
           "minimum": 0.1,
-          "maximum": 20.0
+          "maximum": 20.0,
+          "description": "Stop loss at N × ATR from entry (ATR computed over strategy timeframe). Common values: 1.5-2.0 for normal volatility, 2.5-3.0 for wider stops."
         },
         "time_stop_bars": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 5000
+          "maximum": 5000,
+          "description": "Time-based exit: close position after N bars regardless of P&L. Used by exit.time_stop when event.time_elapsed=true. Value is in BARS (not days); effective duration = tf × bars."
         }
       },
       "additionalProperties": false

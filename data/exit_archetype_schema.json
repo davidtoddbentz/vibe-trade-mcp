@@ -46,9 +46,74 @@
         "required": [
           "context",
           "event",
-          "action"
+          "action",
+          "risk"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "event": {
+                  "properties": {
+                    "tp_sl": {
+                      "properties": {
+                        "tp_enabled": {
+                          "const": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "risk": {
+                  "anyOf": [
+                    {
+                      "required": ["tp_pct"]
+                    },
+                    {
+                      "required": ["tp_rr"]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "event": {
+                  "properties": {
+                    "tp_sl": {
+                      "properties": {
+                        "sl_enabled": {
+                          "const": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "risk": {
+                  "anyOf": [
+                    {
+                      "required": ["sl_pct"]
+                    },
+                    {
+                      "required": ["sl_atr"]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
       },
       "constraints": {
         "min_history_bars": 50,
@@ -59,7 +124,7 @@
           "1h",
           "4h"
         ],
-        "notes": "TP and SL levels are defined in risk.tp_rr, risk.tp_pct, risk.sl_atr, or risk.sl_pct. The event.tp_sl block enables/disables TP and SL monitoring. Engine exits when risk thresholds are hit."
+        "notes": "Risk block is REQUIRED. TP and SL levels are defined in risk.tp_rr, risk.tp_pct, risk.sl_atr, or risk.sl_pct. The event.tp_sl block enables/disables TP and SL monitoring. If tp_enabled=true, at least one of tp_rr or tp_pct must be set. If sl_enabled=true, at least one of sl_atr or sl_pct must be set."
       },
       "examples": [
         {
@@ -137,7 +202,8 @@
         "required": [
           "context",
           "event",
-          "action"
+          "action",
+          "risk"
         ],
         "additionalProperties": false
       },
@@ -150,7 +216,7 @@
           "1h",
           "4h"
         ],
-        "notes": "Trailing stop uses ATR-based band that moves with price. Engine updates the band position as price moves favorably. IMPORTANT: event.trail_band.length is in BARS, not days. Effective lookback = tf × length. Examples: 20 bars × 1h ≈ 20 hours, 24 bars × 1h ≈ 1 day. event.trail_band.mult: values >2 are rare, >2.5 are very rare."
+        "notes": "Risk block is REQUIRED. Trailing stop uses ATR-based band that moves with price. Engine updates the band position as price moves favorably. See BandSpec docs for bars→days conversion. event.trail_band.mult: values >2 are rare, >2.5 are very rare."
       },
       "examples": [
         {
@@ -229,9 +295,32 @@
         "required": [
           "context",
           "event",
-          "action"
+          "action",
+          "risk"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "event": {
+                  "properties": {
+                    "time_elapsed": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "risk": {
+                  "required": ["time_stop_bars"]
+                }
+              }
+            }
+          }
+        ]
       },
       "constraints": {
         "min_history_bars": 10,
@@ -243,7 +332,7 @@
           "1h",
           "4h"
         ],
-        "notes": "Time duration is specified in risk.time_stop_bars. Engine exits when that many bars have elapsed since entry."
+        "notes": "Risk block is REQUIRED. Time duration is specified in risk.time_stop_bars (in BARS, not days). Engine exits when that many bars have elapsed since entry. See RiskSpec docs for bars→days conversion."
       },
       "examples": [
         {
@@ -330,7 +419,7 @@
           "1h",
           "4h"
         ],
-        "notes": "Common use: exit long when price touches upper band (mean reversion), or exit short when price touches lower band. IMPORTANT: event.exit_band.length is in BARS, not days. Effective lookback = tf × length. Examples: 20 bars × 1h ≈ 20 hours, 24 bars × 1h ≈ 1 day, 720 bars × 1h ≈ 30 days. event.exit_band.mult: values >2 are rare, >2.5 are very rare, >3 are extreme/dramatic."
+        "notes": "Common use: exit long when price touches upper band (mean reversion), or exit short when price touches lower band. See BandSpec docs for bars→days conversion. event.exit_band.mult: values >2 are rare, >2.5 are very rare, >3 are extreme/dramatic."
       },
       "examples": [
         {
@@ -608,7 +697,7 @@
           "1d",
           "1w"
         ],
-        "notes": "Use exit_on_rebalance=true to exit positions that fall out of top_n on rebalance. Use rank_threshold to exit when rank drops below a specific threshold."
+        "notes": "Special context: empty object (no tf/symbol), same as entry.xs_momentum. Rank is 1-based (1 = highest rank, lower = stronger). Rank drop threshold: exit when name falls below rank N (e.g., rank_threshold=20 means exit when rank > 20). Coupling: event.rank_drop should match entry.xs_momentum.event.rebalance (same universe, rank_feature, rebalance_cadence) for proper coordination. Use exit_on_rebalance=true to exit positions that fall out of top_n on rebalance. Use rank_threshold to exit when rank drops below a specific threshold."
       },
       "examples": [
         {
