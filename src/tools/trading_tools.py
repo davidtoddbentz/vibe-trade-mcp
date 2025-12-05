@@ -231,7 +231,8 @@ def register_trading_tools(
     repositories (and therefore which databases/backends) are used.
     """
 
-    @mcp.tool()
+    # DISABLED: Use archetypes://{kind} resources instead
+    # @mcp.tool()
     def get_archetypes(
         kind: str | None = Field(
             None,
@@ -280,7 +281,7 @@ def register_trading_tools(
 
                 raise validation_error(
                     message=f"Invalid kind '{kind}'. Valid values are: {', '.join(sorted(valid_kinds))}",
-                    recovery_hint=f"Use get_archetypes() without kind parameter to see all archetypes, or use one of: {', '.join(sorted(valid_kinds))}",
+                    recovery_hint=f"Browse archetypes://all resource to see all archetypes, or use one of: {', '.join(sorted(valid_kinds))}",
                 )
             archetypes = [arch for arch in archetypes if arch.kind == kind]
 
@@ -306,7 +307,8 @@ def register_trading_tools(
             as_of=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         )
 
-    @mcp.tool()
+    # DISABLED: Use archetype-schemas://{kind} resources instead
+    # @mcp.tool()
     def get_archetype_schema(
         type: str = Field(..., description="Archetype identifier (e.g., 'entry.trend_pullback')"),
         if_none_match: str | None = Field(
@@ -363,6 +365,8 @@ def register_trading_tools(
         resolved_schema = _resolve_schema_references(schema.json_schema)
 
         # Convert domain model to API response
+        # Note: We manually construct the response to match GetArchetypeSchemaResponse structure
+        # (which doesn't include 'kind' field, unlike the resource JSON format)
         return GetArchetypeSchemaResponse(
             type_id=schema.type_id,
             schema_version=schema.schema_version,
@@ -398,14 +402,18 @@ def register_trading_tools(
         used when creating a card. It's designed to reduce friction when
         constructing slots manually.
 
-        Recommended workflow:
-        1. Use get_archetypes to find available archetypes
-        2. Use get_schema_example(type) to get a ready-to-use example
-        3. Optionally modify the example slots to fit your needs
-        4. Use create_card with the slots and schema_etag from this response
+        IMPORTANT: Before using this tool, you MUST first browse resources to discover
+        available archetypes. Do NOT use this tool without first checking resources.
+
+        Required workflow:
+        1. FIRST: Browse archetypes://{kind} or archetypes://all resources to discover available archetypes
+        2. Browse archetype-schemas://{kind} resources to see full schema details and available examples
+        3. Only then use get_schema_example(type) to get a ready-to-use example for a specific archetype
+        4. Optionally modify the example slots to fit your needs
+        5. Use create_card with the slots and schema_etag from this response
 
         Args:
-            type: Archetype identifier
+            type: Archetype identifier (must be discovered from resources first)
             example_index: Index of example to return (0-based, defaults to 0)
 
         Returns:
@@ -426,7 +434,7 @@ def register_trading_tools(
             raise not_found_error(
                 resource_type="Schema",
                 resource_id=type,
-                recovery_hint="Use get_archetypes to see available archetypes.",
+                recovery_hint="Browse archetypes://all resource to see available archetypes.",
             )
 
         # Check if example_index is valid
@@ -436,7 +444,7 @@ def register_trading_tools(
             raise validation_error(
                 error_code=ErrorCode.VALIDATION_ERROR,
                 message=f"Example index {example_index} is out of range. Schema has {len(schema.examples)} example(s).",
-                recovery_hint=f"Use get_archetype_schema('{type}') to see all available examples, or use index 0-{len(schema.examples) - 1}.",
+                recovery_hint=f"Browse archetype-schemas://{type.split('.', 1)[0]} resource to see all available examples, or use index 0-{len(schema.examples) - 1}.",
             )
 
         # Get the requested example

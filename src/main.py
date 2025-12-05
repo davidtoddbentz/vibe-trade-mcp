@@ -17,6 +17,7 @@ from src.db.card_repository import CardRepository
 from src.db.firestore_client import FirestoreClient
 from src.db.strategy_repository import StrategyRepository
 from src.tools.card_tools import register_card_tools
+from src.tools.resource_tools import register_archetype_resources
 from src.tools.strategy_tools import register_strategy_tools
 from src.tools.trading_tools import register_trading_tools
 
@@ -106,6 +107,9 @@ if auth_token:
 register_trading_tools(mcp, archetype_repo, schema_repo)
 register_card_tools(mcp, card_repo, schema_repo)
 register_strategy_tools(mcp, strategy_repo, card_repo, schema_repo)
+
+# Register resources for archetype data (makes it easier for agents to discover archetypes)
+register_archetype_resources(mcp, archetype_repo, schema_repo)
 
 
 def main():

@@ -211,7 +211,7 @@ def register_card_tools(
         schema version for version tracking (this is handled internally by MCP).
 
         Recommended workflow:
-        1. Use get_archetypes to find available archetypes
+        1. Browse archetypes://{kind} resources to find available archetypes
         2. Use get_schema_example(type) to get ready-to-use example slots
         3. Optionally modify the example slots to fit your needs
         4. Call create_card with type and slots
@@ -241,7 +241,7 @@ def register_card_tools(
             raise not_found_error(
                 resource_type="Archetype",
                 resource_id=type,
-                recovery_hint="Use get_archetypes to see available archetypes.",
+                recovery_hint="Browse archetypes://all resource to see available archetypes.",
             )
 
         # Always use current schema etag - this is internal to MCP
@@ -253,7 +253,7 @@ def register_card_tools(
             raise schema_validation_error(
                 type_id=type,
                 errors=validation_errors,
-                recovery_hint=f"Use get_archetype_schema('{type}') to see valid values, constraints, and examples.",
+                recovery_hint=f"Browse archetype-schemas://{type.split('.', 1)[0]} resource to see valid values, constraints, and examples.",
             )
 
         # Create card
@@ -347,7 +347,7 @@ def register_card_tools(
 
         Recommended workflow:
         1. Use get_card(card_id) to get the current card and its type
-        2. Use get_archetype_schema(type) to get the schema, constraints, and examples
+        2. Browse archetype-schemas://{kind} resources to get the schema, constraints, and examples
         3. Use the examples in the schema as a reference for valid slot values
         4. Call update_card with card_id and updated slots
 
@@ -479,7 +479,7 @@ def register_card_tools(
             raise not_found_error(
                 resource_type="Archetype",
                 resource_id=type,
-                recovery_hint="Use get_archetypes to see available archetypes.",
+                recovery_hint="Browse archetypes://all resource to see available archetypes.",
             )
 
         # Validate slots against JSON schema

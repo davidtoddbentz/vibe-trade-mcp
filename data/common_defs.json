@@ -685,6 +685,49 @@
       ],
       "additionalProperties": false
     },
+    "TimeFilterSpec": {
+      "type": "object",
+      "properties": {
+        "days_of_week": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 7
+        },
+        "time_window": {
+          "type": "string",
+          "pattern": "^[0-2][0-9][0-5][0-9]-[0-2][0-9][0-5][0-9]$",
+          "description": "Time window in HHMM-HHMM format (e.g., '0930-1600' for 9:30 AM to 4:00 PM)"
+        },
+        "days_of_month": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 31
+          },
+          "minItems": 1,
+          "maxItems": 31,
+          "description": "Days of the month (1-31) to allow/block"
+        },
+        "timezone": {
+          "type": "string",
+          "default": "UTC",
+          "description": "Timezone for time calculations (e.g., 'America/New_York', 'UTC')"
+        }
+      },
+      "additionalProperties": false
+    },
     "GateActionSpec": {
       "type": "object",
       "properties": {

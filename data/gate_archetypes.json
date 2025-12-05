@@ -52,6 +52,32 @@
         ]
       },
       "updated_at": "2025-12-04T00:00:00Z"
+    },
+    {
+      "id": "gate.time_filter",
+      "version": 1,
+      "title": "Time Filter Gate",
+      "summary": "Allow or block downstream cards based on time filters (day of week, hours, date of month).",
+      "kind": "gate",
+      "tags": [
+        "time",
+        "session",
+        "schedule"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action"
+      ],
+      "schema_etag": "W/\"v1.gate.time_filter\"",
+      "deprecated": false,
+      "hints": {
+        "preferred_tfs": [
+          "15m",
+          "1h"
+        ]
+      },
+      "updated_at": "2025-12-04T00:00:00Z"
     }
   ]
 }

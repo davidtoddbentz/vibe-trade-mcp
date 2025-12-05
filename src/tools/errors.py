@@ -184,7 +184,7 @@ def schema_validation_error(
     """
     if not recovery_hint:
         recovery_hint = (
-            f"Use get_archetype_schema('{type_id}') to see valid values, constraints, and examples."
+            f"Browse archetype-schemas://{type_id.split('.', 1)[0]} resource to see valid values, constraints, and examples."
         )
 
     error_details = "\n".join(f"  - {err}" for err in errors)
@@ -213,7 +213,7 @@ def schema_etag_mismatch_error(
         StructuredToolError with SCHEMA_ETAG_MISMATCH code
     """
     if not recovery_hint:
-        recovery_hint = "Please fetch the latest schema with get_archetype_schema."
+        recovery_hint = "Please browse the archetype-schemas://{kind} resource to fetch the latest schema."
 
     message = f"Schema ETag mismatch. Provided: {provided_etag}, Current: {current_etag}."
 
