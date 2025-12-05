@@ -71,8 +71,14 @@ class Strategy(BaseModel):
         if strategy_id is not None:
             data_copy["id"] = strategy_id
         # Convert attachments list to Attachment objects
+        # Strip out 'order' field if present (legacy field, no longer used)
         if "attachments" in data_copy:
-            data_copy["attachments"] = [Attachment(**att) for att in data_copy["attachments"]]
+            cleaned_attachments = []
+            for att in data_copy["attachments"]:
+                att_copy = att.copy()
+                att_copy.pop("order", None)  # Remove order field if present
+                cleaned_attachments.append(Attachment(**att_copy))
+            data_copy["attachments"] = cleaned_attachments
         return cls(**data_copy)
 
     def to_dict(self) -> dict[str, Any]:
