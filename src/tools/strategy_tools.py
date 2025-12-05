@@ -19,6 +19,8 @@ from src.tools.errors import (
 )
 
 # Valid roles for card attachments
+# Note: "sizing" and "risk" roles are reserved for future use. Currently, no archetypes exist for these roles.
+# Only "entry", "exit", "gate", and "overlay" have corresponding archetypes.
 VALID_ROLES = ["entry", "gate", "exit", "sizing", "risk", "overlay"]
 VALID_STATUSES = ["draft", "ready", "running", "paused", "stopped", "error"]
 
@@ -348,6 +350,7 @@ def register_strategy_tools(
         - Gates must execute BEFORE the cards they guard (lower order number)
         - Overlays must execute AFTER the cards they modify (higher order number)
         - Most strategies only need entries and exits (gates and overlays are optional)
+        - Order ranges (1-10, 11-20, etc.) are conventions for organization. If order is not specified, the server auto-assigns starting from 1 and increments. The engine only cares about relative ordering, not specific ranges.
 
         Recommended workflow:
         1. Create cards using create_card (start with entries and exits)
@@ -358,7 +361,7 @@ def register_strategy_tools(
         Args:
             strategy_id: Strategy identifier
             card_id: Card identifier to attach
-            role: Card role (entry, gate, exit, sizing, risk, or overlay)
+            role: Card role (entry, gate, exit, sizing, risk, or overlay). Note: "sizing" and "risk" roles are reserved for future use - currently no archetypes exist for these roles. Use "entry", "exit", "gate", or "overlay".
             overrides: Slot value overrides to merge with card slots (optional).
                 Overrides use deep merge: nested objects are merged recursively,
                 not replaced. For example, if card has {"context": {"symbol": "BTC-USD", "tf": "1h"}}
@@ -366,8 +369,10 @@ def register_strategy_tools(
                 {"context": {"symbol": "BTC-USD", "tf": "4h"}} (tf is updated, symbol is preserved).
                 To replace an entire nested object, you must provide all its fields.
             follow_latest: If true, use latest card version; if false, pin current version
-            order: Execution order (optional, auto-assigned to next available).
-                Use order ranges: gates (1-10), entries (11-20), exits (21-30), overlays (31-40)
+            order: Execution order (optional, auto-assigned to next available starting from 1).
+                Conventionally use order ranges: gates (1-10), entries (11-20), exits (21-30), overlays (31-40).
+                However, if not specified, the server auto-assigns starting from 1 and increments.
+                The engine only cares about relative ordering, not specific ranges.
             enabled: Whether attachment is enabled (default: true)
 
         Returns:

@@ -5,7 +5,7 @@
       "schema_version": 1,
       "etag": "W/\"v2.entry.trend_pullback\"",
       "title": "Trend Pullback",
-      "summary": "Enter with trend on dips/rallies gated by MA relation or ADX.",
+      "summary": "Enter with trend on dips/rallies gated by MA relation. For ADX gating, use a separate gate.regime card with RegimeSpec.metric='trend_adx'.",
       "kind": "entry",
       "tags": [
         "spot",
@@ -69,7 +69,8 @@
         "preferred_tfs": [
           "1h",
           "4h"
-        ]
+        ],
+        "notes": "IMPORTANT: event.dip_band.length is in BARS, not days. Effective lookback = tf × length. Examples: 24 bars × 1h ≈ 1 day, 720 bars × 1h ≈ 30 days. To convert user's 'days' to bars: for 1h timeframe, 1 day = 24 bars, 30 days = 720 bars, 150 days = 3600 bars. event.dip_band.mult: values >2 are rare, >2.5 are very rare, >3 are extreme/dramatic."
       },
       "examples": [
         {
@@ -173,7 +174,8 @@
         "preferred_tfs": [
           "15m",
           "1h"
-        ]
+        ],
+        "notes": "IMPORTANT: event.band.length is in BARS, not days. Effective lookback = tf × length. Examples: 20 bars × 15m ≈ 5 hours, 24 bars × 1h ≈ 1 day, 720 bars × 1h ≈ 30 days. To convert user's 'days' to bars: for 1h timeframe, 1 day = 24 bars, 30 days = 720 bars, 150 days = 3600 bars. event.band.mult: values >2 are rare, >2.5 are very rare, >3 are extreme/dramatic."
       },
       "examples": [
         {

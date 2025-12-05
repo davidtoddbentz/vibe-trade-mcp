@@ -150,7 +150,7 @@ def register_trading_tools(mcp: FastMCP) -> None:
 
 ### Documentation
 
-- **[AGENT_GUIDE.md](AGENT_GUIDE.md)** - Comprehensive guide for AI agents on using archetypes (entries, exits, gates, overlays)
+- **[data/AGENT_GUIDE.md](data/AGENT_GUIDE.md)** - Comprehensive guide for AI agents on using archetypes (entries, exits, gates, overlays). Also available as MCP resource `agent-guide://readme`.
 
 ## Project Structure
 

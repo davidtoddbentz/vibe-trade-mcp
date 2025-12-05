@@ -4,7 +4,7 @@
       "id": "entry.trend_pullback",
       "version": 1,
       "title": "Trend Pullback",
-      "summary": "Enter with trend on dips/rallies gated by MA relation or ADX.",
+      "summary": "Enter with trend on dips/rallies gated by MA relation. For ADX gating, use a separate gate.regime card with RegimeSpec.metric='trend_adx'.",
       "kind": "entry",
       "tags": [
         "spot",
