@@ -18,7 +18,8 @@
       "required_slots": [
         "context",
         "event",
-        "action"
+        "action",
+        "risk"
       ],
       "schema_etag": "W/\"v2.exit.take_profit_stop\"",
       "deprecated": false,
@@ -49,7 +50,8 @@
       "required_slots": [
         "context",
         "event",
-        "action"
+        "action",
+        "risk"
       ],
       "schema_etag": "W/\"v2.exit.trailing_stop\"",
       "deprecated": false,
@@ -79,7 +81,8 @@
       "required_slots": [
         "context",
         "event",
-        "action"
+        "action",
+        "risk"
       ],
       "schema_etag": "W/\"v2.exit.time_stop\"",
       "deprecated": false,

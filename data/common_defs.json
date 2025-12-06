@@ -598,7 +598,7 @@
     },
     "ExitRiskSpec": {
       "type": "object",
-      "description": "Exit risk parameters for take profit, stop loss, and time-based exits. Used only in exit cards and overlays. At least one threshold must be provided when used by exits that require risk settings.",
+      "description": "Shared risk parameters for take profit, stop loss, and time-based exits. Used by exit cards (often required), overlays, and entry cards that optionally override default risk. For exits that require risk settings (e.g., take_profit_stop, trailing_stop, time_stop), at least one appropriate threshold must be provided.",
       "properties": {
         "tp_pct": {
           "type": "number",
@@ -761,8 +761,6 @@
               "entry",
               "gate",
               "exit",
-              "sizing",
-              "risk",
               "overlay"
             ]
           },
@@ -812,8 +810,6 @@
               "entry",
               "gate",
               "exit",
-              "sizing",
-              "risk",
               "overlay"
             ]
           },
