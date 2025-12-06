@@ -205,7 +205,6 @@ def test_attach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
     assert response.attachments[0]["card_id"] == card_id
     assert response.attachments[0]["role"] == "entry"
     assert response.attachments[0]["overrides"] == {"symbol": "ETH-USD"}
-    assert response.attachments[0]["order"] == 1
     assert response.version == 2  # Version should increment
 
 
@@ -483,8 +482,8 @@ def test_list_strategies(strategy_tools_mcp):
     assert all("status" in s for s in response.strategies)
 
 
-def test_attach_card_auto_order(strategy_tools_mcp, card_tools_mcp, schema_repository):
-    """Test that attach_card auto-assigns order when not provided."""
+def test_attach_card_multiple_attachments(strategy_tools_mcp, card_tools_mcp, schema_repository):
+    """Test that attach_card can attach multiple cards with different roles."""
     # Setup: create multiple cards and a strategy
     schema_repository.get_by_type_id("entry.trend_pullback")
     example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
@@ -524,7 +523,7 @@ def test_attach_card_auto_order(strategy_tools_mcp, card_tools_mcp, schema_repos
     )
     strategy_id = CreateStrategyResponse(**create_strategy_result).strategy_id
 
-    # Attach first card (should get order=1)
+    # Attach first card
     result1 = run_async(
         call_tool(
             strategy_tools_mcp,
@@ -536,9 +535,9 @@ def test_attach_card_auto_order(strategy_tools_mcp, card_tools_mcp, schema_repos
             },
         )
     )
-    assert AttachCardResponse(**result1).attachments[0]["order"] == 1
+    assert len(AttachCardResponse(**result1).attachments) == 1
 
-    # Attach second card without specifying order (should auto-assign order=2)
+    # Attach second card with different role
     result2 = run_async(
         call_tool(
             strategy_tools_mcp,
@@ -552,9 +551,9 @@ def test_attach_card_auto_order(strategy_tools_mcp, card_tools_mcp, schema_repos
     )
     attachments = AttachCardResponse(**result2).attachments
     assert len(attachments) == 2
-    orders = [att["order"] for att in attachments]
-    assert 1 in orders
-    assert 2 in orders
+    roles = [att["role"] for att in attachments]
+    assert "entry" in roles
+    assert "gate" in roles
 
 
 def test_attach_card_follow_latest(strategy_tools_mcp, card_tools_mcp, schema_repository):

@@ -9,16 +9,16 @@ from pydantic import BaseModel, Field
 class Attachment(BaseModel):
     """Card attachment within a strategy.
 
-    Represents a card that's been attached to a strategy with a specific role,
-    execution order, and optional slot overrides.
+    Represents a card that's been attached to a strategy with a specific role
+    and optional slot overrides. Execution order is determined by role:
+    gates execute first, then entries, then exits, then overlays.
     """
 
     card_id: str = Field(..., description="Card identifier")
     role: str = Field(
         ...,
-        description="Card role: entry, gate, exit, sizing, risk, or overlay",
+        description="Card role: entry, gate, exit, or overlay",
     )
-    order: int = Field(..., description="Execution order (lower numbers execute first)")
     enabled: bool = Field(default=True, description="Whether attachment is enabled")
     overrides: dict[str, Any] = Field(
         default_factory=dict, description="Slot value overrides (merged with card slots)"
@@ -71,8 +71,14 @@ class Strategy(BaseModel):
         if strategy_id is not None:
             data_copy["id"] = strategy_id
         # Convert attachments list to Attachment objects
+        # Strip out 'order' field if present (legacy field, no longer used)
         if "attachments" in data_copy:
-            data_copy["attachments"] = [Attachment(**att) for att in data_copy["attachments"]]
+            cleaned_attachments = []
+            for att in data_copy["attachments"]:
+                att_copy = att.copy()
+                att_copy.pop("order", None)  # Remove order field if present
+                cleaned_attachments.append(Attachment(**att_copy))
+            data_copy["attachments"] = cleaned_attachments
         return cls(**data_copy)
 
     def to_dict(self) -> dict[str, Any]:

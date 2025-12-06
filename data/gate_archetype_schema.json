@@ -90,7 +90,7 @@
       "schema_version": 1,
       "etag": "W/\"v1.gate.event_risk_window\"",
       "title": "Event Risk Window Gate",
-      "summary": "Block or allow cards within a pre/post window around catalysts or macro events. Can also restrict to specific days of the week (e.g., Sunday-only, block Saturday/Monday). Use for day-of-week filtering like 'only trade on Sundays' or 'block trading on Mondays'.",
+      "summary": "Block or allow cards within a pre/post window around catalysts or macro events (e.g., earnings, CPI). For simple day-of-week or session-time filters, prefer gate.time_filter.",
       "kind": "gate",
       "tags": [
         "event",
@@ -146,7 +146,7 @@
         "warmup_hint": "Event calendar ingestion must be point-in-time safe."
       },
       "slot_hints": {
-        "notes": "Use pre/post_event_bars to define blackout windows relative to event start. IMPORTANT: pre_event_bars and post_event_bars are in BARS, not days. Effective duration = tf × bars. Examples: 8 bars × 15m = 2 hours, 24 bars × 1h = 1 day. For day-of-week filtering (e.g., 'only trade on Sundays', 'block trading on Mondays'), use gate.time_filter instead with days_of_week. This gate is primarily for event-based windows around catalysts."
+        "notes": "Use pre/post_event_bars to define blackout windows relative to event start. pre_event_bars and post_event_bars are in BARS (not days); see BandSpec docs for conversion. For day-of-week filtering (e.g., 'only trade on Sundays', 'block trading on Mondays'), use gate.time_filter instead with days_of_week. This gate is primarily for event-based windows around catalysts."
       },
       "examples": [
         {
