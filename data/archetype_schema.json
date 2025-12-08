@@ -571,7 +571,10 @@
         {
           "human": "Weekly: long top 5 by 1W momentum, equal weight",
           "slots": {
-            "context": {},
+            "context": {
+              "tf": "1d",
+              "symbol": "TSLA"
+            },
             "event": {
               "rebalance": {
                 "universe": [
@@ -621,10 +624,7 @@
         "type": "object",
         "properties": {
           "context": {
-            "type": "object",
-            "properties": {},
-            "required": [],
-            "additionalProperties": false
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
           },
           "event": {
             "type": "object",
@@ -693,7 +693,10 @@
         {
           "human": "AAPL vs MSFT: enter when |z|>2, exit at z=0.5",
           "slots": {
-            "context": {},
+            "context": {
+              "tf": "1d",
+              "symbol": "TSLA"
+            },
             "event": {
               "spread": {
                 "symbol_a": "AAPL",
@@ -739,10 +742,7 @@
         "type": "object",
         "properties": {
           "context": {
-            "type": "object",
-            "properties": {},
-            "required": [],
-            "additionalProperties": false
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
           },
           "event": {
             "type": "object",
@@ -788,7 +788,10 @@
         {
           "human": "Buy TSLA when NVDA up >3% in 1d; close confirm",
           "slots": {
-            "context": {},
+            "context": {
+              "tf": "1d",
+              "symbol": "TSLA"
+            },
             "event": {
               "lead_follow": {
                 "leader_symbol": "NVDA",
@@ -1114,6 +1117,205 @@
             "risk": {
               "tp_rr": 1.5,
               "sl_atr": 1.2
+            }
+          }
+        }
+      ],
+      "updated_at": "2025-12-02T17:58:21Z"
+    },
+    {
+      "type_id": "entry.rule_trigger",
+      "schema_version": 1,
+      "etag": "W/\"v1.entry.rule_trigger\"",
+      "title": "Rule-Based Entry",
+      "summary": "Generic entry triggered by a RegimeSpec condition. Use for simple rule-based entries like 'buy if ret_pct <= 1%' or 'avoid trading on big gap days'.",
+      "kind": "entry",
+      "tags": [
+        "spot",
+        "rule",
+        "generic",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "./entry.rule_trigger.schema.json",
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "condition": {
+                "$ref": "common_defs.schema.json#/$defs/RegimeSpec"
+              }
+            },
+            "required": [
+              "condition"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "allOf": [
+              {
+                "$ref": "common_defs.schema.json#/$defs/EntryActionSpec"
+              }
+            ]
+          },
+          "risk": {
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+          }
+        },
+        "required": [
+          "context",
+          "event",
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "constraints": {
+        "min_history_bars": 100,
+        "pit_safe": true
+      },
+      "slot_hints": {
+        "preferred_tfs": [
+          "15m",
+          "1h",
+          "4h",
+          "1d"
+        ],
+        "notes": "Use this archetype for simple rule-based entries. The condition field accepts any RegimeSpec metric (ret_pct, gap_pct, dist_from_vwap_pct, trend_regime, vol_regime, session_phase, etc.). For complex pattern-based entries, use pattern-specific archetypes instead."
+      },
+      "examples": [
+        {
+          "human": "BTC 1d: buy if day not up more than 1% (ret_pct <= 1%)",
+          "slots": {
+            "context": {
+              "tf": "1d",
+              "symbol": "BTC-USD"
+            },
+            "event": {
+              "condition": {
+                "metric": "ret_pct",
+                "tf": "1d",
+                "op": "<=",
+                "value": 1.0,
+                "lookback_bars": 1
+              }
+            },
+            "action": {
+              "direction": "long",
+              "confirm": "none"
+            },
+            "risk": {
+              "sl_pct": 2.0
+            }
+          }
+        },
+        {
+          "human": "BTC Sunday strategy: buy if day not up more than 1% (use with gate.time_filter for Sunday-only)",
+          "slots": {
+            "context": {
+              "tf": "1d",
+              "symbol": "BTC-USD"
+            },
+            "event": {
+              "condition": {
+                "metric": "ret_pct",
+                "tf": "1d",
+                "op": "<=",
+                "value": 1.0,
+                "lookback_bars": 1
+              }
+            },
+            "action": {
+              "direction": "long",
+              "confirm": "none"
+            },
+            "risk": {
+              "sl_pct": 2.0,
+              "tp_pct": 3.0
+            }
+          },
+          "note": "This entry card should be used with a gate.time_filter card that has days_of_week=['sunday'] and action.target_roles=['entry'] to restrict trading to Sundays only."
+        },
+        {
+          "human": "ETH 1h: avoid trading on days with gap > 2%",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "ETH-USD"
+            },
+            "event": {
+              "condition": {
+                "metric": "gap_pct",
+                "session": "us",
+                "op": "<=",
+                "value": 2.0
+              }
+            },
+            "action": {
+              "direction": "long",
+              "confirm": "none"
+            },
+            "risk": {
+              "sl_atr": 1.5
+            }
+          }
+        },
+        {
+          "human": "AAPL 1h: buy when price > 3% below YTD VWAP",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "AAPL"
+            },
+            "event": {
+              "condition": {
+                "metric": "dist_from_vwap_pct",
+                "tf": "1h",
+                "op": "<",
+                "value": -3.0,
+                "vwap_anchor": {
+                  "anchor": "ytd"
+                }
+              }
+            },
+            "action": {
+              "direction": "long",
+              "confirm": "close_confirm"
+            },
+            "risk": {
+              "sl_atr": 2.0
+            }
+          }
+        },
+        {
+          "human": "BTC 4h: only trade in uptrend regime",
+          "slots": {
+            "context": {
+              "tf": "4h",
+              "symbol": "BTC-USD"
+            },
+            "event": {
+              "condition": {
+                "metric": "trend_regime",
+                "tf": "4h",
+                "op": "==",
+                "value": "up",
+                "ma_fast": 20,
+                "ma_slow": 50
+              }
+            },
+            "action": {
+              "direction": "long",
+              "confirm": "none"
+            },
+            "risk": {
+              "sl_atr": 1.5
             }
           }
         }

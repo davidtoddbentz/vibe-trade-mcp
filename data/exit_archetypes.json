@@ -248,6 +248,38 @@
         "notes": "Risk is configured in the card's risk block; see schema."
       },
       "updated_at": "2025-12-04T00:00:00Z"
+    },
+    {
+      "id": "exit.rule_trigger",
+      "version": 1,
+      "title": "Rule-Based Exit",
+      "summary": "Generic exit triggered by a RegimeSpec condition. Use for simple rule-based exits like 'exit if ret_pct > 5%' or 'exit when volatility becomes high'.",
+      "kind": "exit",
+      "tags": [
+        "spot",
+        "exit",
+        "rule",
+        "generic",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action"
+      ],
+      "schema_etag": "W/\"v1.exit.rule_trigger\"",
+      "deprecated": false,
+      "hints": {
+        "preferred_tfs": [
+          "15m",
+          "1h",
+          "4h",
+          "1d"
+        ]
+      },
+      "updated_at": "2025-12-02T17:58:21Z"
     }
   ]
 }

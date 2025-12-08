@@ -304,6 +304,37 @@
         "preferred_tfs": []
       },
       "updated_at": "2025-12-02T17:58:21Z"
+    },
+    {
+      "id": "entry.rule_trigger",
+      "version": 1,
+      "title": "Rule-Based Entry",
+      "summary": "Generic entry triggered by a RegimeSpec condition. Use for simple rule-based entries like 'buy if ret_pct <= 1%' or 'avoid trading on big gap days'.",
+      "kind": "entry",
+      "tags": [
+        "spot",
+        "rule",
+        "generic",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "required_slots": [
+        "context",
+        "event",
+        "action"
+      ],
+      "schema_etag": "W/\"v1.entry.rule_trigger\"",
+      "deprecated": false,
+      "hints": {
+        "preferred_tfs": [
+          "15m",
+          "1h",
+          "4h",
+          "1d"
+        ]
+      },
+      "updated_at": "2025-12-02T17:58:21Z"
     }
   ]
 }

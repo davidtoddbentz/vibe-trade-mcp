@@ -508,22 +508,27 @@
     },
     "RegimeSpec": {
       "type": "object",
-      "description": "Regime detection specification for gates and overlays. Defines a condition on trend, volatility, or custom factors.",
+      "description": "Regime detection specification for gates, overlays, and rule-based entries. Defines a condition on trend, volatility, return, gap, VWAP distance, or derived regime classifications.",
       "properties": {
         "metric": {
           "enum": [
             "trend_ma_relation",
             "trend_adx",
+            "trend_regime",
             "vol_bb_width_pctile",
             "vol_atr_pct",
-            "custom_factor",
+            "vol_regime",
+            "ret_pct",
+            "gap_pct",
+            "dist_from_vwap_pct",
+            "session_phase",
             "risk_event_prob"
           ],
-          "description": "Regime metric type: trend_ma_relation (spread of fast MA - slow MA, positive = uptrend), trend_adx (Average Directional Index, >25 = strong trend), vol_bb_width_pctile (percentile rank of BB width vs lookback), vol_atr_pct (ATR as % of price), custom_factor (externally supplied factor), risk_event_prob (probability of risk events)."
+          "description": "Regime metric type: trend_ma_relation (spread of fast MA - slow MA, positive = uptrend), trend_adx (Average Directional Index, >25 = strong trend), trend_regime (derived classification: 'up', 'down', 'range'), vol_bb_width_pctile (percentile rank of BB width vs lookback), vol_atr_pct (ATR as % of price), vol_regime (derived classification: 'quiet', 'normal', 'high'), ret_pct (N-bar percentage return, controlled by lookback_bars), gap_pct (percentage gap from prior close, typically used with session_phase), dist_from_vwap_pct (distance from anchored VWAP as percentage, requires vwap_anchor), session_phase (session window classification: 'open', 'close', 'overnight', requires session), risk_event_prob (probability of risk events)."
         },
         "tf": {
           "$ref": "#/$defs/Timeframe",
-          "description": "Timeframe for regime metric calculation."
+          "description": "Timeframe for regime metric calculation. Not required for session_phase or gap_pct (session-based)."
         },
         "op": {
           "enum": [
@@ -531,23 +536,33 @@
             ">=",
             "<",
             "<=",
-            "between"
+            "between",
+            "==",
+            "!="
           ],
-          "description": "Comparison operator. Use 'between' with value and value_hi for range checks."
+          "description": "Comparison operator. Use 'between' with value and value_hi for range checks. Use '==' or '!=' for trend_regime, vol_regime, and session_phase (string comparisons)."
         },
         "value": {
-          "type": "number",
-          "description": "Threshold value for comparison. For 'between', this is the lower bound."
+          "oneOf": [
+            {
+              "type": "number",
+              "description": "Threshold value for numeric comparisons. For 'between', this is the lower bound."
+            },
+            {
+              "type": "string",
+              "description": "String value for regime/session comparisons (e.g., 'up', 'quiet', 'open'). Used with trend_regime, vol_regime, or session_phase metrics."
+            }
+          ]
         },
         "value_hi": {
           "type": "number",
-          "description": "Upper bound for 'between' operator (required when op='between')."
+          "description": "Upper bound for 'between' operator (required when op='between' for numeric metrics)."
         },
         "lookback_bars": {
           "type": "integer",
           "minimum": 1,
           "maximum": 5000,
-          "description": "Lookback window in bars for percentile/metric calculation (e.g., for vol_bb_width_pctile)."
+          "description": "Lookback window in bars for percentile/metric calculation. For ret_pct, this controls the N-bar return period (e.g., lookback_bars=1 for 1-bar return, lookback_bars=24 for 24-bar return on 1h timeframe ≈ 1 day). For vol_bb_width_pctile, this is the lookback for percentile calculation."
         },
         "ma_fast": {
           "type": "integer",
@@ -561,9 +576,29 @@
           "maximum": 800,
           "description": "Slow moving average period (required for trend_ma_relation metric)."
         },
-        "factor_name": {
-          "type": "string",
-          "description": "Name of custom factor (required for custom_factor metric)."
+        "vwap_anchor": {
+          "$ref": "#/$defs/VWAPAnchorSpec",
+          "description": "VWAP anchor specification (required for dist_from_vwap_pct metric)."
+        },
+        "session": {
+          "enum": [
+            "us",
+            "eu",
+            "asia"
+          ],
+          "description": "Trading session (required for session_phase and gap_pct metrics)."
+        },
+        "trend_threshold": {
+          "type": "number",
+          "description": "Threshold for trend_regime classification. If omitted, uses default thresholds (ma_fast/ma_slow spread > 0.5% = 'up', < -0.5% = 'down', else 'range')."
+        },
+        "vol_threshold_low": {
+          "type": "number",
+          "description": "Lower threshold for vol_regime classification (percentile). If omitted, uses default thresholds (pctile < 25 = 'quiet', pctile > 75 = 'high', else 'normal')."
+        },
+        "vol_threshold_high": {
+          "type": "number",
+          "description": "Upper threshold for vol_regime classification (percentile). If omitted, uses default thresholds (pctile < 25 = 'quiet', pctile > 75 = 'high', else 'normal')."
         },
         "notes": {
           "type": "string",
@@ -591,6 +626,56 @@
           "then": {
             "required": [
               "value_hi"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "enum": [
+                  "trend_ma_relation"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "ma_fast",
+              "ma_slow"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "enum": [
+                  "dist_from_vwap_pct"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "vwap_anchor"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "enum": [
+                  "session_phase",
+                  "gap_pct"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "session"
             ]
           }
         }
@@ -657,7 +742,8 @@
           "$ref": "#/$defs/Direction"
         },
         "confirm": {
-          "$ref": "#/$defs/Confirm"
+          "$ref": "#/$defs/Confirm",
+          "default": "none"
         },
         "cooldown_bars": {
           "type": "integer",
@@ -694,7 +780,8 @@
           "default": 1.0
         },
         "confirm": {
-          "$ref": "#/$defs/Confirm"
+          "$ref": "#/$defs/Confirm",
+          "default": "none"
         }
       },
       "required": [

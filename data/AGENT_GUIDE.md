@@ -42,6 +42,7 @@ There are **4 types of archetypes**, each serving a specific purpose in trading 
 - `entry.trend_pullback` - Enter on pullbacks within a trend
 - `entry.breakout_trendfollow` - Enter on breakouts in the direction of the trend
 - `entry.xs_momentum` - Enter based on cross-sectional momentum ranking
+- `entry.rule_trigger` - Enter based on a simple RegimeSpec condition (e.g., "buy if ret_pct <= 1%")
 
 **Workflow**:
 1. Use `get_archetypes(kind="entry")` to see available entry archetypes
@@ -59,6 +60,7 @@ There are **4 types of archetypes**, each serving a specific purpose in trading 
 - `exit.trailing_stop` - Exit when price reverses by a trailing amount
 - `exit.time_stop` - Exit after a fixed time period
 - `exit.squeeze_compression` - Exit when volatility compresses back into a squeeze
+- `exit.rule_trigger` - Exit based on a simple RegimeSpec condition (e.g., "exit if ret_pct > 5%")
 
 **Workflow**:
 1. Use `get_archetypes(kind="exit")` to see available exit archetypes
@@ -72,6 +74,8 @@ There are **4 types of archetypes**, each serving a specific purpose in trading 
 **Purpose**: Conditionally **allow or block** other cards from executing.
 
 **When to use**: Optional. Use gates to add conditional logic that filters when entries/exits can execute.
+
+**Role boundary**: **Entries encode trading ideas/conditions; gates only control when those cards are allowed to act (time, events, high-level regimes).** Do not put trade logic (e.g., "buy if ret_pct <= 1%") into gates. Use entry cards (like `entry.rule_trigger`) for trading conditions instead.
 
 **Examples**:
 - `gate.regime` - Only allow entries/exits when market regime matches criteria (trend, volatility, factors)
@@ -276,10 +280,81 @@ Many archetypes share common band and risk specs via `BandSpec` and `ExitRiskSpe
     - 15m timeframe: 1 day ≈ 96 bars, 30 days ≈ 2880 bars.
   - When a user says “N days lookback”, convert to bars based on the chosen timeframe.
 - **ExitRiskSpec (shared risk spec)**:
+  - **Note**: This risk block is shared between entries and exits. Fields like `tp_pct`, `sl_pct`, `sl_atr`, `tp_rr`, and `time_stop_bars` can be used in both entry and exit cards regardless of card kind.
   - Percentage stops/targets: `tp_pct`, `sl_pct` (e.g. 5 = +5%, 2 = -2%).
   - ATR-based stops: `sl_atr` (e.g. 1.5–2.0 for normal, 2.5–3.0 for wider).
   - Risk–reward TP: `tp_rr` (e.g. 2.0 = TP at 2× stop distance).
   - Time stops: `time_stop_bars` is in **bars**; effective duration is `tf × time_stop_bars` (e.g. 24 bars on 1h ≈ 1 day).
+
+## RegimeSpec metrics
+
+**RegimeSpec = generic condition on a metric (trend, volatility, return, gap, VWAP, session).** It's not just for "regimes" - it's the shared primitive layer for expressing any condition on market metrics.
+
+RegimeSpec supports built-in metrics for trend, volatility, return, gap, VWAP distance, and derived regime classifications. These metrics can be used in gates, overlays, and the `entry.rule_trigger` / `exit.rule_trigger` archetypes:
+
+- **Trend metrics**:
+  - `trend_ma_relation` - Fast MA vs slow MA spread (positive = uptrend). Requires `ma_fast` and `ma_slow`.
+  - `trend_adx` - Average Directional Index (>25 = strong trend)
+  - `trend_regime` - Derived classification: 'up', 'down', 'range' (uses `==` or `!=` operators with string values)
+
+- **Volatility metrics**:
+  - `vol_bb_width_pctile` - Percentile rank of Bollinger Band width vs lookback
+  - `vol_atr_pct` - ATR as percentage of price
+  - `vol_regime` - Derived classification: 'quiet', 'normal', 'high' (uses `==` or `!=` operators with string values)
+
+- **Return metrics**:
+  - `ret_pct` - N-bar percentage return (controlled by `lookback_bars`). Example: `lookback_bars=1` for 1-bar return, `lookback_bars=24` for 24-bar return on 1h timeframe ≈ 1 day.
+
+- **Gap metrics**:
+  - `gap_pct` - Percentage gap from prior close. Requires `session` (us/eu/asia).
+
+- **VWAP metrics**:
+  - `dist_from_vwap_pct` - Distance from anchored VWAP as percentage. Requires `vwap_anchor` (VWAPAnchorSpec).
+
+- **Session metrics**:
+  - `session_phase` - Session window classification: 'open', 'close', 'overnight'. Requires `session` (us/eu/asia). Uses `==` or `!=` operators with string values.
+
+- **Risk metrics**:
+  - `risk_event_prob` - Probability of risk events
+
+Use these built-in metrics for all regime conditions. For simple return-based conditions like "day not up more than 1%", use `ret_pct` with appropriate `lookback_bars`. For simple rule-based entries, use `entry.rule_trigger` with any of these metrics.
+
+## Architecture: Primitives vs Archetypes
+
+The system is built on two layers:
+
+### Rule Layer (Primitives)
+Shared building blocks defined in `common_defs.json`:
+- **Return metrics**: `ret_pct` (via RegimeSpec)
+- **Volatility metrics**: `vol_bb_width_pctile`, `vol_atr_pct`, `vol_regime` (via RegimeSpec)
+- **Gap metrics**: `gap_pct` (via RegimeSpec)
+- **VWAP metrics**: `dist_from_vwap_pct` (via RegimeSpec)
+- **Session metrics**: `session_phase` (via RegimeSpec)
+- **Band relationships**: `BandSpec`, `BandEvent`
+- **Breakouts/levels**: `BreakoutSpec`, `RetestSpec`
+- **Distance to anchors**: `VWAPAnchorSpec`
+- **Session boundaries**: `SessionSpec`
+- **Trend conditions**: `MASpec`, `trend_adx`, `trend_regime` (via RegimeSpec)
+- **Confirmations**: `Confirm`
+
+These are the "atoms" - reusable conditions that any archetype can use.
+
+### Idea Layer (Archetypes)
+Patterns built from primitives:
+- `entry.trend_pullback` = uptrend (`MASpec`) + pullback (`BandEvent` + `BandSpec`) + confirm
+- `entry.squeeze_expansion` = vol compression (`SqueezeSpec`) + breakout
+- `entry.breakout_retest` = breakout (`BreakoutSpec`) + pullback depth (`RetestSpec`)
+- `entry.rule_trigger` = single condition (`RegimeSpec`) + action (escape hatch for simple entry cases)
+- `exit.rule_trigger` = single condition (`RegimeSpec`) + action (escape hatch for simple exit cases)
+
+These are the "molecules" - semantic patterns that express trading ideas.
+
+### Why This Matters
+- **Primitives** give you flexibility to express any condition
+- **Archetypes** give you semantic compression and discoverability
+- **Rule-trigger archetype** gives you an escape hatch when you just need "if X then Y"
+
+Use archetypes when they match the user's intent. Use `entry.rule_trigger` or `exit.rule_trigger` when the user expresses a simple single-condition rule. Use gates for environment filtering, not trade logic.
 
 ## Full Strategy Document Example
 
@@ -458,6 +533,82 @@ Here's a complete strategy document showing how cards are composed with target r
 - The overlay (`overlay_card_1`) reduces position size by 50% when volatility is high, targeting entries via `action.target_roles: ["entry"]`
 
 Execution order is automatic: gate → entry → exits → overlay.
+
+## Composite Example: BTC Sunday Strategy
+
+A common pattern is combining a time filter gate with a rule-based entry. For example, "BTC Sunday: buy if day not up more than 1%":
+
+**Gate card** (`gate.time_filter`):
+```json
+{
+  "type": "gate.time_filter",
+  "slots": {
+    "context": { "tf": "1d", "symbol": "BTC-USD" },
+    "event": {
+      "time_filter": {
+        "days_of_week": ["sunday"],
+        "timezone": "UTC"
+      }
+    },
+    "action": {
+      "mode": "allow",
+      "target_roles": ["entry"]
+    }
+  }
+}
+```
+
+**Entry card** (`entry.rule_trigger`):
+```json
+{
+  "type": "entry.rule_trigger",
+  "slots": {
+    "context": { "tf": "1d", "symbol": "BTC-USD" },
+    "event": {
+      "condition": {
+        "metric": "ret_pct",
+        "tf": "1d",
+        "op": "<=",
+        "value": 1.0,
+        "lookback_bars": 1
+      }
+    },
+    "action": {
+      "direction": "long",
+      "confirm": "none"
+    },
+    "risk": {
+      "sl_pct": 2.0,
+      "tp_pct": 3.0
+    }
+  }
+}
+```
+
+**Exit card** (`exit.take_profit_stop` or `exit.rule_trigger`):
+```json
+{
+  "type": "exit.take_profit_stop",
+  "slots": {
+    "context": { "tf": "1d", "symbol": "BTC-USD" },
+    "event": {
+      "tp_sl": {
+        "tp_enabled": true,
+        "sl_enabled": true
+      }
+    },
+    "action": {
+      "mode": "close"
+    },
+    "risk": {
+      "tp_pct": 3.0,
+      "sl_pct": 2.0
+    }
+  }
+}
+```
+
+This pattern (gate.time_filter + entry.rule_trigger) is the recommended approach for simple scheduled trading rules that don't require complex pattern matching.
 
 ## Common Patterns
 

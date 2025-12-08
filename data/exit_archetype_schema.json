@@ -830,6 +830,164 @@
         }
       ],
       "updated_at": "2025-12-04T00:00:00Z"
+    },
+    {
+      "type_id": "exit.rule_trigger",
+      "schema_version": 1,
+      "etag": "W/\"v1.exit.rule_trigger\"",
+      "title": "Rule-Based Exit",
+      "summary": "Generic exit triggered by a RegimeSpec condition. Use for simple rule-based exits like 'exit if ret_pct > 5%' or 'exit when volatility becomes high'.",
+      "kind": "exit",
+      "tags": [
+        "spot",
+        "exit",
+        "rule",
+        "generic",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "./exit.rule_trigger.schema.json",
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "condition": {
+                "$ref": "common_defs.schema.json#/$defs/RegimeSpec"
+              }
+            },
+            "required": [
+              "condition"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
+          },
+          "risk": {
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+          }
+        },
+        "required": [
+          "context",
+          "event",
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "constraints": {
+        "min_history_bars": 100,
+        "pit_safe": true
+      },
+      "slot_hints": {
+        "preferred_tfs": [
+          "15m",
+          "1h",
+          "4h",
+          "1d"
+        ],
+        "notes": "Use this archetype for simple rule-based exits. The condition field accepts any RegimeSpec metric (ret_pct, gap_pct, dist_from_vwap_pct, trend_regime, vol_regime, session_phase, etc.). For complex pattern-based exits, use pattern-specific archetypes instead."
+      },
+      "examples": [
+        {
+          "human": "BTC 1h: exit long if return exceeds 5% (ret_pct > 5%)",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "BTC-USD"
+            },
+            "event": {
+              "condition": {
+                "metric": "ret_pct",
+                "tf": "1h",
+                "op": ">",
+                "value": 5.0,
+                "lookback_bars": 1
+              }
+            },
+            "action": {
+              "mode": "close",
+              "confirm": "none"
+            }
+          }
+        },
+        {
+          "human": "ETH 4h: exit when volatility regime becomes high",
+          "slots": {
+            "context": {
+              "tf": "4h",
+              "symbol": "ETH-USD"
+            },
+            "event": {
+              "condition": {
+                "metric": "vol_regime",
+                "tf": "4h",
+                "op": "==",
+                "value": "high",
+                "lookback_bars": 200
+              }
+            },
+            "action": {
+              "mode": "close",
+              "confirm": "none"
+            }
+          }
+        },
+        {
+          "human": "AAPL 1h: exit if price moves > 2% above YTD VWAP",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "AAPL"
+            },
+            "event": {
+              "condition": {
+                "metric": "dist_from_vwap_pct",
+                "tf": "1h",
+                "op": ">",
+                "value": 2.0,
+                "vwap_anchor": {
+                  "anchor": "ytd"
+                }
+              }
+            },
+            "action": {
+              "mode": "close",
+              "confirm": "close_confirm"
+            }
+          }
+        },
+        {
+          "human": "BTC 1d: exit if trend regime changes from up to down",
+          "slots": {
+            "context": {
+              "tf": "1d",
+              "symbol": "BTC-USD"
+            },
+            "event": {
+              "condition": {
+                "metric": "trend_regime",
+                "tf": "1d",
+                "op": "==",
+                "value": "down",
+                "ma_fast": 20,
+                "ma_slow": 50
+              }
+            },
+            "action": {
+              "mode": "close",
+              "confirm": "none"
+            }
+          }
+        }
+      ],
+      "updated_at": "2025-12-02T17:58:21Z"
     }
   ]
 }
