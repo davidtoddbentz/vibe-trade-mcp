@@ -71,7 +71,7 @@ def test_get_schema_example_not_found(trading_tools_mcp):
     # Assert: should get error with helpful guidance
     structured_error = get_structured_error(exc_info.value)
     assert structured_error is not None
-    assert structured_error.error_code == ErrorCode.SCHEMA_NOT_FOUND
+    assert structured_error.error_code == ErrorCode.ARCHETYPE_NOT_FOUND
     assert structured_error.retryable is False
     assert (
         "browse" in structured_error.recovery_hint.lower()
@@ -101,7 +101,7 @@ def test_get_schema_example_invalid_index(trading_tools_mcp):
     # Try to get structured error, but it's okay if it's None (FastMCP might wrap it differently)
     structured_error = get_structured_error(exc_info.value)
     if structured_error is not None:
-        assert structured_error.error_code == ErrorCode.VALIDATION_ERROR
+        assert structured_error.error_code == ErrorCode.SCHEMA_VALIDATION_ERROR
         assert structured_error.retryable is False
 
 

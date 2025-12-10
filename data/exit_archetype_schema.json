@@ -40,15 +40,80 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
           "context",
           "event",
-          "action"
+          "action",
+          "risk"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "event": {
+                  "properties": {
+                    "tp_sl": {
+                      "properties": {
+                        "tp_enabled": {
+                          "const": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "risk": {
+                  "anyOf": [
+                    {
+                      "required": ["tp_pct"]
+                    },
+                    {
+                      "required": ["tp_rr"]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "event": {
+                  "properties": {
+                    "tp_sl": {
+                      "properties": {
+                        "sl_enabled": {
+                          "const": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "risk": {
+                  "anyOf": [
+                    {
+                      "required": ["sl_pct"]
+                    },
+                    {
+                      "required": ["sl_atr"]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
       },
       "constraints": {
         "min_history_bars": 50,
@@ -59,7 +124,7 @@
           "1h",
           "4h"
         ],
-        "notes": "TP and SL levels are defined in risk.tp_rr, risk.tp_pct, risk.sl_atr, or risk.sl_pct. The event.tp_sl block enables/disables TP and SL monitoring. Engine exits when risk thresholds are hit."
+        "notes": "Risk block is REQUIRED. TP and SL levels are defined in risk.tp_rr, risk.tp_pct, risk.sl_atr, or risk.sl_pct. The event.tp_sl block enables/disables TP and SL monitoring. If tp_enabled=true, at least one of tp_rr or tp_pct must be set. If sl_enabled=true, at least one of sl_atr or sl_pct must be set."
       },
       "examples": [
         {
@@ -131,13 +196,14 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
           "context",
           "event",
-          "action"
+          "action",
+          "risk"
         ],
         "additionalProperties": false
       },
@@ -150,7 +216,7 @@
           "1h",
           "4h"
         ],
-        "notes": "Trailing stop uses ATR-based band that moves with price. Engine updates the band position as price moves favorably. IMPORTANT: event.trail_band.length is in BARS, not days. Effective lookback = tf × length. Examples: 20 bars × 1h ≈ 20 hours, 24 bars × 1h ≈ 1 day. event.trail_band.mult: values >2 are rare, >2.5 are very rare."
+        "notes": "Risk block is REQUIRED. Trailing stop uses ATR-based band that moves with price. Engine updates the band position as price moves favorably. See BandSpec docs for bars→days conversion. event.trail_band.mult: values >2 are rare, >2.5 are very rare."
       },
       "examples": [
         {
@@ -223,15 +289,38 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
           "context",
           "event",
-          "action"
+          "action",
+          "risk"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "event": {
+                  "properties": {
+                    "time_elapsed": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "risk": {
+                  "required": ["time_stop_bars"]
+                }
+              }
+            }
+          }
+        ]
       },
       "constraints": {
         "min_history_bars": 10,
@@ -243,7 +332,7 @@
           "1h",
           "4h"
         ],
-        "notes": "Time duration is specified in risk.time_stop_bars. Engine exits when that many bars have elapsed since entry."
+        "notes": "Risk block is REQUIRED. Time duration is specified in risk.time_stop_bars (in BARS, not days). Engine exits when that many bars have elapsed since entry. See RiskSpec docs for bars→days conversion."
       },
       "examples": [
         {
@@ -311,7 +400,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -330,7 +419,7 @@
           "1h",
           "4h"
         ],
-        "notes": "Common use: exit long when price touches upper band (mean reversion), or exit short when price touches lower band. IMPORTANT: event.exit_band.length is in BARS, not days. Effective lookback = tf × length. Examples: 20 bars × 1h ≈ 20 hours, 24 bars × 1h ≈ 1 day, 720 bars × 1h ≈ 30 days. event.exit_band.mult: values >2 are rare, >2.5 are very rare, >3 are extreme/dramatic."
+        "notes": "Common use: exit long when price touches upper band (mean reversion), or exit short when price touches lower band. See BandSpec docs for bars→days conversion. event.exit_band.mult: values >2 are rare, >2.5 are very rare, >3 are extreme/dramatic."
       },
       "examples": [
         {
@@ -403,7 +492,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -490,7 +579,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -589,7 +678,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -608,7 +697,7 @@
           "1d",
           "1w"
         ],
-        "notes": "Use exit_on_rebalance=true to exit positions that fall out of top_n on rebalance. Use rank_threshold to exit when rank drops below a specific threshold."
+        "notes": "Special context: empty object (no tf/symbol), same as entry.xs_momentum. Rank is 1-based (1 = highest rank, lower = stronger). Rank drop threshold: exit when name falls below rank N (e.g., rank_threshold=20 means exit when rank > 20). Coupling: event.rank_drop should match entry.xs_momentum.event.rebalance (same universe, rank_feature, rebalance_cadence) for proper coordination. Use exit_on_rebalance=true to exit positions that fall out of top_n on rebalance. Use rank_threshold to exit when rank drops below a specific threshold."
       },
       "examples": [
         {
@@ -696,7 +785,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/RiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
           }
         },
         "required": [
@@ -741,6 +830,164 @@
         }
       ],
       "updated_at": "2025-12-04T00:00:00Z"
+    },
+    {
+      "type_id": "exit.rule_trigger",
+      "schema_version": 1,
+      "etag": "W/\"v1.exit.rule_trigger\"",
+      "title": "Rule-Based Exit",
+      "summary": "Generic exit triggered by a RegimeSpec condition. Use for simple rule-based exits like 'exit if ret_pct > 5%' or 'exit when volatility becomes high'.",
+      "kind": "exit",
+      "tags": [
+        "spot",
+        "exit",
+        "rule",
+        "generic",
+        "crypto",
+        "fx",
+        "equity"
+      ],
+      "json_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "./exit.rule_trigger.schema.json",
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "condition": {
+                "$ref": "common_defs.schema.json#/$defs/RegimeSpec"
+              }
+            },
+            "required": [
+              "condition"
+            ],
+            "additionalProperties": false
+          },
+          "action": {
+            "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
+          },
+          "risk": {
+            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+          }
+        },
+        "required": [
+          "context",
+          "event",
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "constraints": {
+        "min_history_bars": 100,
+        "pit_safe": true
+      },
+      "slot_hints": {
+        "preferred_tfs": [
+          "15m",
+          "1h",
+          "4h",
+          "1d"
+        ],
+        "notes": "Use this archetype for simple rule-based exits. The condition field accepts any RegimeSpec metric (ret_pct, gap_pct, dist_from_vwap_pct, trend_regime, vol_regime, session_phase, etc.). For complex pattern-based exits, use pattern-specific archetypes instead."
+      },
+      "examples": [
+        {
+          "human": "BTC 1h: exit long if return exceeds 5% (ret_pct > 5%)",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "BTC-USD"
+            },
+            "event": {
+              "condition": {
+                "metric": "ret_pct",
+                "tf": "1h",
+                "op": ">",
+                "value": 5.0,
+                "lookback_bars": 1
+              }
+            },
+            "action": {
+              "mode": "close",
+              "confirm": "none"
+            }
+          }
+        },
+        {
+          "human": "ETH 4h: exit when volatility regime becomes high",
+          "slots": {
+            "context": {
+              "tf": "4h",
+              "symbol": "ETH-USD"
+            },
+            "event": {
+              "condition": {
+                "metric": "vol_regime",
+                "tf": "4h",
+                "op": "==",
+                "value": "high",
+                "lookback_bars": 200
+              }
+            },
+            "action": {
+              "mode": "close",
+              "confirm": "none"
+            }
+          }
+        },
+        {
+          "human": "AAPL 1h: exit if price moves > 2% above YTD VWAP",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "AAPL"
+            },
+            "event": {
+              "condition": {
+                "metric": "dist_from_vwap_pct",
+                "tf": "1h",
+                "op": ">",
+                "value": 2.0,
+                "vwap_anchor": {
+                  "anchor": "ytd"
+                }
+              }
+            },
+            "action": {
+              "mode": "close",
+              "confirm": "close_confirm"
+            }
+          }
+        },
+        {
+          "human": "BTC 1d: exit if trend regime changes from up to down",
+          "slots": {
+            "context": {
+              "tf": "1d",
+              "symbol": "BTC-USD"
+            },
+            "event": {
+              "condition": {
+                "metric": "trend_regime",
+                "tf": "1d",
+                "op": "==",
+                "value": "down",
+                "ma_fast": 20,
+                "ma_slow": 50
+              }
+            },
+            "action": {
+              "mode": "close",
+              "confirm": "none"
+            }
+          }
+        }
+      ],
+      "updated_at": "2025-12-02T17:58:21Z"
     }
   ]
 }
