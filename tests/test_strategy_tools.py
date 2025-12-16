@@ -869,13 +869,14 @@ def test_compile_strategy_not_found(strategy_tools_mcp):
 def test_compile_strategy_with_overrides(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test compiling a strategy with slot overrides."""
     # Setup: create strategy and card
+    # Note: universe must include the symbol that will be used after overrides
     strategy_result = run_async(
         call_tool(
             strategy_tools_mcp,
             "create_strategy",
             {
                 "name": "Override Strategy",
-                "universe": ["BTC-USD"],
+                "universe": ["ETH-USD"],  # Match the override symbol
             },
         )
     )

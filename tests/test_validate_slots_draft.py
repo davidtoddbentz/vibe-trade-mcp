@@ -62,9 +62,9 @@ def test_validate_slots_draft_invalid_range(card_tools_mcp, schema_repository):
 
 def test_validate_slots_draft_missing_required(card_tools_mcp, schema_repository):
     """Test validating slots with missing required fields returns errors."""
-    # Setup: get valid slots and remove required field
+    # Setup: get valid slots and remove required field (symbol is required in ContextSpec)
     valid_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
-    del valid_slots["context"]["tf"]
+    del valid_slots["context"]["symbol"]
 
     # Run: validate slots
     result = run_async(
@@ -82,7 +82,7 @@ def test_validate_slots_draft_missing_required(card_tools_mcp, schema_repository
     response = ValidateSlotsDraftResponse(**result)
     assert response.valid is False
     assert len(response.errors) > 0
-    assert any("tf" in error.lower() or "required" in error.lower() for error in response.errors)
+    assert any("symbol" in error.lower() or "required" in error.lower() for error in response.errors)
 
 
 def test_validate_slots_draft_not_found(card_tools_mcp):
