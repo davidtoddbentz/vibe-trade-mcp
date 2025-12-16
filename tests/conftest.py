@@ -87,10 +87,10 @@ def card_repository(firestore_client):
 
 
 @pytest.fixture
-def card_tools_mcp(card_repository, schema_repository):
+def card_tools_mcp(card_repository, schema_repository, strategy_repository):
     """Create an MCP server instance with card tools registered."""
     mcp = FastMCP("test-server")
-    register_card_tools(mcp, card_repository, schema_repository)
+    register_card_tools(mcp, card_repository, schema_repository, strategy_repository)
     return mcp
 
 

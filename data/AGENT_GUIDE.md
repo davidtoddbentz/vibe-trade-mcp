@@ -23,7 +23,7 @@ Each tool's "Recommended workflow" section references this canonical workflow. M
 
 **Entries define signals and direction. Exits and overlays define most risk. Entries can optionally carry a `risk` override.**
 
-- **Entry cards**: Define when to open a position and in which direction. Entry cards can optionally include a `risk` block (shared `ExitRiskSpec`) to override default risk settings (e.g., wider stops for breakouts), but this is not required.
+- **Entry cards**: Define when to open a position and in which direction. Entry cards can optionally include a `risk` block (shared `PositionRiskSpec`) to override default risk settings (e.g., wider stops for breakouts), but this is not required.
 - **Exit cards**: Define when to close positions. Some exit archetypes **require** a `risk` block because they encode numeric thresholds (e.g. `exit.take_profit_stop`, `exit.trailing_stop`, `exit.time_stop`); others (like band/structure exits) can work structurally with or without explicit `risk`.
 - **Overlay cards**: Modify position sizing/risk dynamically based on conditions (e.g., reduce size in high volatility) using the same shared `risk` spec where applicable.
 
@@ -271,7 +271,7 @@ Always check the archetype schema for the expected context shape and explain tha
 
 ## BandSpec / RiskSpec quick reference
 
-Many archetypes share common band and risk specs via `BandSpec` and `ExitRiskSpec`:
+Many archetypes share common band and risk specs via `BandSpec` and `PositionRiskSpec`:
 
 - **BandSpec (lookback in bars, not days)**:
   - `length` is in **bars**; effective horizon is `tf × length`.
@@ -279,8 +279,8 @@ Many archetypes share common band and risk specs via `BandSpec` and `ExitRiskSpe
     - 1h timeframe: 1 day ≈ 24 bars, 30 days ≈ 720 bars, 150 days ≈ 3600 bars.
     - 15m timeframe: 1 day ≈ 96 bars, 30 days ≈ 2880 bars.
   - When a user says “N days lookback”, convert to bars based on the chosen timeframe.
-- **ExitRiskSpec (shared risk spec)**:
-  - **Note**: This risk block is shared between entries and exits. Fields like `tp_pct`, `sl_pct`, `sl_atr`, `tp_rr`, and `time_stop_bars` can be used in both entry and exit cards regardless of card kind.
+- **PositionRiskSpec (shared risk spec)**:
+  - **Note**: This risk block is shared between entries and exits. Fields like `tp_pct`, `sl_pct`, `sl_atr`, `tp_rr`, and `time_stop_bars` can be used in both entry and exit cards regardless of card kind. Exit-only behavior (close/reduce/reverse) is specified in `ExitActionSpec`, not in the risk spec.
   - Percentage stops/targets: `tp_pct`, `sl_pct` (e.g. 5 = +5%, 2 = -2%).
   - ATR-based stops: `sl_atr` (e.g. 1.5–2.0 for normal, 2.5–3.0 for wider).
   - Risk–reward TP: `tp_rr` (e.g. 2.0 = TP at 2× stop distance).

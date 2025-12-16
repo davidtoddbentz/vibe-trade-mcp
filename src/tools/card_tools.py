@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from src.db.archetype_schema_repository import ArchetypeSchemaRepository
 from src.db.card_repository import CardRepository
+from src.db.strategy_repository import StrategyRepository
 from src.models.card import Card
 from src.tools.errors import (
     not_found_error,
@@ -191,6 +192,7 @@ def register_card_tools(
     mcp: FastMCP,
     card_repo: CardRepository,
     schema_repo: ArchetypeSchemaRepository,
+    strategy_repo: StrategyRepository,
 ) -> None:
     """Register all card management tools with the MCP server.
 
@@ -303,7 +305,7 @@ def register_card_tools(
             raise not_found_error(
                 resource_type="Card",
                 resource_id=card_id,
-                recovery_hint="Use list_cards to see all available cards.",
+                recovery_hint="Use get_strategy to see cards attached to a strategy, or list_strategies to see all strategies.",
             )
 
         return GetCardResponse(
@@ -316,14 +318,45 @@ def register_card_tools(
         )
 
     @mcp.tool()
-    def list_cards() -> ListCardsResponse:
+    def list_cards(
+        strategy_id: str = Field(..., description="Strategy identifier to list cards for")
+    ) -> ListCardsResponse:
         """
-        List all cards.
+        List cards attached to a strategy.
+
+        Args:
+            strategy_id: Strategy identifier (required)
 
         Returns:
-            ListCardsResponse with all cards
+            ListCardsResponse with cards attached to the strategy
+
+        Raises:
+            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found (non-retryable)
+
+        Error Handling:
+            Errors include structured information with error_code, retryable flag,
+            recovery_hint, and details for agentic decision-making.
         """
-        cards = card_repo.get_all()
+        # Get strategy to find attached cards
+        strategy = strategy_repo.get_by_id(strategy_id)
+        if strategy is None:
+            raise not_found_error(
+                resource_type="Strategy",
+                resource_id=strategy_id,
+                recovery_hint="Use list_strategies to see all available strategies.",
+            )
+
+        # Get all card IDs from strategy attachments
+        card_ids = [attachment.card_id for attachment in strategy.attachments]
+
+        # Fetch cards by ID
+        cards = []
+        for card_id in card_ids:
+            card = card_repo.get_by_id(card_id)
+            if card is not None:
+                cards.append(card)
+
+        # Convert to response format
         card_responses = [
             GetCardResponse(
                 card_id=card.id,
@@ -378,7 +411,7 @@ def register_card_tools(
             raise not_found_error(
                 resource_type="Card",
                 resource_id=card_id,
-                recovery_hint="Use list_cards to see all available cards.",
+                recovery_hint="Use get_strategy to see cards attached to a strategy, or list_strategies to see all strategies.",
             )
 
         # Fetch schema for validation
@@ -443,7 +476,7 @@ def register_card_tools(
             raise not_found_error(
                 resource_type="Card",
                 resource_id=card_id,
-                recovery_hint="Use list_cards to see all available cards.",
+                recovery_hint="Use get_strategy to see cards attached to a strategy, or list_strategies to see all strategies.",
             ) from e
 
     @mcp.tool()

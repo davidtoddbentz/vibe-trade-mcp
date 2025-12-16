@@ -51,7 +51,7 @@
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -156,7 +156,7 @@
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -262,7 +262,7 @@
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -352,7 +352,7 @@
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -442,7 +442,7 @@
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -550,7 +550,7 @@
             "additionalProperties": false
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -672,7 +672,7 @@
             "additionalProperties": false
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -767,7 +767,7 @@
             "additionalProperties": false
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -782,7 +782,7 @@
         "pit_safe": true
       },
       "slot_hints": {
-        "notes": "entry_side_map chooses follower direction by leader move."
+        "notes": "entry_side_map chooses follower direction by leader move. IMPORTANT: context.symbol should equal event.lead_follow.follower_symbol. The follower_symbol is the symbol that will be traded when the leader(s) trigger. For clarity and consistency, set context.symbol to the same value as follower_symbol."
       },
       "examples": [
         {
@@ -874,7 +874,7 @@
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -983,7 +983,7 @@
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -1078,7 +1078,7 @@
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -1166,7 +1166,7 @@
             ]
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [

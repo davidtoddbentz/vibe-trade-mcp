@@ -19,6 +19,7 @@ from src.tools.card_tools import (
     UpdateCardResponse,
 )
 from src.tools.errors import ErrorCode
+from src.tools.strategy_tools import AttachCardResponse, CreateStrategyResponse
 
 
 def test_create_card_valid(card_tools_mcp, schema_repository):
@@ -320,13 +321,25 @@ def test_get_card_not_found(card_tools_mcp):
         run_async(call_tool(card_tools_mcp, "get_card", {"card_id": "non-existent-id"}))
 
 
-def test_list_cards(card_tools_mcp, schema_repository):
-    """Test listing all cards."""
-    # Setup: create a couple of cards
+def test_list_cards(card_tools_mcp, strategy_tools_mcp, schema_repository):
+    """Test listing cards for a strategy."""
+    # Setup: create a strategy
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+            },
+        )
+    )
+    strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
+
+    # Setup: create cards
     schema_repository.get_by_type_id("entry.trend_pullback")
     example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
-    run_async(
+    card1_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
@@ -336,14 +349,92 @@ def test_list_cards(card_tools_mcp, schema_repository):
             },
         )
     )
+    card1_id = CreateCardResponse(**card1_result).card_id
 
-    # Run: list cards
-    result = run_async(call_tool(card_tools_mcp, "list_cards", {}))
+    card2_result = run_async(
+        call_tool(
+            card_tools_mcp,
+            "create_card",
+            {
+                "type": "entry.trend_pullback",
+                "slots": example_slots,
+            },
+        )
+    )
+    card2_id = CreateCardResponse(**card2_result).card_id
+
+    # Attach cards to strategy
+    run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "attach_card",
+            {
+                "strategy_id": strategy_id,
+                "card_id": card1_id,
+                "role": "entry",
+            },
+        )
+    )
+    run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "attach_card",
+            {
+                "strategy_id": strategy_id,
+                "card_id": card2_id,
+                "role": "exit",
+            },
+        )
+    )
+
+    # Run: list cards for strategy
+    result = run_async(call_tool(card_tools_mcp, "list_cards", {"strategy_id": strategy_id}))
 
     # Assert: verify response
     response = ListCardsResponse(**result)
-    assert response.count >= 1
-    assert len(response.cards) == response.count
+    assert response.count == 2
+    assert len(response.cards) == 2
+    card_ids = [card["card_id"] for card in response.cards]
+    assert card1_id in card_ids
+    assert card2_id in card_ids
+
+
+def test_list_cards_not_found(card_tools_mcp):
+    """Test listing cards for a non-existent strategy returns error."""
+    # Run: try to list cards for non-existent strategy
+    with pytest.raises(ToolError) as exc_info:
+        run_async(call_tool(card_tools_mcp, "list_cards", {"strategy_id": "nonexistent-id"}))
+
+    # Assert: should get error with helpful guidance
+    assert "not found" in str(exc_info.value).lower()
+    # Verify structured error
+    structured_error = get_structured_error(exc_info.value)
+    assert structured_error is not None
+    assert structured_error.error_code == ErrorCode.STRATEGY_NOT_FOUND
+    assert structured_error.retryable is False
+
+
+def test_list_cards_empty_strategy(card_tools_mcp, strategy_tools_mcp):
+    """Test listing cards for a strategy with no attached cards."""
+    # Setup: create a strategy with no cards
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Empty Strategy",
+            },
+        )
+    )
+    strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
+
+    # Run: list cards for strategy
+    result = run_async(call_tool(card_tools_mcp, "list_cards", {"strategy_id": strategy_id}))
+
+    # Assert: verify response is empty
+    response = ListCardsResponse(**result)
+    assert response.count == 0
+    assert len(response.cards) == 0
 
 
 def test_update_card(card_tools_mcp, schema_repository):

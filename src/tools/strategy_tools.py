@@ -418,7 +418,7 @@ def register_strategy_tools(
             raise not_found_error(
                 resource_type="Card",
                 resource_id=card_id,
-                recovery_hint="Use list_cards to see all available cards.",
+                recovery_hint="Use get_strategy to see cards attached to a strategy, or list_strategies to see all strategies.",
             )
 
         # Check if card is already attached
