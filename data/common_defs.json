@@ -33,7 +33,7 @@
     },
     "BandSpec": {
       "type": "object",
-      "description": "Band specification for technical indicators. IMPORTANT: 'length' is in BARS, not days. Effective lookback horizon = tf × length (e.g., 720 bars × 1h ≈ 30 days, 24 bars × 1h ≈ 1 day). When user says '150 days', convert to bars based on timeframe: 150 days on 1h = 150 × 24 = 3600 bars.",
+      "description": "Band specification for technical indicators. IMPORTANT: 'length' is in BARS, not days. Effective lookback horizon = tf × length (e.g., 720 bars × 1h ≈ 30 days, 24 bars × 1h ≈ 1 day). Maximum length is 400 bars. When user says 'N days', convert to bars: days × (bars_per_day for tf). For 1h: 1 day = 24 bars, 30 days = 720 bars (max ~16.7 days on 1h timeframe).",
       "properties": {
         "band": {
           "$ref": "#/$defs/BandKind"
@@ -42,7 +42,7 @@
           "type": "integer",
           "minimum": 5,
           "maximum": 400,
-          "description": "Number of BARS for the lookback window (NOT days). Effective horizon = tf × length. Examples: 24 bars × 1h ≈ 1 day, 720 bars × 1h ≈ 30 days, 150 bars × 1h ≈ 6.25 days. To convert user's 'days' to bars: days × (bars_per_day for tf). For 1h: 1 day = 24 bars, 30 days = 720 bars, 150 days = 3600 bars."
+          "description": "Number of BARS for the lookback window (NOT days). Maximum: 400 bars. Effective horizon = tf × length. Examples: 24 bars × 1h ≈ 1 day, 400 bars × 1h ≈ 16.7 days. To convert user's 'days' to bars: days × (bars_per_day for tf). For 1h: 1 day = 24 bars, 16.7 days = 400 bars (maximum)."
         },
         "mult": {
           "type": "number",
@@ -239,7 +239,7 @@
     },
     "XSRankSpec": {
       "type": "object",
-      "description": "Cross-sectional ranking specification for portfolio entry/exit. Ranks symbols by feature and selects top/bottom N for long/short positions.",
+      "description": "[MVP-EXCLUDED] Cross-sectional ranking specification for portfolio entry/exit. Ranks symbols by feature and selects top/bottom N for long/short positions. Not available in MVP (single-asset trading only).",
       "properties": {
         "universe": {
           "type": "array",
@@ -305,6 +305,7 @@
     },
     "PairsSpec": {
       "type": "object",
+      "description": "[MVP-EXCLUDED] Pairs trading specification for spread trading between two symbols. Not available in MVP (single-asset trading only).",
       "properties": {
         "symbol_a": {
           "type": "string"
@@ -347,7 +348,7 @@
     },
     "IntermarketSpec": {
       "type": "object",
-      "description": "Intermarket trigger specification. Supports single leader (via leader_symbol) or multiple leaders (via leaders array with aggregation).",
+      "description": "Intermarket trigger specification for MVP single-asset trading. Supports single leader (via leader_symbol) or multiple leaders (via leaders array with aggregation). MVP CONSTRAINT: follower_symbol MUST equal context.symbol (the only traded symbol). Leader symbols are observation-only triggers.",
       "properties": {
         "leaders": {
           "type": "array",
@@ -576,7 +577,7 @@
       "properties": {
         "symbol": {
           "type": "string",
-          "description": "Optional: symbol to evaluate the regime on. If omitted, uses context.symbol. Use this for cross-symbol regime checks (e.g., 'If ETH is gapping up, buy BTC' → context.symbol='BTC-USD', RegimeSpec.symbol='ETH-USD', metric='gap_pct')."
+          "description": "Optional: symbol to evaluate the regime on. If omitted, uses context.symbol. MVP CONSTRAINT: This is for observation-only (e.g., 'If ETH is gapping up, buy BTC' → context.symbol='BTC-USD' is the ONLY traded symbol, RegimeSpec.symbol='ETH-USD' is observation-only). The symbol specified here is NOT traded - only context.symbol is traded."
         },
         "metric": {
           "enum": [
@@ -1524,7 +1525,8 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Optional: specific card instance IDs to target (e.g., ['card_abc123', 'card_def456']). These are card IDs from cards attached to the strategy, NOT archetype type IDs. Use target_roles or target_tags for broader targeting. If omitted, targets all cards matching target_roles/target_tags."
         },
         "notes": {
           "type": "string"
@@ -1573,7 +1575,8 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Optional: specific card instance IDs to target (e.g., ['card_abc123', 'card_def456']). These are card IDs from cards attached to the strategy, NOT archetype type IDs. Use target_roles or target_tags for broader targeting. If omitted, targets all cards matching target_roles/target_tags."
         },
         "notes": {
           "type": "string"
