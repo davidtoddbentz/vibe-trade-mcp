@@ -40,7 +40,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -196,7 +196,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -289,7 +289,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -332,7 +332,7 @@
           "1h",
           "4h"
         ],
-        "notes": "Risk block is REQUIRED. Time duration is specified in risk.time_stop_bars (in BARS, not days). Engine exits when that many bars have elapsed since entry. See RiskSpec docs for bars→days conversion."
+        "notes": "Risk block is REQUIRED. Time duration is specified in risk.time_stop_bars (in BARS, not days). Engine exits when that many bars have elapsed since entry. See PositionRiskSpec docs for bars→days conversion."
       },
       "examples": [
         {
@@ -400,7 +400,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -492,7 +492,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -579,7 +579,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -678,7 +678,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -785,7 +785,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [
@@ -871,7 +871,7 @@
             "$ref": "common_defs.schema.json#/$defs/ExitActionSpec"
           },
           "risk": {
-            "$ref": "common_defs.schema.json#/$defs/ExitRiskSpec"
+            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
           }
         },
         "required": [

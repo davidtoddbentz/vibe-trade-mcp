@@ -353,44 +353,93 @@
     },
     "IntermarketSpec": {
       "type": "object",
+      "description": "Intermarket trigger specification. Supports single leader (via leader_symbol) or multiple leaders (via leaders array with aggregation).",
       "properties": {
+        "leaders": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "description": "Array of leader symbols for basket-based triggers (e.g., ['BTC-USD', 'ETH-USD']). Use with leader_aggregate. Mutually exclusive with leader_symbol."
+        },
         "leader_symbol": {
-          "type": "string"
+          "type": "string",
+          "description": "Single leader symbol (backward compatibility). Mutually exclusive with leaders array."
+        },
+        "leader_aggregate": {
+          "type": "object",
+          "description": "Aggregation rule for multi-leader triggers. Required when using leaders array.",
+          "properties": {
+            "feature": {
+              "enum": [
+                "ret_pct",
+                "ma_flip",
+                "band_break"
+              ],
+              "description": "Feature to compute for each leader (same as trigger_feature for single leader)."
+            },
+            "op": {
+              "enum": [
+                "max",
+                "min",
+                "avg"
+              ],
+              "description": "Aggregation operator: max (trigger if any leader exceeds threshold), min (trigger if all leaders exceed threshold), avg (trigger if average exceeds threshold)."
+            },
+            "threshold": {
+              "type": "number",
+              "description": "Threshold for aggregated feature (same semantics as trigger_threshold for single leader)."
+            }
+          },
+          "required": [
+            "feature",
+            "op",
+            "threshold"
+          ],
+          "additionalProperties": false
         },
         "follower_symbol": {
-          "type": "string"
+          "type": "string",
+          "description": "Symbol to trade when leader(s) trigger. Should match context.symbol for clarity (see slot_hints)."
         },
         "trigger_feature": {
           "enum": [
             "ret_pct",
             "ma_flip",
             "band_break"
-          ]
+          ],
+          "description": "Feature to monitor on leader (for single-leader mode). Mutually exclusive with leader_aggregate."
         },
         "trigger_threshold": {
-          "type": "number"
+          "type": "number",
+          "description": "Threshold for trigger_feature (for single-leader mode). Mutually exclusive with leader_aggregate."
         },
         "window_bars": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 1000
+          "maximum": 1000,
+          "description": "Lookback window in bars for trigger detection."
         },
         "entry_side_map": {
           "type": "object",
+          "description": "Mapping from leader move direction to follower entry side. For multi-leader, applies to aggregated direction (positive = up, negative = down).",
           "properties": {
             "leader_up": {
               "enum": [
                 "long",
                 "short",
                 "none"
-              ]
+              ],
+              "description": "Follower entry when leader(s) move up (or aggregated value is positive)."
             },
             "leader_down": {
               "enum": [
                 "long",
                 "short",
                 "none"
-              ]
+              ],
+              "description": "Follower entry when leader(s) move down (or aggregated value is negative)."
             }
           },
           "required": [
@@ -401,14 +450,43 @@
         }
       },
       "required": [
-        "leader_symbol",
         "follower_symbol",
-        "trigger_feature",
-        "trigger_threshold",
         "window_bars",
         "entry_side_map"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "required": [
+                "leader_symbol",
+                "trigger_feature",
+                "trigger_threshold"
+              ],
+              "not": {
+                "required": [
+                  "leaders",
+                  "leader_aggregate"
+                ]
+              }
+            },
+            {
+              "required": [
+                "leaders",
+                "leader_aggregate"
+              ],
+              "not": {
+                "required": [
+                  "leader_symbol",
+                  "trigger_feature",
+                  "trigger_threshold"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     },
     "VWAPAnchorSpec": {
       "type": "object",
@@ -508,8 +586,12 @@
     },
     "RegimeSpec": {
       "type": "object",
-      "description": "Regime detection specification for gates, overlays, and rule-based entries. Defines a condition on trend, volatility, return, gap, VWAP distance, or derived regime classifications.",
+      "description": "Regime detection specification for gates, overlays, and rule-based entries. Defines a condition on trend, volatility, return, gap, VWAP distance, or derived regime classifications. Supports cross-symbol regime checks via optional symbol override.",
       "properties": {
+        "symbol": {
+          "type": "string",
+          "description": "Optional: symbol to evaluate the regime on. If omitted, uses context.symbol. Use this for cross-symbol regime checks (e.g., 'If ETH is gapping up, buy BTC' → context.symbol='BTC-USD', RegimeSpec.symbol='ETH-USD', metric='gap_pct')."
+        },
         "metric": {
           "enum": [
             "trend_ma_relation",
@@ -681,9 +763,9 @@
         }
       ]
     },
-    "ExitRiskSpec": {
+    "PositionRiskSpec": {
       "type": "object",
-      "description": "Shared risk parameters for take profit, stop loss, and time-based exits. Used by exit cards (often required), overlays, and entry cards that optionally override default risk. For exits that require risk settings (e.g., take_profit_stop, trailing_stop, time_stop), at least one appropriate threshold must be provided.",
+      "description": "Shared risk parameters for take profit, stop loss, and time-based exits. Used by entry cards (optional override), exit cards (often required), and overlays. For exits that require risk settings (e.g., take_profit_stop, trailing_stop, time_stop), at least one appropriate threshold must be provided. Exit-only behavior (close/reduce/reverse) is specified in ExitActionSpec, not here.",
       "properties": {
         "tp_pct": {
           "type": "number",
