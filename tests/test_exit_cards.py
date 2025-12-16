@@ -88,11 +88,11 @@ def test_create_exit_card_time_stop(card_tools_mcp, schema_repository):
                     "tf": "1h",
                     "op": ">",
                     "value": 0,
-                    "lookback_bars": 24
-                }
+                    "lookback_bars": 24,
+                },
             }
         },
-        "action": {"mode": "close"}
+        "action": {"mode": "close"},
     }
 
     # Run: create exit card
@@ -296,8 +296,8 @@ def test_exit_card_tp_sl_event_structure(card_tools_mcp, schema_repository):
                             "tf": "1h",
                             "op": ">=",
                             "value": 3.0,
-                            "lookback_bars": 1
-                        }
+                            "lookback_bars": 1,
+                        },
                     },
                     {
                         "type": "regime",
@@ -306,14 +306,14 @@ def test_exit_card_tp_sl_event_structure(card_tools_mcp, schema_repository):
                             "tf": "1h",
                             "op": "<=",
                             "value": -2.0,
-                            "lookback_bars": 1
-                        }
-                    }
-                ]
+                            "lookback_bars": 1,
+                        },
+                    },
+                ],
             }
         },
         "action": {"mode": "close"},
-        "risk": {"tp_pct": 3.0, "sl_pct": 2.0}
+        "risk": {"tp_pct": 3.0, "sl_pct": 2.0},
     }
 
     result = run_async(

@@ -82,7 +82,9 @@ def test_validate_slots_draft_missing_required(card_tools_mcp, schema_repository
     response = ValidateSlotsDraftResponse(**result)
     assert response.valid is False
     assert len(response.errors) > 0
-    assert any("symbol" in error.lower() or "required" in error.lower() for error in response.errors)
+    assert any(
+        "symbol" in error.lower() or "required" in error.lower() for error in response.errors
+    )
 
 
 def test_validate_slots_draft_not_found(card_tools_mcp):

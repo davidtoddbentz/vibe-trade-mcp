@@ -45,10 +45,7 @@ def _extract_and_compile_condition(effective_slots: dict[str, Any]) -> dict[str,
                 return condition
             # If it's a RegimeSpec (backwards compatible), wrap in ConditionSpec
             if isinstance(condition, dict) and "metric" in condition:
-                return {
-                    "type": "regime",
-                    "regime": condition
-                }
+                return {"type": "regime", "regime": condition}
 
     # Check event.regime (for gate.regime)
     if "event" in effective_slots:
@@ -60,10 +57,7 @@ def _extract_and_compile_condition(effective_slots: dict[str, Any]) -> dict[str,
                 return regime
             # If it's a RegimeSpec (backwards compatible), wrap in ConditionSpec
             if isinstance(regime, dict) and "metric" in regime:
-                return {
-                    "type": "regime",
-                    "regime": regime
-                }
+                return {"type": "regime", "regime": regime}
 
     return None
 
