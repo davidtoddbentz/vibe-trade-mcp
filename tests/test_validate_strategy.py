@@ -53,7 +53,7 @@ def test_validate_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repo
             card_tools_mcp,
             "create_card",
             {
-                "type": "exit.take_profit_stop",
+                "type": "exit.rule_trigger",
                 "slots": exit_slots,
             },
         )
