@@ -5,7 +5,7 @@
       "schema_version": 1,
       "etag": "W/\"v1.gate.regime\"",
       "title": "Regime Gate",
-      "summary": "Allow or block downstream cards when regime metrics align (trend, volatility, or custom factors).",
+      "summary": "Allow or block downstream cards when regime metrics align (trend, volatility, or custom factors). Uses ConditionSpec for composable conditions.",
       "kind": "gate",
       "tags": [
         "regime",
@@ -24,7 +24,8 @@
             "type": "object",
             "properties": {
               "regime": {
-                "$ref": "common_defs.schema.json#/$defs/RegimeSpec"
+                "$ref": "common_defs.schema.json#/$defs/ConditionSpec",
+                "description": "Regime condition that gates downstream cards. Use ConditionSpec with type='regime' for single conditions, or compose multiple conditions with allOf/anyOf/not/sequence."
               }
             },
             "required": [
@@ -61,14 +62,16 @@
             },
             "event": {
               "regime": {
-                "metric": "trend_ma_relation",
-                "tf": "1h",
-                "op": ">",
-                "value": 0.0,
-                "lookback_bars": 200,
-                "ma_fast": 20,
-                "ma_slow": 50,
-                "notes": "Positive spread implies fast MA above slow MA."
+                "type": "regime",
+                "regime": {
+                  "metric": "trend_ma_relation",
+                  "tf": "1h",
+                  "op": ">",
+                  "value": 0.0,
+                  "lookback_bars": 200,
+                  "ma_fast": 20,
+                  "ma_slow": 50
+                }
               }
             },
             "action": {

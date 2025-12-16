@@ -26,6 +26,72 @@ VALID_ROLES = ["entry", "gate", "exit", "overlay"]
 VALID_STATUSES = ["draft", "ready", "running", "paused", "stopped", "error"]
 
 
+def _extract_and_compile_condition(effective_slots: dict[str, Any]) -> dict[str, Any] | None:
+    """Extract and compile ConditionSpec from effective slots.
+    
+    Looks for ConditionSpec in:
+    - event.condition (for entry.rule_trigger, exit.rule_trigger)
+    - event.regime (for gate.regime, backwards compatible RegimeSpec)
+    
+    Returns compiled condition tree ready for runtime evaluation, or None if no condition found.
+    """
+    # Check event.condition (for rule_trigger archetypes)
+    if "event" in effective_slots:
+        event = effective_slots["event"]
+        if "condition" in event:
+            condition = event["condition"]
+            # If it's a ConditionSpec (has "type" field), return as-is (already compiled)
+            if isinstance(condition, dict) and "type" in condition:
+                return condition
+            # If it's a RegimeSpec (backwards compatible), wrap in ConditionSpec
+            if isinstance(condition, dict) and "metric" in condition:
+                return {
+                    "type": "regime",
+                    "regime": condition
+                }
+    
+    # Check event.regime (for gate.regime)
+    if "event" in effective_slots:
+        event = effective_slots["event"]
+        if "regime" in event:
+            regime = event["regime"]
+            # If it's a ConditionSpec (has "type" field), return as-is
+            if isinstance(regime, dict) and "type" in regime:
+                return regime
+            # If it's a RegimeSpec (backwards compatible), wrap in ConditionSpec
+            if isinstance(regime, dict) and "metric" in regime:
+                return {
+                    "type": "regime",
+                    "regime": regime
+                }
+    
+    return None
+
+
+def _extract_execution_spec(effective_slots: dict[str, Any]) -> dict[str, Any] | None:
+    """Extract ExecutionSpec from action.execution in effective slots.
+    
+    Returns ExecutionSpec dict if present, None otherwise.
+    """
+    if "action" in effective_slots:
+        action = effective_slots["action"]
+        if "execution" in action:
+            return action["execution"]
+    return None
+
+
+def _extract_sizing_spec(effective_slots: dict[str, Any]) -> dict[str, Any] | None:
+    """Extract SizingSpec from action.sizing in effective slots.
+    
+    Returns SizingSpec dict if present, None otherwise.
+    """
+    if "action" in effective_slots:
+        action = effective_slots["action"]
+        if "sizing" in action:
+            return action["sizing"]
+    return None
+
+
 class CreateStrategyResponse(BaseModel):
     """Response from create_strategy tool."""
 
@@ -89,13 +155,22 @@ class ListStrategiesResponse(BaseModel):
 
 
 class CompiledCard(BaseModel):
-    """Compiled card with effective slots."""
+    """Compiled card with effective slots and compiled components."""
 
     role: str = Field(..., description="Card role")
     card_id: str = Field(..., description="Card identifier")
     card_revision_id: str | None = Field(None, description="Card revision identifier")
     type: str = Field(..., description="Archetype type")
     effective_slots: dict[str, Any] = Field(..., description="Merged slots (card + overrides)")
+    compiled_condition: dict[str, Any] | None = Field(
+        None, description="Compiled ConditionSpec tree for runtime evaluation (if condition exists)"
+    )
+    execution_spec: dict[str, Any] | None = Field(
+        None, description="ExecutionSpec extracted from action (if present)"
+    )
+    sizing_spec: dict[str, Any] | None = Field(
+        None, description="SizingSpec extracted from action (if present)"
+    )
 
 
 class DataRequirement(BaseModel):
@@ -682,6 +757,11 @@ def register_strategy_tools(
             if key not in data_requirements_map or min_bars > data_requirements_map[key]:
                 data_requirements_map[key] = min_bars
 
+            # Extract and compile ConditionSpec, ExecutionSpec, SizingSpec
+            compiled_condition = _extract_and_compile_condition(effective_slots)
+            execution_spec = _extract_execution_spec(effective_slots)
+            sizing_spec = _extract_sizing_spec(effective_slots)
+            
             # Create compiled card (for validation summary)
             compiled_cards.append(
                 CompiledCard(
@@ -690,6 +770,9 @@ def register_strategy_tools(
                     card_revision_id=card_revision_id,
                     type=card.type,
                     effective_slots=effective_slots,
+                    compiled_condition=compiled_condition,
+                    execution_spec=execution_spec,
+                    sizing_spec=sizing_spec,
                 )
             )
 
@@ -726,6 +809,71 @@ def register_strategy_tools(
                     path="attachments",
                 )
             )
+
+        # MVP: Single-asset trading guarantee
+        traded_symbols = set()
+        for card in compiled_cards:
+            if card.role == "entry":
+                effective_slots = card.effective_slots
+                symbol = None
+                
+                # Get symbol from context
+                if "context" in effective_slots:
+                    context = effective_slots["context"]
+                    symbol = context.get("symbol")
+                
+                # For entry.intermarket_trigger, verify context.symbol == follower_symbol
+                if card.type == "entry.intermarket_trigger":
+                    if "event" in effective_slots:
+                        event = effective_slots["event"]
+                        if "lead_follow" in event:
+                            lead_follow = event["lead_follow"]
+                            follower_symbol = lead_follow.get("follower_symbol")
+                            if symbol != follower_symbol:
+                                issues.append(
+                                    Issue(
+                                        severity="error",
+                                        code="MVP_SINGLE_ASSET_VIOLATION",
+                                        message=f"entry.intermarket_trigger requires context.symbol ({symbol}) to equal event.lead_follow.follower_symbol ({follower_symbol}). Leader symbols are observation-only.",
+                                        path=f"attachments[{card.card_id}].effective_slots",
+                                    )
+                                )
+                            symbol = follower_symbol  # Use follower_symbol as the traded symbol
+                
+                if symbol:
+                    traded_symbols.add(symbol)
+        
+        # Verify single traded asset
+        if len(traded_symbols) > 1:
+            issues.append(
+                Issue(
+                    severity="error",
+                    code="MVP_MULTIPLE_ASSETS",
+                    message=f"MVP constraint violation: Strategy trades multiple assets {sorted(traded_symbols)}. MVP requires single-asset trading. Use entry.intermarket_trigger for observation-only triggers from other symbols.",
+                    path="attachments",
+                )
+            )
+        elif len(traded_symbols) == 1:
+            traded_symbol = list(traded_symbols)[0]
+            # Verify strategy universe matches (if set)
+            if strategy.universe and len(strategy.universe) > 1:
+                issues.append(
+                    Issue(
+                        severity="error",
+                        code="MVP_UNIVERSE_MISMATCH",
+                        message=f"Strategy universe {strategy.universe} contains multiple symbols, but only {traded_symbol} is traded. MVP requires single-asset strategies.",
+                        path="universe",
+                    )
+                )
+            elif strategy.universe and traded_symbol not in strategy.universe:
+                issues.append(
+                    Issue(
+                        severity="error",
+                        code="MVP_UNIVERSE_MISMATCH",
+                        message=f"Traded symbol {traded_symbol} not in strategy universe {strategy.universe}",
+                        path="universe",
+                    )
+                )
 
         # Determine status
         error_count = sum(1 for issue in issues if issue.severity == "error")
@@ -911,6 +1059,11 @@ def register_strategy_tools(
             if key not in data_requirements_map or min_bars > data_requirements_map[key]:
                 data_requirements_map[key] = min_bars
 
+            # Extract and compile ConditionSpec, ExecutionSpec, SizingSpec
+            compiled_condition = _extract_and_compile_condition(effective_slots)
+            execution_spec = _extract_execution_spec(effective_slots)
+            sizing_spec = _extract_sizing_spec(effective_slots)
+            
             # Create compiled card
             compiled_cards.append(
                 CompiledCard(
@@ -919,6 +1072,9 @@ def register_strategy_tools(
                     card_revision_id=card_revision_id,
                     type=card.type,
                     effective_slots=effective_slots,
+                    compiled_condition=compiled_condition,
+                    execution_spec=execution_spec,
+                    sizing_spec=sizing_spec,
                 )
             )
 
@@ -966,6 +1122,71 @@ def register_strategy_tools(
                     path="attachments",
                 )
             )
+
+        # MVP: Single-asset trading guarantee
+        traded_symbols = set()
+        for card in compiled_cards:
+            if card.role == "entry":
+                effective_slots = card.effective_slots
+                symbol = None
+                
+                # Get symbol from context
+                if "context" in effective_slots:
+                    context = effective_slots["context"]
+                    symbol = context.get("symbol")
+                
+                # For entry.intermarket_trigger, verify context.symbol == follower_symbol
+                if card.type == "entry.intermarket_trigger":
+                    if "event" in effective_slots:
+                        event = effective_slots["event"]
+                        if "lead_follow" in event:
+                            lead_follow = event["lead_follow"]
+                            follower_symbol = lead_follow.get("follower_symbol")
+                            if symbol != follower_symbol:
+                                issues.append(
+                                    Issue(
+                                        severity="error",
+                                        code="MVP_SINGLE_ASSET_VIOLATION",
+                                        message=f"entry.intermarket_trigger requires context.symbol ({symbol}) to equal event.lead_follow.follower_symbol ({follower_symbol}). Leader symbols are observation-only.",
+                                        path=f"attachments[{card.card_id}].effective_slots",
+                                    )
+                                )
+                            symbol = follower_symbol  # Use follower_symbol as the traded symbol
+                
+                if symbol:
+                    traded_symbols.add(symbol)
+        
+        # Verify single traded asset
+        if len(traded_symbols) > 1:
+            issues.append(
+                Issue(
+                    severity="error",
+                    code="MVP_MULTIPLE_ASSETS",
+                    message=f"MVP constraint violation: Strategy trades multiple assets {sorted(traded_symbols)}. MVP requires single-asset trading. Use entry.intermarket_trigger for observation-only triggers from other symbols.",
+                    path="attachments",
+                )
+            )
+        elif len(traded_symbols) == 1:
+            traded_symbol = list(traded_symbols)[0]
+            # Verify strategy universe matches (if set)
+            if strategy.universe and len(strategy.universe) > 1:
+                issues.append(
+                    Issue(
+                        severity="error",
+                        code="MVP_UNIVERSE_MISMATCH",
+                        message=f"Strategy universe {strategy.universe} contains multiple symbols, but only {traded_symbol} is traded. MVP requires single-asset strategies.",
+                        path="universe",
+                    )
+                )
+            elif strategy.universe and traded_symbol not in strategy.universe:
+                issues.append(
+                    Issue(
+                        severity="error",
+                        code="MVP_UNIVERSE_MISMATCH",
+                        message=f"Traded symbol {traded_symbol} not in strategy universe {strategy.universe}",
+                        path="universe",
+                    )
+                )
 
         # Convert data requirements to list
         data_requirements: list[DataRequirement] = []

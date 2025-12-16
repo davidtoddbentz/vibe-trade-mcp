@@ -24,7 +24,8 @@
             "type": "object",
             "properties": {
               "regime": {
-                "$ref": "common_defs.schema.json#/$defs/RegimeSpec"
+                "$ref": "common_defs.schema.json#/$defs/ConditionSpec",
+                "description": "Regime condition that scales downstream cards. Use ConditionSpec with type='regime' for single conditions, or compose multiple conditions with allOf/anyOf/not/sequence."
               }
             },
             "required": [
@@ -61,11 +62,14 @@
             },
             "event": {
               "regime": {
-                "metric": "vol_bb_width_pctile",
-                "tf": "4h",
-                "op": "<",
-                "value": 20,
-                "lookback_bars": 200
+                "type": "regime",
+                "regime": {
+                  "metric": "vol_bb_width_pctile",
+                  "tf": "4h",
+                  "op": "<",
+                  "value": 20,
+                  "lookback_bars": 200
+                }
               }
             },
             "action": {
