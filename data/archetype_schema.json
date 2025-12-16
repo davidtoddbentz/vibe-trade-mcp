@@ -5,7 +5,7 @@
       "schema_version": 1,
       "etag": "W/\"v2.entry.trend_pullback\"",
       "title": "Trend Pullback",
-      "summary": "Enter with trend on dips/rallies gated by MA relation. For ADX gating, use a separate gate.regime card with RegimeSpec.metric='trend_adx'.",
+      "summary": "Enter with trend on dips/rallies gated by MA relation. For ADX gating, use a separate gate.regime card with ConditionSpec(type='regime', regime={metric='trend_adx'}).",
       "kind": "entry",
       "tags": [
         "spot",
@@ -70,7 +70,7 @@
           "1h",
           "4h"
         ],
-        "notes": "See BandSpec docs for bars→days conversion. event.dip_band.mult: values >2 are rare, >2.5 are very rare, >3 are extreme/dramatic."
+        "notes": "See BandSpec docs for bars→days conversion. event.dip_band.mult: values >2 are rare, >2.5 are very rare, >3 are extreme/dramatic. Optional action.execution specifies order type (market/limit/stop) and execution parameters. Optional action.sizing specifies position sizing (fixed USD, fixed units, or percentage of equity/position)."
       },
       "examples": [
         {
@@ -100,6 +100,47 @@
               "direction": "long",
               "confirm": "close_confirm",
               "cooldown_bars": 3
+            },
+            "risk": {
+              "sl_atr": 2.0
+            }
+          }
+        },
+        {
+          "human": "ETH 1h: trend pullback with limit order 0.3% below entry, size 5% of equity",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "ETH-USD"
+            },
+            "event": {
+              "dip": {
+                "kind": "reentry",
+                "edge": "lower"
+              },
+              "dip_band": {
+                "band": "bollinger",
+                "length": 20,
+                "mult": 2.0
+              },
+              "trend_gate": {
+                "fast": 20,
+                "slow": 50,
+                "op": ">"
+              }
+            },
+            "action": {
+              "direction": "long",
+              "confirm": "close_confirm",
+              "execution": {
+                "order_type": "limit",
+                "limit_offset_pct": -0.3,
+                "time_in_force": "day"
+              },
+              "sizing": {
+                "type": "pct_equity",
+                "pct": 5.0
+              }
             },
             "risk": {
               "sl_atr": 2.0
@@ -175,7 +216,7 @@
           "15m",
           "1h"
         ],
-        "notes": "See BandSpec docs for bars→days conversion. event.band.mult: values >2 are rare, >2.5 are very rare, >3 are extreme/dramatic."
+        "notes": "See BandSpec docs for bars→days conversion. event.band.mult: values >2 are rare, >2.5 are very rare, >3 are extreme/dramatic. Optional action.execution specifies order type (market/limit/stop) and execution parameters. Optional action.sizing specifies position sizing (fixed USD, fixed units, or percentage of equity/position)."
       },
       "examples": [
         {
@@ -280,7 +321,8 @@
         "preferred_tfs": [
           "1h",
           "4h"
-        ]
+        ],
+        "notes": "Optional action.execution specifies order type (market/limit/stop) and execution parameters. Optional action.sizing specifies position sizing (fixed USD, fixed units, or percentage of equity/position)."
       },
       "examples": [
         {
@@ -370,7 +412,8 @@
         "preferred_tfs": [
           "1h",
           "4h"
-        ]
+        ],
+        "notes": "Optional action.execution specifies order type (market/limit/stop) and execution parameters. Optional action.sizing specifies position sizing (fixed USD, fixed units, or percentage of equity/position)."
       },
       "examples": [
         {
@@ -460,7 +503,8 @@
         "preferred_tfs": [
           "1h",
           "4h"
-        ]
+        ],
+        "notes": "Optional action.execution specifies order type (market/limit/stop) and execution parameters. Optional action.sizing specifies position sizing (fixed USD, fixed units, or percentage of equity/position)."
       },
       "examples": [
         {
@@ -484,237 +528,6 @@
             },
             "risk": {
               "sl_atr": 2.0
-            }
-          }
-        }
-      ],
-      "updated_at": "2025-12-02T17:58:21Z"
-    },
-    {
-      "type_id": "entry.xs_momentum",
-      "schema_version": 1,
-      "etag": "W/\"v2.entry.xs_momentum\"",
-      "title": "Cross-Sectional Momentum",
-      "summary": "Periodic rebalance into strongest names by a rank feature.",
-      "kind": "entry",
-      "tags": [
-        "spot",
-        "portfolio",
-        "momentum",
-        "crypto",
-        "fx",
-        "equity"
-      ],
-      "json_schema": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "./entry.xs_momentum.schema.json",
-        "type": "object",
-        "properties": {
-          "context": {
-            "type": "object",
-            "description": "Special context for portfolio entry: empty object (no tf/symbol). Timeframe and universe are defined in event.rebalance (XSRankSpec), not in context.",
-            "properties": {},
-            "required": [],
-            "additionalProperties": false
-          },
-          "event": {
-            "type": "object",
-            "properties": {
-              "rebalance": {
-                "$ref": "common_defs.schema.json#/$defs/XSRankSpec"
-              }
-            },
-            "required": [
-              "rebalance"
-            ],
-            "additionalProperties": false
-          },
-          "action": {
-            "type": "object",
-            "properties": {
-              "enter_mode": {
-                "enum": [
-                  "replace",
-                  "additive"
-                ]
-              },
-              "max_positions": {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 200
-              }
-            },
-            "required": [
-              "enter_mode"
-            ],
-            "additionalProperties": false
-          },
-          "risk": {
-            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
-          }
-        },
-        "required": [
-          "context",
-          "event",
-          "action"
-        ],
-        "additionalProperties": false
-      },
-      "constraints": {
-        "min_history_bars": 100,
-        "pit_safe": true
-      },
-      "slot_hints": {
-        "notes": "Special context: empty object (no tf/symbol). event.rebalance.universe defines the symbols; tf is not required. This is a portfolio-level entry, not a per-symbol chart entry. For rank semantics: rank is 1-based (1 = highest rank, lower = stronger). If side='long_short' and bottom_n is omitted, it defaults to top_n."
-      },
-      "examples": [
-        {
-          "human": "Weekly: long top 5 by 1W momentum, equal weight",
-          "slots": {
-            "context": {
-              "tf": "1d",
-              "symbol": "TSLA"
-            },
-            "event": {
-              "rebalance": {
-                "universe": [
-                  "BTC-USD",
-                  "ETH-USD",
-                  "SOL-USD",
-                  "ADA-USD"
-                ],
-                "rank_feature": "ret_1w",
-                "top_n": 5,
-                "bottom_n": 0,
-                "rebalance_cadence": "1w",
-                "weights": "equal",
-                "side": "long_only"
-              }
-            },
-            "action": {
-              "enter_mode": "replace",
-              "max_positions": 10
-            },
-            "risk": {
-              "time_stop_bars": 30
-            }
-          }
-        }
-      ],
-      "updated_at": "2025-12-02T17:58:21Z"
-    },
-    {
-      "type_id": "entry.pairs_relative_value",
-      "schema_version": 1,
-      "etag": "W/\"v2.entry.pairs_relative_value\"",
-      "title": "Pairs / Relative-Value",
-      "summary": "Trade spread between A and B using z-score triggers.",
-      "kind": "entry",
-      "tags": [
-        "spot",
-        "pairs",
-        "mean-revert",
-        "equity",
-        "crypto",
-        "fx"
-      ],
-      "json_schema": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "./entry.pairs_relative_value.schema.json",
-        "type": "object",
-        "properties": {
-          "context": {
-            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
-          },
-          "event": {
-            "type": "object",
-            "properties": {
-              "spread": {
-                "$ref": "common_defs.schema.json#/$defs/PairsSpec"
-              }
-            },
-            "required": [
-              "spread"
-            ],
-            "additionalProperties": false
-          },
-          "action": {
-            "type": "object",
-            "properties": {
-              "direction_map": {
-                "type": "object",
-                "properties": {
-                  "z_positive": {
-                    "enum": [
-                      "long_spread",
-                      "short_spread",
-                      "none"
-                    ]
-                  },
-                  "z_negative": {
-                    "enum": [
-                      "long_spread",
-                      "short_spread",
-                      "none"
-                    ]
-                  }
-                },
-                "required": [
-                  "z_positive",
-                  "z_negative"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "required": [
-              "direction_map"
-            ],
-            "additionalProperties": false
-          },
-          "risk": {
-            "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
-          }
-        },
-        "required": [
-          "context",
-          "event",
-          "action"
-        ],
-        "additionalProperties": false
-      },
-      "constraints": {
-        "min_history_bars": 100,
-        "pit_safe": true
-      },
-      "slot_hints": {
-        "notes": "Engine interprets long_spread as +A/-B with hedge ratio mode."
-      },
-      "examples": [
-        {
-          "human": "AAPL vs MSFT: enter when |z|>2, exit at z=0.5",
-          "slots": {
-            "context": {
-              "tf": "1d",
-              "symbol": "TSLA"
-            },
-            "event": {
-              "spread": {
-                "symbol_a": "AAPL",
-                "symbol_b": "MSFT",
-                "method": "log_spread",
-                "hedge_ratio_mode": "ols",
-                "z_entry": 2.0,
-                "z_exit": 0.5
-              }
-            },
-            "action": {
-              "direction_map": {
-                "z_positive": "short_spread",
-                "z_negative": "long_spread"
-              }
-            },
-            "risk": {
-              "time_stop_bars": 40
             }
           }
         }
@@ -757,14 +570,11 @@
             "additionalProperties": false
           },
           "action": {
-            "type": "object",
-            "properties": {
-              "confirm": {
-                "$ref": "common_defs.schema.json#/$defs/Confirm"
+            "allOf": [
+              {
+                "$ref": "common_defs.schema.json#/$defs/EntryActionSpec"
               }
-            },
-            "required": [],
-            "additionalProperties": false
+            ]
           },
           "risk": {
             "$ref": "common_defs.schema.json#/$defs/PositionRiskSpec"
@@ -779,10 +589,13 @@
       },
       "constraints": {
         "min_history_bars": 100,
-        "pit_safe": true
+        "pit_safe": true,
+        "mvp_single_asset": {
+          "description": "MVP CONSTRAINT: context.symbol MUST equal event.lead_follow.follower_symbol. Verifier will enforce this. The follower_symbol is the ONLY tradable symbol. Leader symbols are observation-only triggers."
+        }
       },
       "slot_hints": {
-        "notes": "entry_side_map chooses follower direction by leader move. IMPORTANT: context.symbol should equal event.lead_follow.follower_symbol. The follower_symbol is the symbol that will be traded when the leader(s) trigger. For clarity and consistency, set context.symbol to the same value as follower_symbol."
+        "notes": "MVP CONSTRAINT: context.symbol MUST equal event.lead_follow.follower_symbol. The follower_symbol is the ONLY tradable symbol. Leader symbols are observation-only triggers. entry_side_map chooses follower direction by leader move."
       },
       "examples": [
         {
@@ -806,6 +619,7 @@
               }
             },
             "action": {
+              "direction": "long",
               "confirm": "close_confirm"
             },
             "risk": {
@@ -892,7 +706,8 @@
         "preferred_tfs": [
           "1h",
           "4h"
-        ]
+        ],
+        "notes": "Optional action.execution specifies order type (market/limit/stop) and execution parameters. Optional action.sizing specifies position sizing (fixed USD, fixed units, or percentage of equity/position)."
       },
       "examples": [
         {
@@ -1047,16 +862,7 @@
         "type": "object",
         "properties": {
           "context": {
-            "type": "object",
-            "properties": {
-              "symbol": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "symbol"
-            ],
-            "additionalProperties": false
+            "$ref": "common_defs.schema.json#/$defs/ContextSpec"
           },
           "event": {
             "type": "object",
@@ -1097,7 +903,7 @@
       },
       "examples": [
         {
-          "human": "US session 0930-1100: gap-fade if open gap \u22651.5% on TSLA, no confirm",
+          "human": "US session 0930-1100: gap-fade on TSLA, no confirm",
           "slots": {
             "context": {
               "symbol": "TSLA"
@@ -1106,7 +912,6 @@
               "session": {
                 "session": "us",
                 "window": "0930-1100",
-                "min_gap_pct": 1.5,
                 "mode": "gap_fade"
               }
             },
@@ -1128,7 +933,7 @@
       "schema_version": 1,
       "etag": "W/\"v1.entry.rule_trigger\"",
       "title": "Rule-Based Entry",
-      "summary": "Generic entry triggered by a RegimeSpec condition. Use for simple rule-based entries like 'buy if ret_pct <= 1%' or 'avoid trading on big gap days'.",
+      "summary": "Generic entry triggered by a ConditionSpec. Use for simple rule-based entries like 'buy if ret_pct <= 1%' or 'avoid trading on big gap days'. Supports composable conditions via ConditionSpec (use type='regime' for single conditions).",
       "kind": "entry",
       "tags": [
         "spot",
@@ -1150,7 +955,8 @@
             "type": "object",
             "properties": {
               "condition": {
-                "$ref": "common_defs.schema.json#/$defs/RegimeSpec"
+                "$ref": "common_defs.schema.json#/$defs/ConditionSpec",
+                "description": "Condition that triggers the entry. Use ConditionSpec with type='regime' for single conditions, or compose multiple conditions with allOf/anyOf/not/sequence."
               }
             },
             "required": [
@@ -1187,7 +993,7 @@
           "4h",
           "1d"
         ],
-        "notes": "Use this archetype for simple rule-based entries. The condition field accepts any RegimeSpec metric (ret_pct, gap_pct, dist_from_vwap_pct, trend_regime, vol_regime, session_phase, etc.). For complex pattern-based entries, use pattern-specific archetypes instead."
+        "notes": "Use this archetype for simple rule-based entries. The condition field accepts ConditionSpec. For single conditions, use ConditionSpec with type='regime' and a RegimeSpec object. RegimeSpec metrics include: ret_pct, gap_pct, dist_from_vwap_pct, trend_regime, vol_regime, session_phase, etc. ConditionSpec supports logical composition (allOf, anyOf, not, sequence) for complex conditions. For complex pattern-based entries, use pattern-specific archetypes instead. Optional action.execution specifies order type (market/limit/stop) and execution parameters. Optional action.sizing specifies position sizing (fixed USD, fixed units, or percentage of equity/position)."
       },
       "examples": [
         {
@@ -1199,11 +1005,14 @@
             },
             "event": {
               "condition": {
-                "metric": "ret_pct",
-                "tf": "1d",
-                "op": "<=",
-                "value": 1.0,
-                "lookback_bars": 1
+                "type": "regime",
+                "regime": {
+                  "metric": "ret_pct",
+                  "tf": "1d",
+                  "op": "<=",
+                  "value": 1.0,
+                  "lookback_bars": 1
+                }
               }
             },
             "action": {
@@ -1224,11 +1033,14 @@
             },
             "event": {
               "condition": {
-                "metric": "ret_pct",
-                "tf": "1d",
-                "op": "<=",
-                "value": 1.0,
-                "lookback_bars": 1
+                "type": "regime",
+                "regime": {
+                  "metric": "ret_pct",
+                  "tf": "1d",
+                  "op": "<=",
+                  "value": 1.0,
+                  "lookback_bars": 1
+                }
               }
             },
             "action": {
@@ -1251,10 +1063,13 @@
             },
             "event": {
               "condition": {
-                "metric": "gap_pct",
-                "session": "us",
-                "op": "<=",
-                "value": 2.0
+                "type": "regime",
+                "regime": {
+                  "metric": "gap_pct",
+                  "session": "us",
+                  "op": "<=",
+                  "value": 2.0
+                }
               }
             },
             "action": {
@@ -1275,12 +1090,15 @@
             },
             "event": {
               "condition": {
-                "metric": "dist_from_vwap_pct",
-                "tf": "1h",
-                "op": "<",
-                "value": -3.0,
-                "vwap_anchor": {
-                  "anchor": "ytd"
+                "type": "regime",
+                "regime": {
+                  "metric": "dist_from_vwap_pct",
+                  "tf": "1h",
+                  "op": "<",
+                  "value": -3.0,
+                  "vwap_anchor": {
+                    "anchor": "ytd"
+                  }
                 }
               }
             },
@@ -1302,12 +1120,15 @@
             },
             "event": {
               "condition": {
-                "metric": "trend_regime",
-                "tf": "4h",
-                "op": "==",
-                "value": "up",
-                "ma_fast": 20,
-                "ma_slow": 50
+                "type": "regime",
+                "regime": {
+                  "metric": "trend_regime",
+                  "tf": "4h",
+                  "op": "==",
+                  "value": "up",
+                  "ma_fast": 20,
+                  "ma_slow": 50
+                }
               }
             },
             "action": {
@@ -1316,6 +1137,88 @@
             },
             "risk": {
               "sl_atr": 1.5
+            }
+          }
+        },
+        {
+          "human": "ETH 1h: buy on dip (price 1.5σ below mean) BUT only if in uptrend (EMA20 > EMA50)",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "ETH-USD"
+            },
+            "event": {
+              "condition": {
+                "type": "allOf",
+                "allOf": [
+                  {
+                    "type": "regime",
+                    "regime": {
+                      "metric": "trend_ma_relation",
+                      "tf": "1h",
+                      "op": ">",
+                      "value": 0.0,
+                      "ma_fast": 20,
+                      "ma_slow": 50,
+                      "lookback_bars": 200
+                    }
+                  },
+                  {
+                    "type": "regime",
+                    "regime": {
+                      "metric": "dist_from_vwap_pct",
+                      "tf": "1h",
+                      "op": "<",
+                      "value": -1.5,
+                      "vwap_anchor": {
+                        "anchor": "session_open"
+                      },
+                      "lookback_bars": 24
+                    }
+                  }
+                ]
+              }
+            },
+            "action": {
+              "direction": "long",
+              "confirm": "close_confirm"
+            },
+            "risk": {
+              "sl_atr": 2.0
+            }
+          }
+        },
+        {
+          "human": "BTC 1h: buy with limit order 0.2% below current price, fixed $1000 per trade",
+          "slots": {
+            "context": {
+              "tf": "1h",
+              "symbol": "BTC-USD"
+            },
+            "event": {
+              "condition": {
+                "metric": "ret_pct",
+                "tf": "1h",
+                "op": "<=",
+                "value": 1.0,
+                "lookback_bars": 1
+              }
+            },
+            "action": {
+              "direction": "long",
+              "confirm": "none",
+              "execution": {
+                "order_type": "limit",
+                "limit_offset_pct": -0.2,
+                "time_in_force": "day"
+              },
+              "sizing": {
+                "type": "fixed_usd",
+                "usd": 1000
+              }
+            },
+            "risk": {
+              "sl_pct": 2.0
             }
           }
         }
