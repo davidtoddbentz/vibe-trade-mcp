@@ -28,11 +28,11 @@ VALID_STATUSES = ["draft", "ready", "running", "paused", "stopped", "error"]
 
 def _extract_and_compile_condition(effective_slots: dict[str, Any]) -> dict[str, Any] | None:
     """Extract and compile ConditionSpec from effective slots.
-    
+
     Looks for ConditionSpec in:
     - event.condition (for entry.rule_trigger, exit.rule_trigger)
     - event.regime (for gate.regime, backwards compatible RegimeSpec)
-    
+
     Returns compiled condition tree ready for runtime evaluation, or None if no condition found.
     """
     # Check event.condition (for rule_trigger archetypes)
@@ -49,7 +49,7 @@ def _extract_and_compile_condition(effective_slots: dict[str, Any]) -> dict[str,
                     "type": "regime",
                     "regime": condition
                 }
-    
+
     # Check event.regime (for gate.regime)
     if "event" in effective_slots:
         event = effective_slots["event"]
@@ -64,13 +64,13 @@ def _extract_and_compile_condition(effective_slots: dict[str, Any]) -> dict[str,
                     "type": "regime",
                     "regime": regime
                 }
-    
+
     return None
 
 
 def _extract_execution_spec(effective_slots: dict[str, Any]) -> dict[str, Any] | None:
     """Extract ExecutionSpec from action.execution in effective slots.
-    
+
     Returns ExecutionSpec dict if present, None otherwise.
     """
     if "action" in effective_slots:
@@ -82,7 +82,7 @@ def _extract_execution_spec(effective_slots: dict[str, Any]) -> dict[str, Any] |
 
 def _extract_sizing_spec(effective_slots: dict[str, Any]) -> dict[str, Any] | None:
     """Extract SizingSpec from action.sizing in effective slots.
-    
+
     Returns SizingSpec dict if present, None otherwise.
     """
     if "action" in effective_slots:
@@ -761,7 +761,7 @@ def register_strategy_tools(
             compiled_condition = _extract_and_compile_condition(effective_slots)
             execution_spec = _extract_execution_spec(effective_slots)
             sizing_spec = _extract_sizing_spec(effective_slots)
-            
+
             # Create compiled card (for validation summary)
             compiled_cards.append(
                 CompiledCard(
@@ -816,12 +816,12 @@ def register_strategy_tools(
             if card.role == "entry":
                 effective_slots = card.effective_slots
                 symbol = None
-                
+
                 # Get symbol from context
                 if "context" in effective_slots:
                     context = effective_slots["context"]
                     symbol = context.get("symbol")
-                
+
                 # For entry.intermarket_trigger, verify context.symbol == follower_symbol
                 if card.type == "entry.intermarket_trigger":
                     if "event" in effective_slots:
@@ -839,10 +839,10 @@ def register_strategy_tools(
                                     )
                                 )
                             symbol = follower_symbol  # Use follower_symbol as the traded symbol
-                
+
                 if symbol:
                     traded_symbols.add(symbol)
-        
+
         # Verify single traded asset
         if len(traded_symbols) > 1:
             issues.append(
@@ -1063,7 +1063,7 @@ def register_strategy_tools(
             compiled_condition = _extract_and_compile_condition(effective_slots)
             execution_spec = _extract_execution_spec(effective_slots)
             sizing_spec = _extract_sizing_spec(effective_slots)
-            
+
             # Create compiled card
             compiled_cards.append(
                 CompiledCard(
@@ -1129,12 +1129,12 @@ def register_strategy_tools(
             if card.role == "entry":
                 effective_slots = card.effective_slots
                 symbol = None
-                
+
                 # Get symbol from context
                 if "context" in effective_slots:
                     context = effective_slots["context"]
                     symbol = context.get("symbol")
-                
+
                 # For entry.intermarket_trigger, verify context.symbol == follower_symbol
                 if card.type == "entry.intermarket_trigger":
                     if "event" in effective_slots:
@@ -1152,10 +1152,10 @@ def register_strategy_tools(
                                     )
                                 )
                             symbol = follower_symbol  # Use follower_symbol as the traded symbol
-                
+
                 if symbol:
                     traded_symbols.add(symbol)
-        
+
         # Verify single traded asset
         if len(traded_symbols) > 1:
             issues.append(

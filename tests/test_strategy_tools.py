@@ -668,16 +668,16 @@ def test_compile_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repos
     entry_card_id = entry_card_result["card_id"]
 
     # Create exit card
-    exit_schema = schema_repository.get_by_type_id("exit.take_profit_stop")
+    exit_schema = schema_repository.get_by_type_id("exit.rule_trigger")
     assert exit_schema is not None
-    exit_example_slots = get_valid_slots_for_archetype(schema_repository, "exit.take_profit_stop")
+    exit_example_slots = get_valid_slots_for_archetype(schema_repository, "exit.rule_trigger")
 
     exit_card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "exit.take_profit_stop",
+                "type": "exit.rule_trigger",
                 "slots": exit_example_slots,
             },
         )
@@ -739,7 +739,7 @@ def test_compile_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repos
 
     exit_card = next(c for c in response.compiled.cards if c.role == "exit")
     assert exit_card.card_id == exit_card_id
-    assert exit_card.type == "exit.take_profit_stop"
+    assert exit_card.type == "exit.rule_trigger"
 
     # Verify data requirements
     data_req = response.compiled.data_requirements[0]

@@ -45,9 +45,9 @@ def test_validate_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repo
     entry_card_id = entry_card_result["card_id"]
 
     # Create exit card
-    exit_schema = schema_repository.get_by_type_id("exit.take_profit_stop")
+    exit_schema = schema_repository.get_by_type_id("exit.rule_trigger")
     assert exit_schema is not None
-    exit_slots = get_valid_slots_for_archetype(schema_repository, "exit.take_profit_stop")
+    exit_slots = get_valid_slots_for_archetype(schema_repository, "exit.rule_trigger")
     exit_card_result = run_async(
         call_tool(
             card_tools_mcp,
