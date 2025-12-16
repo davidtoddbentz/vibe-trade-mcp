@@ -290,7 +290,10 @@ def test_attach_card_card_not_found(strategy_tools_mcp):
     # Assert: should get error with helpful guidance
     assert "card" in str(exc_info.value).lower()
     assert "not found" in str(exc_info.value).lower()
-    assert "get_strategy" in str(exc_info.value).lower() or "list_strategies" in str(exc_info.value).lower()
+    assert (
+        "get_strategy" in str(exc_info.value).lower()
+        or "list_strategies" in str(exc_info.value).lower()
+    )
 
 
 def test_attach_card_duplicate(strategy_tools_mcp, card_tools_mcp, schema_repository):

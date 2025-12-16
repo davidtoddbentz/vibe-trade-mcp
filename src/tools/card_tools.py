@@ -319,7 +319,7 @@ def register_card_tools(
 
     @mcp.tool()
     def list_cards(
-        strategy_id: str = Field(..., description="Strategy identifier to list cards for")
+        strategy_id: str = Field(..., description="Strategy identifier to list cards for"),
     ) -> ListCardsResponse:
         """
         List cards attached to a strategy.
