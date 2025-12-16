@@ -19,7 +19,7 @@ from src.tools.card_tools import (
     UpdateCardResponse,
 )
 from src.tools.errors import ErrorCode
-from src.tools.strategy_tools import AttachCardResponse, CreateStrategyResponse
+from src.tools.strategy_tools import CreateStrategyResponse
 
 
 def test_create_card_valid(card_tools_mcp, schema_repository):
