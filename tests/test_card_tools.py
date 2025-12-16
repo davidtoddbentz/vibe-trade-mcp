@@ -394,7 +394,7 @@ def test_list_cards(card_tools_mcp, strategy_tools_mcp, schema_repository):
     response = ListCardsResponse(**result)
     assert response.count == 2
     assert len(response.cards) == 2
-    card_ids = [card["card_id"] for card in response.cards]
+    card_ids = [card.card_id for card in response.cards]
     assert card1_id in card_ids
     assert card2_id in card_ids
 
@@ -592,7 +592,7 @@ def test_update_card_error_messages_include_guidance(card_tools_mcp, schema_repo
             )
         )
     error_msg = str(exc_info.value)
-    assert "list_cards" in error_msg.lower()
+    assert "get_strategy" in error_msg.lower() or "list_strategies" in error_msg.lower()
 
 
 def test_get_card_error_includes_guidance(card_tools_mcp):
@@ -600,7 +600,7 @@ def test_get_card_error_includes_guidance(card_tools_mcp):
     with pytest.raises(ToolError) as exc_info:
         run_async(call_tool(card_tools_mcp, "get_card", {"card_id": "nonexistent-id"}))
     error_msg = str(exc_info.value)
-    assert "list_cards" in error_msg.lower()
+    assert "get_strategy" in error_msg.lower() or "list_strategies" in error_msg.lower()
     # Verify structured error
     structured_error = get_structured_error(exc_info.value)
     assert structured_error is not None
