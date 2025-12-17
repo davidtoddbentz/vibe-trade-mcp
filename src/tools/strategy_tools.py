@@ -132,8 +132,8 @@ class AttachCardResponse(BaseModel):
     updated_at: str = Field(..., description="ISO8601 timestamp of last update")
 
 
-class DetachCardResponse(BaseModel):
-    """Response from detach_card tool."""
+class DeleteCardResponse(BaseModel):
+    """Response from delete_card tool."""
 
     strategy_id: str = Field(..., description="Strategy identifier")
     attachments: list[dict[str, Any]] = Field(..., description="Updated attachments list")
@@ -495,7 +495,7 @@ def register_strategy_tools(
             if att.card_id == card_id:
                 raise validation_error(
                     message=f"Card {card_id} is already attached to strategy {strategy_id}.",
-                    recovery_hint="Use detach_card first to remove it, or update the attachment manually.",
+                    recovery_hint="Use delete_card first to remove it, or update the attachment manually.",
                     details={"card_id": card_id, "strategy_id": strategy_id},
                 )
 
@@ -526,19 +526,190 @@ def register_strategy_tools(
         )
 
     @mcp.tool()
-    def detach_card(
+    def add_card(
         strategy_id: str = Field(..., description="Strategy identifier"),
-        card_id: str = Field(..., description="Card identifier to detach"),
-    ) -> DetachCardResponse:
+        type: str = Field(..., description="Archetype identifier (e.g., 'entry.trend_pullback')"),
+        slots: dict[str, Any] = Field(..., description="Slot values to validate and store"),  # noqa: B008
+        role: str | None = Field(
+            None,
+            description="Optional card role (entry, gate, exit, overlay). If not provided, role will be automatically determined from the archetype type (e.g., 'entry.trend_pullback' → 'entry').",
+        ),
+        overrides: dict[str, Any] = Field(  # noqa: B008
+            default_factory=dict, description="Optional slot value overrides for attachment"
+        ),
+        follow_latest: bool = Field(
+            default=False,
+            description="If true, use latest card version; if false, pin current version",
+        ),
+        enabled: bool = Field(default=True, description="Whether attachment is enabled"),
+    ) -> AttachCardResponse:
         """
-        Detach a card from a strategy.
+        Add a card to a strategy (creates the card and attaches it).
+
+        This is the primary way to add cards to a strategy. It creates a new card and
+        automatically attaches it to the specified strategy. The role is automatically
+        determined from the archetype type if not provided.
+
+        Cards are added with a **role** (entry, gate, exit, overlay) that determines execution order:
+        - gate: Conditional filters, execute **first** and can block entries/exits.
+        - entry: Entry signals, execute **after gates**, open positions.
+        - exit: Exit rules, execute **after entries**, close/reduce positions.
+        - overlay: Risk/size modifiers, execute **last**, scale position size.
+
+        Execution order is automatically determined by role - you don't need to specify it.
+
+        Recommended workflow (see "Canonical agent workflow" in AGENT_GUIDE.md):
+        1. Create strategy using create_strategy
+        2. Add cards to strategy using add_card (start with entries and exits)
+        3. Use compile_strategy to validate before marking as ready
 
         Args:
             strategy_id: Strategy identifier
-            card_id: Card identifier to detach
+            type: Archetype identifier (e.g., 'entry.trend_pullback', 'exit.take_profit_stop', 'gate.regime', 'overlay.regime_scaler')
+            slots: Slot values to validate and store. Must match the archetype's JSON schema.
+            role: Optional card role (entry, gate, exit, overlay). If not provided, role will be
+                automatically determined from the archetype type (first part before the dot).
+            overrides: Optional slot value overrides for attachment.
+                Overrides use deep merge: nested objects are merged recursively,
+                not replaced. For example, if card has {"context": {"symbol": "BTC-USD", "tf": "1h"}}
+                and you provide {"context": {"tf": "4h"}}, the result is
+                {"context": {"symbol": "BTC-USD", "tf": "4h"}} (tf is updated, symbol is preserved).
+                To replace an entire nested object, you must provide all its fields.
+            follow_latest: If true, use latest card version; if false, pin current version.
+                Use `follow_latest = true` when user expects ongoing improvements to propagate;
+                use `false` when they want a stable, reproducible configuration for backtests or production runs.
+            enabled: Whether attachment is enabled (default: true)
 
         Returns:
-            DetachCardResponse with updated attachments list
+            AttachCardResponse with updated attachments list and card_id
+
+        Raises:
+            StructuredToolError: With error codes:
+                - ARCHETYPE_NOT_FOUND: If archetype schema not found (non-retryable)
+                - SCHEMA_VALIDATION_ERROR: If slot validation fails (non-retryable)
+                - INVALID_ROLE: If role is invalid (non-retryable)
+                - STRATEGY_NOT_FOUND: If strategy not found (non-retryable)
+                - DUPLICATE_ATTACHMENT: If card is already attached (non-retryable)
+
+        Error Handling:
+            All errors include structured information with error_code, retryable flag,
+            recovery_hint, and details for agentic decision-making.
+        """
+        # Import card creation logic (avoid circular import)
+        from src.tools.card_tools import _validate_slots_against_schema
+
+        # Get strategy first to validate it exists
+        strategy = strategy_repo.get_by_id(strategy_id)
+        if strategy is None:
+            raise not_found_error(
+                resource_type="Strategy",
+                resource_id=strategy_id,
+                recovery_hint="Use list_strategies to see all available strategies.",
+            )
+
+        # Fetch schema for validation
+        schema = schema_repo.get_by_type_id(type)
+        if schema is None:
+            raise not_found_error(
+                resource_type="Archetype",
+                resource_id=type,
+                recovery_hint="Browse archetypes://all resource to see available archetypes.",
+            )
+
+        # Validate slots against JSON schema
+        validation_errors = _validate_slots_against_schema(slots, schema.json_schema, schema_repo)
+        if validation_errors:
+            from src.tools.errors import schema_validation_error
+
+            raise schema_validation_error(
+                type_id=type,
+                errors=validation_errors,
+                recovery_hint=f"Browse archetype-schemas://{type.split('.', 1)[0]} resource to see valid values, constraints, and examples.",
+            )
+
+        # Determine role from type if not provided
+        if role is None:
+            # Extract role from type (first part before dot)
+            # e.g., 'entry.trend_pullback' -> 'entry', 'exit.take_profit_stop' -> 'exit'
+            role = type.split(".", 1)[0] if "." in type else type
+
+        # Validate role
+        if role not in VALID_ROLES:
+            raise StructuredToolError(
+                message=f"Invalid role: {role}. Must be one of: {VALID_ROLES}. Role was inferred from type '{type}'. Provide an explicit role if the type doesn't match a valid role.",
+                error_code=ErrorCode.INVALID_ROLE,
+                retryable=False,
+                recovery_hint=f"Use one of: {', '.join(VALID_ROLES)}. Provide an explicit role parameter if the archetype type doesn't start with a valid role.",
+                details={"provided_role": role, "valid_roles": VALID_ROLES, "inferred_from_type": type},
+            )
+
+        # Always use current schema etag - this is internal to MCP
+        schema_etag = schema.etag
+
+        # Create card
+        card = Card(
+            id="",  # Will be generated by Firestore
+            type=type,
+            slots=slots,
+            schema_etag=schema_etag,
+            created_at="",  # Will be set by repository
+            updated_at="",  # Will be set by repository
+        )
+
+        created_card = card_repo.create(card)
+
+        # Check if card is already attached (shouldn't happen for new card, but check anyway)
+        for att in strategy.attachments:
+            if att.card_id == created_card.id:
+                raise validation_error(
+                    message=f"Card {created_card.id} is already attached to strategy {strategy_id}.",
+                    recovery_hint="Use delete_card first to remove it, or update the attachment manually.",
+                    details={"card_id": created_card.id, "strategy_id": strategy_id},
+                )
+
+        # Determine card_revision_id (use updated_at as simple revision identifier for MVP)
+        card_revision_id = None
+        if not follow_latest:
+            card_revision_id = created_card.updated_at  # Simple revision ID for MVP
+
+        # Create attachment
+        attachment = Attachment(
+            card_id=created_card.id,
+            role=role,
+            enabled=enabled,
+            overrides=overrides,
+            follow_latest=follow_latest,
+            card_revision_id=card_revision_id,
+        )
+
+        # Add attachment to strategy
+        strategy.attachments.append(attachment)
+        updated_strategy = strategy_repo.update(strategy)
+
+        return AttachCardResponse(
+            strategy_id=updated_strategy.id,
+            attachments=[att.model_dump() for att in updated_strategy.attachments],
+            version=updated_strategy.version,
+            updated_at=updated_strategy.updated_at,
+        )
+
+    @mcp.tool()
+    def delete_card(
+        strategy_id: str = Field(..., description="Strategy identifier"),
+        card_id: str = Field(..., description="Card identifier to delete from strategy"),
+    ) -> DeleteCardResponse:
+        """
+        Delete a card from a strategy.
+
+        Removes the card from the strategy's attachments. The card entity itself is not deleted
+        and can still be used by other strategies or re-added to this strategy.
+
+        Args:
+            strategy_id: Strategy identifier
+            card_id: Card identifier to delete from strategy
+
+        Returns:
+            DeleteCardResponse with updated attachments list
 
         Raises:
             StructuredToolError: With error codes:
@@ -567,7 +738,7 @@ def register_strategy_tools(
 
         updated_strategy = strategy_repo.update(strategy)
 
-        return DetachCardResponse(
+        return DeleteCardResponse(
             strategy_id=updated_strategy.id,
             attachments=[att.model_dump() for att in updated_strategy.attachments],
             version=updated_strategy.version,

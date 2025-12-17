@@ -14,7 +14,7 @@ from src.tools.strategy_tools import (
     AttachCardResponse,
     CompileStrategyResponse,
     CreateStrategyResponse,
-    DetachCardResponse,
+    DeleteCardResponse,
     GetStrategyResponse,
     ListStrategiesResponse,
     UpdateStrategyMetaResponse,
@@ -356,8 +356,91 @@ def test_attach_card_duplicate(strategy_tools_mcp, card_tools_mcp, schema_reposi
     assert "already attached" in str(exc_info.value).lower()
 
 
-def test_detach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
-    """Test detaching a card from a strategy."""
+def test_add_card(strategy_tools_mcp, schema_repository):
+    """Test adding a card to a strategy (creates card and attaches it)."""
+    # Setup: create a strategy
+    schema_repository.get_by_type_id("entry.trend_pullback")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
+
+    create_strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+            },
+        )
+    )
+    strategy_id = CreateStrategyResponse(**create_strategy_result).strategy_id
+
+    # Run: add card to strategy (creates card and attaches)
+    result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "add_card",
+            {
+                "strategy_id": strategy_id,
+                "type": "entry.trend_pullback",
+                "slots": example_slots,
+                "overrides": {"symbol": "ETH-USD"},
+            },
+        )
+    )
+
+    # Assert: verify response
+    response = AttachCardResponse(**result)
+    assert response.strategy_id == strategy_id
+    assert len(response.attachments) == 1
+    assert response.attachments[0]["role"] == "entry"  # Role should be inferred from type
+    assert response.attachments[0]["overrides"] == {"symbol": "ETH-USD"}
+    assert response.version == 2  # Version should increment (create=1, add_card=2)
+
+    # Verify card_id is in attachments
+    card_id = response.attachments[0]["card_id"]
+    assert card_id is not None
+    assert len(card_id) > 0
+
+
+def test_add_card_with_explicit_role(strategy_tools_mcp, schema_repository):
+    """Test adding a card with explicit role."""
+    # Setup: create a strategy
+    schema_repository.get_by_type_id("exit.rule_trigger")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "exit.rule_trigger")
+
+    create_strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+            },
+        )
+    )
+    strategy_id = CreateStrategyResponse(**create_strategy_result).strategy_id
+
+    # Run: add card with explicit role
+    result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "add_card",
+            {
+                "strategy_id": strategy_id,
+                "type": "exit.rule_trigger",
+                "slots": example_slots,
+                "role": "exit",
+            },
+        )
+    )
+
+    # Assert: verify response
+    response = AttachCardResponse(**result)
+    assert response.strategy_id == strategy_id
+    assert len(response.attachments) == 1
+    assert response.attachments[0]["role"] == "exit"
+
+
+def test_delete_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
+    """Test deleting a card from a strategy."""
     # Setup: create a card and strategy, then attach
     schema_repository.get_by_type_id("entry.trend_pullback")
     example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
@@ -398,11 +481,11 @@ def test_detach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
         )
     )
 
-    # Run: detach card
+    # Run: delete card from strategy
     result = run_async(
         call_tool(
             strategy_tools_mcp,
-            "detach_card",
+            "delete_card",
             {
                 "strategy_id": strategy_id,
                 "card_id": card_id,
@@ -411,14 +494,14 @@ def test_detach_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
     )
 
     # Assert: verify response
-    response = DetachCardResponse(**result)
+    response = DeleteCardResponse(**result)
     assert response.strategy_id == strategy_id
     assert len(response.attachments) == 0
-    assert response.version == 3  # Version should increment (create=1, attach=2, detach=3)
+    assert response.version == 3  # Version should increment (create=1, attach=2, delete=3)
 
 
-def test_detach_card_not_attached(strategy_tools_mcp):
-    """Test detaching a card that's not attached fails."""
+def test_delete_card_not_attached(strategy_tools_mcp):
+    """Test deleting a card that's not attached fails."""
     # Setup: create a strategy
     create_strategy_result = run_async(
         call_tool(
@@ -431,12 +514,12 @@ def test_detach_card_not_attached(strategy_tools_mcp):
     )
     strategy_id = CreateStrategyResponse(**create_strategy_result).strategy_id
 
-    # Run: try to detach non-attached card
+    # Run: try to delete non-attached card
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
                 strategy_tools_mcp,
-                "detach_card",
+                "delete_card",
                 {
                     "strategy_id": strategy_id,
                     "card_id": "some-card-id",
