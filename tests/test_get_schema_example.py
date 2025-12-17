@@ -72,7 +72,6 @@ def test_get_schema_example_not_found(trading_tools_mcp):
     structured_error = get_structured_error(exc_info.value)
     assert structured_error is not None
     assert structured_error.error_code == ErrorCode.ARCHETYPE_NOT_FOUND
-    assert structured_error.retryable is False
     assert (
         "browse" in structured_error.recovery_hint.lower()
         or "archetypes://" in structured_error.recovery_hint.lower()
@@ -102,7 +101,6 @@ def test_get_schema_example_invalid_index(trading_tools_mcp):
     structured_error = get_structured_error(exc_info.value)
     if structured_error is not None:
         assert structured_error.error_code == ErrorCode.SCHEMA_VALIDATION_ERROR
-        assert structured_error.retryable is False
 
 
 def test_get_schema_example_can_create_card(trading_tools_mcp, card_tools_mcp):

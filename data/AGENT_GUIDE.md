@@ -737,13 +737,15 @@ This pattern (gate.time_filter + entry.rule_trigger) is the recommended approach
 
 All tools return structured errors with:
 - `error_code`: Machine-readable error code
-- `retryable`: Whether the error is retryable
-- `recovery_hint`: Actionable guidance
+- `recovery_hint`: Actionable guidance for recovery
 - `details`: Additional context
+
+For transient errors (DATABASE_ERROR, NETWORK_ERROR, TIMEOUT_ERROR), the error message and recovery_hint will explicitly indicate that you should try again.
 
 Common error codes:
 - `ARCHETYPE_NOT_FOUND`: Archetype doesn't exist - use `get_archetypes` to see available types
 - `SCHEMA_VALIDATION_ERROR`: Slot values don't match schema - use `get_schema_example` for valid values
 - `VALIDATION_ERROR`: Invalid parameter - check error message for details
 - `NOT_FOUND`: Resource not found - check ID spelling
+- `DATABASE_ERROR`: Transient database error - the error message will indicate if you should try again
 

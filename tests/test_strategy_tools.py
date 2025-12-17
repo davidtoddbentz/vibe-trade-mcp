@@ -83,7 +83,6 @@ def test_get_strategy_not_found(strategy_tools_mcp):
     structured_error = get_structured_error(exc_info.value)
     assert structured_error is not None
     assert structured_error.error_code == ErrorCode.STRATEGY_NOT_FOUND
-    assert structured_error.retryable is False
 
 
 def test_update_strategy_meta(strategy_tools_mcp):
@@ -256,7 +255,6 @@ def test_attach_card_invalid_role(strategy_tools_mcp, card_tools_mcp, schema_rep
     structured_error = get_structured_error(exc_info.value)
     assert structured_error is not None
     assert structured_error.error_code == ErrorCode.INVALID_ROLE
-    assert structured_error.retryable is False
 
 
 def test_attach_card_card_not_found(strategy_tools_mcp):
@@ -946,7 +944,6 @@ def test_compile_strategy_not_found(strategy_tools_mcp):
     # Assert: verify error
     error = get_structured_error(exc_info.value)
     assert error.error_code == ErrorCode.STRATEGY_NOT_FOUND
-    assert error.retryable is False
 
 
 def test_compile_strategy_with_overrides(strategy_tools_mcp, card_tools_mcp, schema_repository):

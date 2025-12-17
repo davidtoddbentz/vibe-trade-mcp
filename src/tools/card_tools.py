@@ -264,16 +264,15 @@ def register_card_tools(
 
         Raises:
             StructuredToolError: With error codes:
-                - ARCHETYPE_NOT_FOUND: If archetype schema not found (non-retryable)
-                - SCHEMA_VALIDATION_ERROR: If slot validation fails (non-retryable)
-                - STRATEGY_NOT_FOUND: If strategy_id is provided but strategy not found (non-retryable)
-                - INVALID_ROLE: If role is provided but invalid (non-retryable)
-                - DUPLICATE_ATTACHMENT: If card is already attached to the strategy (non-retryable)
+                - ARCHETYPE_NOT_FOUND: If archetype schema not found
+                - SCHEMA_VALIDATION_ERROR: If slot validation fails
+                - STRATEGY_NOT_FOUND: If strategy_id is provided but strategy not found
+                - INVALID_ROLE: If role is provided but invalid
+                - DUPLICATE_ATTACHMENT: If card is already attached to the strategy
 
         Error Handling:
             All errors include structured information:
             - error_code: Machine-readable error code for conditional logic
-            - retryable: Boolean indicating if the error is retryable
             - recovery_hint: Actionable guidance for recovery
             - details: Additional context (resource IDs, validation errors, etc.)
         """
@@ -324,7 +323,6 @@ def register_card_tools(
                 raise StructuredToolError(
                     message=f"Invalid role: {role}. Must be one of: {VALID_ROLES}. Role was inferred from type '{type}'. Provide an explicit role if the type doesn't match a valid role.",
                     error_code=ErrorCode.INVALID_ROLE,
-                    retryable=False,
                     recovery_hint=f"Use one of: {', '.join(VALID_ROLES)}. Provide an explicit role parameter if the archetype type doesn't start with a valid role.",
                     details={"provided_role": role, "valid_roles": VALID_ROLES, "inferred_from_type": type},
                 )
@@ -386,10 +384,10 @@ def register_card_tools(
             GetCardResponse with card data
 
         Raises:
-            StructuredToolError: With error code CARD_NOT_FOUND if card not found (non-retryable)
+            StructuredToolError: With error code CARD_NOT_FOUND if card not found
 
         Error Handling:
-            Errors include structured information with error_code, retryable flag,
+            Errors include structured information with error_code,
             recovery_hint, and details for agentic decision-making.
         """
         card = card_repo.get_by_id(card_id)
@@ -423,10 +421,10 @@ def register_card_tools(
             ListCardsResponse with cards attached to the strategy
 
         Raises:
-            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found (non-retryable)
+            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found
 
         Error Handling:
-            Errors include structured information with error_code, retryable flag,
+            Errors include structured information with error_code,
             recovery_hint, and details for agentic decision-making.
         """
         # Get strategy to find attached cards
@@ -489,12 +487,12 @@ def register_card_tools(
 
         Raises:
             StructuredToolError: With error codes:
-                - CARD_NOT_FOUND: If card not found (non-retryable)
-                - ARCHETYPE_NOT_FOUND: If archetype schema not found (non-retryable)
-                - SCHEMA_VALIDATION_ERROR: If slot validation fails (non-retryable)
+                - CARD_NOT_FOUND: If card not found
+                - ARCHETYPE_NOT_FOUND: If archetype schema not found
+                - SCHEMA_VALIDATION_ERROR: If slot validation fails
 
         Error Handling:
-            All errors include structured information with error_code, retryable flag,
+            All errors include structured information with error_code,
             recovery_hint, and details for agentic decision-making.
         """
         # Get existing card to get the type
@@ -559,7 +557,7 @@ def register_card_tools(
             DeleteCardResponse confirming deletion
 
         Raises:
-            StructuredToolError: With error code CARD_NOT_FOUND if card not found (non-retryable)
+            StructuredToolError: With error code CARD_NOT_FOUND if card not found
         """
         try:
             card_repo.delete(card_id)
@@ -603,10 +601,10 @@ def register_card_tools(
             ValidateSlotsDraftResponse with validation result and errors (if any)
 
         Raises:
-            StructuredToolError: With error code ARCHETYPE_NOT_FOUND if archetype schema not found (non-retryable)
+            StructuredToolError: With error code ARCHETYPE_NOT_FOUND if archetype schema not found
 
         Error Handling:
-            Errors include structured information with error_code, retryable flag,
+            Errors include structured information with error_code,
             recovery_hint, and details for agentic decision-making.
         """
         # Fetch schema for validation

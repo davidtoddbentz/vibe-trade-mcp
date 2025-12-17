@@ -299,10 +299,10 @@ def register_strategy_tools(
             GetStrategyResponse with strategy data
 
         Raises:
-            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found (non-retryable)
+            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found
 
         Error Handling:
-            Errors include structured information with error_code, retryable flag,
+            Errors include structured information with error_code,
             recovery_hint, and details for agentic decision-making.
         """
         strategy = strategy_repo.get_by_id(strategy_id)
@@ -352,8 +352,8 @@ def register_strategy_tools(
 
         Raises:
             StructuredToolError: With error codes:
-                - STRATEGY_NOT_FOUND: If strategy not found (non-retryable)
-                - INVALID_STATUS: If status is invalid (non-retryable)
+                - STRATEGY_NOT_FOUND: If strategy not found
+                - INVALID_STATUS: If status is invalid
         """
         # Get existing strategy
         strategy = strategy_repo.get_by_id(strategy_id)
@@ -369,7 +369,6 @@ def register_strategy_tools(
             raise StructuredToolError(
                 message=f"Invalid status: {status}. Must be one of: {VALID_STATUSES}.",
                 error_code=ErrorCode.INVALID_STATUS,
-                retryable=False,
                 recovery_hint=f"Use one of: {', '.join(VALID_STATUSES)}",
                 details={"provided_status": status, "valid_statuses": VALID_STATUSES},
             )
@@ -453,13 +452,13 @@ def register_strategy_tools(
 
         Raises:
             StructuredToolError: With error codes:
-                - INVALID_ROLE: If role is invalid (non-retryable)
-                - STRATEGY_NOT_FOUND: If strategy not found (non-retryable)
-                - CARD_NOT_FOUND: If card not found (non-retryable)
-                - DUPLICATE_ATTACHMENT: If card is already attached (non-retryable)
+                - INVALID_ROLE: If role is invalid
+                - STRATEGY_NOT_FOUND: If strategy not found
+                - CARD_NOT_FOUND: If card not found
+                - DUPLICATE_ATTACHMENT: If card is already attached
 
         Error Handling:
-            All errors include structured information with error_code, retryable flag,
+            All errors include structured information with error_code,
             recovery_hint, and details for agentic decision-making.
         """
         # Validate role
@@ -467,7 +466,6 @@ def register_strategy_tools(
             raise StructuredToolError(
                 message=f"Invalid role: {role}. Must be one of: {VALID_ROLES}.",
                 error_code=ErrorCode.INVALID_ROLE,
-                retryable=False,
                 recovery_hint=f"Use one of: {', '.join(VALID_ROLES)}. Use get_strategy to see current attachments.",
                 details={"provided_role": role, "valid_roles": VALID_ROLES},
             )
@@ -585,14 +583,14 @@ def register_strategy_tools(
 
         Raises:
             StructuredToolError: With error codes:
-                - ARCHETYPE_NOT_FOUND: If archetype schema not found (non-retryable)
-                - SCHEMA_VALIDATION_ERROR: If slot validation fails (non-retryable)
-                - INVALID_ROLE: If role is invalid (non-retryable)
-                - STRATEGY_NOT_FOUND: If strategy not found (non-retryable)
-                - DUPLICATE_ATTACHMENT: If card is already attached (non-retryable)
+                - ARCHETYPE_NOT_FOUND: If archetype schema not found
+                - SCHEMA_VALIDATION_ERROR: If slot validation fails
+                - INVALID_ROLE: If role is invalid
+                - STRATEGY_NOT_FOUND: If strategy not found
+                - DUPLICATE_ATTACHMENT: If card is already attached
 
         Error Handling:
-            All errors include structured information with error_code, retryable flag,
+            All errors include structured information with error_code,
             recovery_hint, and details for agentic decision-making.
         """
         # Import card creation logic (avoid circular import)
@@ -638,7 +636,6 @@ def register_strategy_tools(
             raise StructuredToolError(
                 message=f"Invalid role: {role}. Must be one of: {VALID_ROLES}. Role was inferred from type '{type}'. Provide an explicit role if the type doesn't match a valid role.",
                 error_code=ErrorCode.INVALID_ROLE,
-                retryable=False,
                 recovery_hint=f"Use one of: {', '.join(VALID_ROLES)}. Provide an explicit role parameter if the archetype type doesn't start with a valid role.",
                 details={"provided_role": role, "valid_roles": VALID_ROLES, "inferred_from_type": type},
             )
@@ -713,8 +710,8 @@ def register_strategy_tools(
 
         Raises:
             StructuredToolError: With error codes:
-                - STRATEGY_NOT_FOUND: If strategy not found (non-retryable)
-                - ATTACHMENT_NOT_FOUND: If card is not attached (non-retryable)
+                - STRATEGY_NOT_FOUND: If strategy not found
+                - ATTACHMENT_NOT_FOUND: If card is not attached
         """
         # Get strategy
         strategy = strategy_repo.get_by_id(strategy_id)
@@ -797,7 +794,7 @@ def register_strategy_tools(
             The compiled field will be None since this is validation-only.
 
         Raises:
-            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found (non-retryable)
+            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found
         """
         # Get strategy
         strategy = strategy_repo.get_by_id(strategy_id)
@@ -1094,10 +1091,10 @@ def register_strategy_tools(
             CompileStrategyResponse with status_hint, compiled plan, and issues
 
         Raises:
-            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found (non-retryable)
+            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found
 
         Error Handling:
-            Errors include structured information with error_code, retryable flag,
+            Errors include structured information with error_code,
             recovery_hint, and details for agentic decision-making.
         """
         # Get strategy

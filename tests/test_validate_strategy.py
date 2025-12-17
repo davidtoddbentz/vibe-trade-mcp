@@ -180,7 +180,6 @@ def test_validate_strategy_not_found(strategy_tools_mcp):
     error = get_structured_error(exc_info.value)
     assert error is not None
     assert error.error_code == ErrorCode.STRATEGY_NOT_FOUND
-    assert error.retryable is False
     assert "Use list_strategies" in error.recovery_hint
 
 
