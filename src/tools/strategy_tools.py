@@ -26,6 +26,66 @@ VALID_ROLES = ["entry", "gate", "exit", "overlay"]
 VALID_STATUSES = ["draft", "ready", "running", "paused", "stopped", "error"]
 
 
+def _extract_and_compile_condition(effective_slots: dict[str, Any]) -> dict[str, Any] | None:
+    """Extract and compile ConditionSpec from effective slots.
+
+    Looks for ConditionSpec in:
+    - event.condition (for entry.rule_trigger, exit.rule_trigger)
+    - event.regime (for gate.regime, backwards compatible RegimeSpec)
+
+    Returns compiled condition tree ready for runtime evaluation, or None if no condition found.
+    """
+    # Check event.condition (for rule_trigger archetypes)
+    if "event" in effective_slots:
+        event = effective_slots["event"]
+        if "condition" in event:
+            condition = event["condition"]
+            # If it's a ConditionSpec (has "type" field), return as-is (already compiled)
+            if isinstance(condition, dict) and "type" in condition:
+                return condition
+            # If it's a RegimeSpec (backwards compatible), wrap in ConditionSpec
+            if isinstance(condition, dict) and "metric" in condition:
+                return {"type": "regime", "regime": condition}
+
+    # Check event.regime (for gate.regime)
+    if "event" in effective_slots:
+        event = effective_slots["event"]
+        if "regime" in event:
+            regime = event["regime"]
+            # If it's a ConditionSpec (has "type" field), return as-is
+            if isinstance(regime, dict) and "type" in regime:
+                return regime
+            # If it's a RegimeSpec (backwards compatible), wrap in ConditionSpec
+            if isinstance(regime, dict) and "metric" in regime:
+                return {"type": "regime", "regime": regime}
+
+    return None
+
+
+def _extract_execution_spec(effective_slots: dict[str, Any]) -> dict[str, Any] | None:
+    """Extract ExecutionSpec from action.execution in effective slots.
+
+    Returns ExecutionSpec dict if present, None otherwise.
+    """
+    if "action" in effective_slots:
+        action = effective_slots["action"]
+        if "execution" in action:
+            return action["execution"]
+    return None
+
+
+def _extract_sizing_spec(effective_slots: dict[str, Any]) -> dict[str, Any] | None:
+    """Extract SizingSpec from action.sizing in effective slots.
+
+    Returns SizingSpec dict if present, None otherwise.
+    """
+    if "action" in effective_slots:
+        action = effective_slots["action"]
+        if "sizing" in action:
+            return action["sizing"]
+    return None
+
+
 class CreateStrategyResponse(BaseModel):
     """Response from create_strategy tool."""
 
@@ -72,8 +132,8 @@ class AttachCardResponse(BaseModel):
     updated_at: str = Field(..., description="ISO8601 timestamp of last update")
 
 
-class DetachCardResponse(BaseModel):
-    """Response from detach_card tool."""
+class DeleteCardResponse(BaseModel):
+    """Response from delete_card tool."""
 
     strategy_id: str = Field(..., description="Strategy identifier")
     attachments: list[dict[str, Any]] = Field(..., description="Updated attachments list")
@@ -89,13 +149,22 @@ class ListStrategiesResponse(BaseModel):
 
 
 class CompiledCard(BaseModel):
-    """Compiled card with effective slots."""
+    """Compiled card with effective slots and compiled components."""
 
     role: str = Field(..., description="Card role")
     card_id: str = Field(..., description="Card identifier")
     card_revision_id: str | None = Field(None, description="Card revision identifier")
     type: str = Field(..., description="Archetype type")
     effective_slots: dict[str, Any] = Field(..., description="Merged slots (card + overrides)")
+    compiled_condition: dict[str, Any] | None = Field(
+        None, description="Compiled ConditionSpec tree for runtime evaluation (if condition exists)"
+    )
+    execution_spec: dict[str, Any] | None = Field(
+        None, description="ExecutionSpec extracted from action (if present)"
+    )
+    sizing_spec: dict[str, Any] | None = Field(
+        None, description="SizingSpec extracted from action (if present)"
+    )
 
 
 class DataRequirement(BaseModel):
@@ -230,10 +299,10 @@ def register_strategy_tools(
             GetStrategyResponse with strategy data
 
         Raises:
-            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found (non-retryable)
+            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found
 
         Error Handling:
-            Errors include structured information with error_code, retryable flag,
+            Errors include structured information with error_code,
             recovery_hint, and details for agentic decision-making.
         """
         strategy = strategy_repo.get_by_id(strategy_id)
@@ -283,8 +352,8 @@ def register_strategy_tools(
 
         Raises:
             StructuredToolError: With error codes:
-                - STRATEGY_NOT_FOUND: If strategy not found (non-retryable)
-                - INVALID_STATUS: If status is invalid (non-retryable)
+                - STRATEGY_NOT_FOUND: If strategy not found
+                - INVALID_STATUS: If status is invalid
         """
         # Get existing strategy
         strategy = strategy_repo.get_by_id(strategy_id)
@@ -300,7 +369,6 @@ def register_strategy_tools(
             raise StructuredToolError(
                 message=f"Invalid status: {status}. Must be one of: {VALID_STATUSES}.",
                 error_code=ErrorCode.INVALID_STATUS,
-                retryable=False,
                 recovery_hint=f"Use one of: {', '.join(VALID_STATUSES)}",
                 details={"provided_status": status, "valid_statuses": VALID_STATUSES},
             )
@@ -384,13 +452,13 @@ def register_strategy_tools(
 
         Raises:
             StructuredToolError: With error codes:
-                - INVALID_ROLE: If role is invalid (non-retryable)
-                - STRATEGY_NOT_FOUND: If strategy not found (non-retryable)
-                - CARD_NOT_FOUND: If card not found (non-retryable)
-                - DUPLICATE_ATTACHMENT: If card is already attached (non-retryable)
+                - INVALID_ROLE: If role is invalid
+                - STRATEGY_NOT_FOUND: If strategy not found
+                - CARD_NOT_FOUND: If card not found
+                - DUPLICATE_ATTACHMENT: If card is already attached
 
         Error Handling:
-            All errors include structured information with error_code, retryable flag,
+            All errors include structured information with error_code,
             recovery_hint, and details for agentic decision-making.
         """
         # Validate role
@@ -398,7 +466,6 @@ def register_strategy_tools(
             raise StructuredToolError(
                 message=f"Invalid role: {role}. Must be one of: {VALID_ROLES}.",
                 error_code=ErrorCode.INVALID_ROLE,
-                retryable=False,
                 recovery_hint=f"Use one of: {', '.join(VALID_ROLES)}. Use get_strategy to see current attachments.",
                 details={"provided_role": role, "valid_roles": VALID_ROLES},
             )
@@ -426,7 +493,7 @@ def register_strategy_tools(
             if att.card_id == card_id:
                 raise validation_error(
                     message=f"Card {card_id} is already attached to strategy {strategy_id}.",
-                    recovery_hint="Use detach_card first to remove it, or update the attachment manually.",
+                    recovery_hint="Use delete_card first to remove it, or update the attachment manually.",
                     details={"card_id": card_id, "strategy_id": strategy_id},
                 )
 
@@ -457,24 +524,198 @@ def register_strategy_tools(
         )
 
     @mcp.tool()
-    def detach_card(
+    def add_card(
         strategy_id: str = Field(..., description="Strategy identifier"),
-        card_id: str = Field(..., description="Card identifier to detach"),
-    ) -> DetachCardResponse:
+        type: str = Field(..., description="Archetype identifier (e.g., 'entry.trend_pullback')"),
+        slots: dict[str, Any] = Field(..., description="Slot values to validate and store"),  # noqa: B008
+        role: str | None = Field(
+            None,
+            description="Optional card role (entry, gate, exit, overlay). If not provided, role will be automatically determined from the archetype type (e.g., 'entry.trend_pullback' → 'entry').",
+        ),
+        overrides: dict[str, Any] = Field(  # noqa: B008
+            default_factory=dict, description="Optional slot value overrides for attachment"
+        ),
+        follow_latest: bool = Field(
+            default=False,
+            description="If true, use latest card version; if false, pin current version",
+        ),
+        enabled: bool = Field(default=True, description="Whether attachment is enabled"),
+    ) -> AttachCardResponse:
         """
-        Detach a card from a strategy.
+        Add a card to a strategy (creates the card and attaches it).
+
+        This is the primary way to add cards to a strategy. It creates a new card and
+        automatically attaches it to the specified strategy. The role is automatically
+        determined from the archetype type if not provided.
+
+        Cards are added with a **role** (entry, gate, exit, overlay) that determines execution order:
+        - gate: Conditional filters, execute **first** and can block entries/exits.
+        - entry: Entry signals, execute **after gates**, open positions.
+        - exit: Exit rules, execute **after entries**, close/reduce positions.
+        - overlay: Risk/size modifiers, execute **last**, scale position size.
+
+        Execution order is automatically determined by role - you don't need to specify it.
+
+        Recommended workflow (see "Canonical agent workflow" in AGENT_GUIDE.md):
+        1. Create strategy using create_strategy
+        2. Add cards to strategy using add_card (start with entries and exits)
+        3. Use compile_strategy to validate before marking as ready
 
         Args:
             strategy_id: Strategy identifier
-            card_id: Card identifier to detach
+            type: Archetype identifier (e.g., 'entry.trend_pullback', 'exit.take_profit_stop', 'gate.regime', 'overlay.regime_scaler')
+            slots: Slot values to validate and store. Must match the archetype's JSON schema.
+            role: Optional card role (entry, gate, exit, overlay). If not provided, role will be
+                automatically determined from the archetype type (first part before the dot).
+            overrides: Optional slot value overrides for attachment.
+                Overrides use deep merge: nested objects are merged recursively,
+                not replaced. For example, if card has {"context": {"symbol": "BTC-USD", "tf": "1h"}}
+                and you provide {"context": {"tf": "4h"}}, the result is
+                {"context": {"symbol": "BTC-USD", "tf": "4h"}} (tf is updated, symbol is preserved).
+                To replace an entire nested object, you must provide all its fields.
+            follow_latest: If true, use latest card version; if false, pin current version.
+                Use `follow_latest = true` when user expects ongoing improvements to propagate;
+                use `false` when they want a stable, reproducible configuration for backtests or production runs.
+            enabled: Whether attachment is enabled (default: true)
 
         Returns:
-            DetachCardResponse with updated attachments list
+            AttachCardResponse with updated attachments list and card_id
 
         Raises:
             StructuredToolError: With error codes:
-                - STRATEGY_NOT_FOUND: If strategy not found (non-retryable)
-                - ATTACHMENT_NOT_FOUND: If card is not attached (non-retryable)
+                - ARCHETYPE_NOT_FOUND: If archetype schema not found
+                - SCHEMA_VALIDATION_ERROR: If slot validation fails
+                - INVALID_ROLE: If role is invalid
+                - STRATEGY_NOT_FOUND: If strategy not found
+                - DUPLICATE_ATTACHMENT: If card is already attached
+
+        Error Handling:
+            All errors include structured information with error_code,
+            recovery_hint, and details for agentic decision-making.
+        """
+        # Import card creation logic (avoid circular import)
+        from src.tools.card_tools import _validate_slots_against_schema
+
+        # Get strategy first to validate it exists
+        strategy = strategy_repo.get_by_id(strategy_id)
+        if strategy is None:
+            raise not_found_error(
+                resource_type="Strategy",
+                resource_id=strategy_id,
+                recovery_hint="Use list_strategies to see all available strategies.",
+            )
+
+        # Fetch schema for validation
+        schema = schema_repo.get_by_type_id(type)
+        if schema is None:
+            raise not_found_error(
+                resource_type="Archetype",
+                resource_id=type,
+                recovery_hint="Browse archetypes://all resource to see available archetypes.",
+            )
+
+        # Validate slots against JSON schema
+        validation_errors = _validate_slots_against_schema(slots, schema.json_schema, schema_repo)
+        if validation_errors:
+            from src.tools.errors import schema_validation_error
+
+            raise schema_validation_error(
+                type_id=type,
+                errors=validation_errors,
+                recovery_hint=f"Browse archetype-schemas://{type.split('.', 1)[0]} resource to see valid values, constraints, and examples.",
+            )
+
+        # Determine role from type if not provided
+        if role is None:
+            # Extract role from type (first part before dot)
+            # e.g., 'entry.trend_pullback' -> 'entry', 'exit.take_profit_stop' -> 'exit'
+            role = type.split(".", 1)[0] if "." in type else type
+
+        # Validate role
+        if role not in VALID_ROLES:
+            raise StructuredToolError(
+                message=f"Invalid role: {role}. Must be one of: {VALID_ROLES}. Role was inferred from type '{type}'. Provide an explicit role if the type doesn't match a valid role.",
+                error_code=ErrorCode.INVALID_ROLE,
+                recovery_hint=f"Use one of: {', '.join(VALID_ROLES)}. Provide an explicit role parameter if the archetype type doesn't start with a valid role.",
+                details={
+                    "provided_role": role,
+                    "valid_roles": VALID_ROLES,
+                    "inferred_from_type": type,
+                },
+            )
+
+        # Always use current schema etag - this is internal to MCP
+        schema_etag = schema.etag
+
+        # Create card
+        card = Card(
+            id="",  # Will be generated by Firestore
+            type=type,
+            slots=slots,
+            schema_etag=schema_etag,
+            created_at="",  # Will be set by repository
+            updated_at="",  # Will be set by repository
+        )
+
+        created_card = card_repo.create(card)
+
+        # Check if card is already attached (shouldn't happen for new card, but check anyway)
+        for att in strategy.attachments:
+            if att.card_id == created_card.id:
+                raise validation_error(
+                    message=f"Card {created_card.id} is already attached to strategy {strategy_id}.",
+                    recovery_hint="Use delete_card first to remove it, or update the attachment manually.",
+                    details={"card_id": created_card.id, "strategy_id": strategy_id},
+                )
+
+        # Determine card_revision_id (use updated_at as simple revision identifier for MVP)
+        card_revision_id = None
+        if not follow_latest:
+            card_revision_id = created_card.updated_at  # Simple revision ID for MVP
+
+        # Create attachment
+        attachment = Attachment(
+            card_id=created_card.id,
+            role=role,
+            enabled=enabled,
+            overrides=overrides,
+            follow_latest=follow_latest,
+            card_revision_id=card_revision_id,
+        )
+
+        # Add attachment to strategy
+        strategy.attachments.append(attachment)
+        updated_strategy = strategy_repo.update(strategy)
+
+        return AttachCardResponse(
+            strategy_id=updated_strategy.id,
+            attachments=[att.model_dump() for att in updated_strategy.attachments],
+            version=updated_strategy.version,
+            updated_at=updated_strategy.updated_at,
+        )
+
+    @mcp.tool()
+    def delete_card(
+        strategy_id: str = Field(..., description="Strategy identifier"),
+        card_id: str = Field(..., description="Card identifier to delete from strategy"),
+    ) -> DeleteCardResponse:
+        """
+        Delete a card from a strategy.
+
+        Removes the card from the strategy's attachments. The card entity itself is not deleted
+        and can still be used by other strategies or re-added to this strategy.
+
+        Args:
+            strategy_id: Strategy identifier
+            card_id: Card identifier to delete from strategy
+
+        Returns:
+            DeleteCardResponse with updated attachments list
+
+        Raises:
+            StructuredToolError: With error codes:
+                - STRATEGY_NOT_FOUND: If strategy not found
+                - ATTACHMENT_NOT_FOUND: If card is not attached
         """
         # Get strategy
         strategy = strategy_repo.get_by_id(strategy_id)
@@ -498,7 +739,7 @@ def register_strategy_tools(
 
         updated_strategy = strategy_repo.update(strategy)
 
-        return DetachCardResponse(
+        return DeleteCardResponse(
             strategy_id=updated_strategy.id,
             attachments=[att.model_dump() for att in updated_strategy.attachments],
             version=updated_strategy.version,
@@ -557,7 +798,7 @@ def register_strategy_tools(
             The compiled field will be None since this is validation-only.
 
         Raises:
-            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found (non-retryable)
+            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found
         """
         # Get strategy
         strategy = strategy_repo.get_by_id(strategy_id)
@@ -682,6 +923,11 @@ def register_strategy_tools(
             if key not in data_requirements_map or min_bars > data_requirements_map[key]:
                 data_requirements_map[key] = min_bars
 
+            # Extract and compile ConditionSpec, ExecutionSpec, SizingSpec
+            compiled_condition = _extract_and_compile_condition(effective_slots)
+            execution_spec = _extract_execution_spec(effective_slots)
+            sizing_spec = _extract_sizing_spec(effective_slots)
+
             # Create compiled card (for validation summary)
             compiled_cards.append(
                 CompiledCard(
@@ -690,6 +936,9 @@ def register_strategy_tools(
                     card_revision_id=card_revision_id,
                     type=card.type,
                     effective_slots=effective_slots,
+                    compiled_condition=compiled_condition,
+                    execution_spec=execution_spec,
+                    sizing_spec=sizing_spec,
                 )
             )
 
@@ -726,6 +975,71 @@ def register_strategy_tools(
                     path="attachments",
                 )
             )
+
+        # MVP: Single-asset trading guarantee
+        traded_symbols = set()
+        for card in compiled_cards:
+            if card.role == "entry":
+                effective_slots = card.effective_slots
+                symbol = None
+
+                # Get symbol from context
+                if "context" in effective_slots:
+                    context = effective_slots["context"]
+                    symbol = context.get("symbol")
+
+                # For entry.intermarket_trigger, verify context.symbol == follower_symbol
+                if card.type == "entry.intermarket_trigger":
+                    if "event" in effective_slots:
+                        event = effective_slots["event"]
+                        if "lead_follow" in event:
+                            lead_follow = event["lead_follow"]
+                            follower_symbol = lead_follow.get("follower_symbol")
+                            if symbol != follower_symbol:
+                                issues.append(
+                                    Issue(
+                                        severity="error",
+                                        code="MVP_SINGLE_ASSET_VIOLATION",
+                                        message=f"entry.intermarket_trigger requires context.symbol ({symbol}) to equal event.lead_follow.follower_symbol ({follower_symbol}). Leader symbols are observation-only.",
+                                        path=f"attachments[{card.card_id}].effective_slots",
+                                    )
+                                )
+                            symbol = follower_symbol  # Use follower_symbol as the traded symbol
+
+                if symbol:
+                    traded_symbols.add(symbol)
+
+        # Verify single traded asset
+        if len(traded_symbols) > 1:
+            issues.append(
+                Issue(
+                    severity="error",
+                    code="MVP_MULTIPLE_ASSETS",
+                    message=f"MVP constraint violation: Strategy trades multiple assets {sorted(traded_symbols)}. MVP requires single-asset trading. Use entry.intermarket_trigger for observation-only triggers from other symbols.",
+                    path="attachments",
+                )
+            )
+        elif len(traded_symbols) == 1:
+            traded_symbol = list(traded_symbols)[0]
+            # Verify strategy universe matches (if set)
+            if strategy.universe and len(strategy.universe) > 1:
+                issues.append(
+                    Issue(
+                        severity="error",
+                        code="MVP_UNIVERSE_MISMATCH",
+                        message=f"Strategy universe {strategy.universe} contains multiple symbols, but only {traded_symbol} is traded. MVP requires single-asset strategies.",
+                        path="universe",
+                    )
+                )
+            elif strategy.universe and traded_symbol not in strategy.universe:
+                issues.append(
+                    Issue(
+                        severity="error",
+                        code="MVP_UNIVERSE_MISMATCH",
+                        message=f"Traded symbol {traded_symbol} not in strategy universe {strategy.universe}",
+                        path="universe",
+                    )
+                )
 
         # Determine status
         error_count = sum(1 for issue in issues if issue.severity == "error")
@@ -781,10 +1095,10 @@ def register_strategy_tools(
             CompileStrategyResponse with status_hint, compiled plan, and issues
 
         Raises:
-            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found (non-retryable)
+            StructuredToolError: With error code STRATEGY_NOT_FOUND if strategy not found
 
         Error Handling:
-            Errors include structured information with error_code, retryable flag,
+            Errors include structured information with error_code,
             recovery_hint, and details for agentic decision-making.
         """
         # Get strategy
@@ -911,6 +1225,11 @@ def register_strategy_tools(
             if key not in data_requirements_map or min_bars > data_requirements_map[key]:
                 data_requirements_map[key] = min_bars
 
+            # Extract and compile ConditionSpec, ExecutionSpec, SizingSpec
+            compiled_condition = _extract_and_compile_condition(effective_slots)
+            execution_spec = _extract_execution_spec(effective_slots)
+            sizing_spec = _extract_sizing_spec(effective_slots)
+
             # Create compiled card
             compiled_cards.append(
                 CompiledCard(
@@ -919,6 +1238,9 @@ def register_strategy_tools(
                     card_revision_id=card_revision_id,
                     type=card.type,
                     effective_slots=effective_slots,
+                    compiled_condition=compiled_condition,
+                    execution_spec=execution_spec,
+                    sizing_spec=sizing_spec,
                 )
             )
 
@@ -966,6 +1288,71 @@ def register_strategy_tools(
                     path="attachments",
                 )
             )
+
+        # MVP: Single-asset trading guarantee
+        traded_symbols = set()
+        for card in compiled_cards:
+            if card.role == "entry":
+                effective_slots = card.effective_slots
+                symbol = None
+
+                # Get symbol from context
+                if "context" in effective_slots:
+                    context = effective_slots["context"]
+                    symbol = context.get("symbol")
+
+                # For entry.intermarket_trigger, verify context.symbol == follower_symbol
+                if card.type == "entry.intermarket_trigger":
+                    if "event" in effective_slots:
+                        event = effective_slots["event"]
+                        if "lead_follow" in event:
+                            lead_follow = event["lead_follow"]
+                            follower_symbol = lead_follow.get("follower_symbol")
+                            if symbol != follower_symbol:
+                                issues.append(
+                                    Issue(
+                                        severity="error",
+                                        code="MVP_SINGLE_ASSET_VIOLATION",
+                                        message=f"entry.intermarket_trigger requires context.symbol ({symbol}) to equal event.lead_follow.follower_symbol ({follower_symbol}). Leader symbols are observation-only.",
+                                        path=f"attachments[{card.card_id}].effective_slots",
+                                    )
+                                )
+                            symbol = follower_symbol  # Use follower_symbol as the traded symbol
+
+                if symbol:
+                    traded_symbols.add(symbol)
+
+        # Verify single traded asset
+        if len(traded_symbols) > 1:
+            issues.append(
+                Issue(
+                    severity="error",
+                    code="MVP_MULTIPLE_ASSETS",
+                    message=f"MVP constraint violation: Strategy trades multiple assets {sorted(traded_symbols)}. MVP requires single-asset trading. Use entry.intermarket_trigger for observation-only triggers from other symbols.",
+                    path="attachments",
+                )
+            )
+        elif len(traded_symbols) == 1:
+            traded_symbol = list(traded_symbols)[0]
+            # Verify strategy universe matches (if set)
+            if strategy.universe and len(strategy.universe) > 1:
+                issues.append(
+                    Issue(
+                        severity="error",
+                        code="MVP_UNIVERSE_MISMATCH",
+                        message=f"Strategy universe {strategy.universe} contains multiple symbols, but only {traded_symbol} is traded. MVP requires single-asset strategies.",
+                        path="universe",
+                    )
+                )
+            elif strategy.universe and traded_symbol not in strategy.universe:
+                issues.append(
+                    Issue(
+                        severity="error",
+                        code="MVP_UNIVERSE_MISMATCH",
+                        message=f"Traded symbol {traded_symbol} not in strategy universe {strategy.universe}",
+                        path="universe",
+                    )
+                )
 
         # Convert data requirements to list
         data_requirements: list[DataRequirement] = []

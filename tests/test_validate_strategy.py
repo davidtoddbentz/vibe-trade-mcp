@@ -45,15 +45,15 @@ def test_validate_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repo
     entry_card_id = entry_card_result["card_id"]
 
     # Create exit card
-    exit_schema = schema_repository.get_by_type_id("exit.take_profit_stop")
+    exit_schema = schema_repository.get_by_type_id("exit.rule_trigger")
     assert exit_schema is not None
-    exit_slots = get_valid_slots_for_archetype(schema_repository, "exit.take_profit_stop")
+    exit_slots = get_valid_slots_for_archetype(schema_repository, "exit.rule_trigger")
     exit_card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "exit.take_profit_stop",
+                "type": "exit.rule_trigger",
                 "slots": exit_slots,
             },
         )
@@ -180,7 +180,6 @@ def test_validate_strategy_not_found(strategy_tools_mcp):
     error = get_structured_error(exc_info.value)
     assert error is not None
     assert error.error_code == ErrorCode.STRATEGY_NOT_FOUND
-    assert error.retryable is False
     assert "Use list_strategies" in error.recovery_hint
 
 

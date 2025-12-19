@@ -33,7 +33,7 @@
     },
     "BandSpec": {
       "type": "object",
-      "description": "Band specification for technical indicators. IMPORTANT: 'length' is in BARS, not days. Effective lookback horizon = tf × length (e.g., 720 bars × 1h ≈ 30 days, 24 bars × 1h ≈ 1 day). When user says '150 days', convert to bars based on timeframe: 150 days on 1h = 150 × 24 = 3600 bars.",
+      "description": "Band specification for technical indicators. IMPORTANT: 'length' is in BARS, not days. Effective lookback horizon = tf × length (e.g., 720 bars × 1h ≈ 30 days, 24 bars × 1h ≈ 1 day). Maximum length is 400 bars. When user says 'N days', convert to bars: days × (bars_per_day for tf). For 1h: 1 day = 24 bars, 30 days = 720 bars (max ~16.7 days on 1h timeframe).",
       "properties": {
         "band": {
           "$ref": "#/$defs/BandKind"
@@ -42,7 +42,7 @@
           "type": "integer",
           "minimum": 5,
           "maximum": 400,
-          "description": "Number of BARS for the lookback window (NOT days). Effective horizon = tf × length. Examples: 24 bars × 1h ≈ 1 day, 720 bars × 1h ≈ 30 days, 150 bars × 1h ≈ 6.25 days. To convert user's 'days' to bars: days × (bars_per_day for tf). For 1h: 1 day = 24 bars, 30 days = 720 bars, 150 days = 3600 bars."
+          "description": "Number of BARS for the lookback window (NOT days). Maximum: 400 bars. Effective horizon = tf × length. Examples: 24 bars × 1h ≈ 1 day, 400 bars × 1h ≈ 16.7 days. To convert user's 'days' to bars: days × (bars_per_day for tf). For 1h: 1 day = 24 bars, 16.7 days = 400 bars (maximum)."
         },
         "mult": {
           "type": "number",
@@ -180,9 +180,6 @@
           "type": "number",
           "minimum": 0,
           "maximum": 200
-        },
-        "confirm": {
-          "$ref": "#/$defs/Confirm"
         }
       },
       "required": [
@@ -202,9 +199,6 @@
           "type": "number",
           "minimum": 0.1,
           "maximum": 10.0
-        },
-        "confirm": {
-          "$ref": "#/$defs/Confirm"
         }
       },
       "required": [
@@ -245,7 +239,7 @@
     },
     "XSRankSpec": {
       "type": "object",
-      "description": "Cross-sectional ranking specification for portfolio entry/exit. Ranks symbols by feature and selects top/bottom N for long/short positions.",
+      "description": "[MVP-EXCLUDED] Cross-sectional ranking specification for portfolio entry/exit. Ranks symbols by feature and selects top/bottom N for long/short positions. Not available in MVP (single-asset trading only).",
       "properties": {
         "universe": {
           "type": "array",
@@ -311,6 +305,7 @@
     },
     "PairsSpec": {
       "type": "object",
+      "description": "[MVP-EXCLUDED] Pairs trading specification for spread trading between two symbols. Not available in MVP (single-asset trading only).",
       "properties": {
         "symbol_a": {
           "type": "string"
@@ -353,7 +348,7 @@
     },
     "IntermarketSpec": {
       "type": "object",
-      "description": "Intermarket trigger specification. Supports single leader (via leader_symbol) or multiple leaders (via leaders array with aggregation).",
+      "description": "Intermarket trigger specification for MVP single-asset trading. Supports single leader (via leader_symbol) or multiple leaders (via leaders array with aggregation). MVP CONSTRAINT: follower_symbol MUST equal context.symbol (the only traded symbol). Leader symbols are observation-only triggers.",
       "properties": {
         "leaders": {
           "type": "array",
@@ -549,6 +544,7 @@
     },
     "SessionSpec": {
       "type": "object",
+      "description": "Session and time window specification. For gap conditions, use ConditionSpec with RegimeSpec.metric='gap_pct'. For confirmation, use action.confirm.",
       "properties": {
         "session": {
           "enum": [
@@ -558,28 +554,19 @@
           ]
         },
         "window": {
-          "type": "string",
-          "pattern": "^[0-2][0-9][0-5][0-9]-[0-2][0-9][0-5][0-9]$"
-        },
-        "min_gap_pct": {
-          "type": "number",
-          "minimum": 0.1,
-          "maximum": 50.0
+          "$ref": "#/$defs/TimeWindowSpec",
+          "description": "Time window for session trading. References canonical TimeWindowSpec."
         },
         "mode": {
           "enum": [
             "gap_fade",
             "gap_go"
           ]
-        },
-        "confirm": {
-          "$ref": "#/$defs/Confirm"
         }
       },
       "required": [
         "session",
         "window",
-        "min_gap_pct",
         "mode"
       ],
       "additionalProperties": false
@@ -590,7 +577,7 @@
       "properties": {
         "symbol": {
           "type": "string",
-          "description": "Optional: symbol to evaluate the regime on. If omitted, uses context.symbol. Use this for cross-symbol regime checks (e.g., 'If ETH is gapping up, buy BTC' → context.symbol='BTC-USD', RegimeSpec.symbol='ETH-USD', metric='gap_pct')."
+          "description": "Optional: symbol to evaluate the regime on. If omitted, uses context.symbol. MVP CONSTRAINT: This is for observation-only (e.g., 'If ETH is gapping up, buy BTC' → context.symbol='BTC-USD' is the ONLY traded symbol, RegimeSpec.symbol='ETH-USD' is observation-only). The symbol specified here is NOT traded - only context.symbol is traded."
         },
         "metric": {
           "enum": [
@@ -604,9 +591,17 @@
             "gap_pct",
             "dist_from_vwap_pct",
             "session_phase",
-            "risk_event_prob"
+            "risk_event_prob",
+            "price_level_touch",
+            "price_level_cross",
+            "liquidity_sweep",
+            "flag_pattern",
+            "pennant_pattern",
+            "volume_pctile",
+            "volume_spike",
+            "volume_dip"
           ],
-          "description": "Regime metric type: trend_ma_relation (spread of fast MA - slow MA, positive = uptrend), trend_adx (Average Directional Index, >25 = strong trend), trend_regime (derived classification: 'up', 'down', 'range'), vol_bb_width_pctile (percentile rank of BB width vs lookback), vol_atr_pct (ATR as % of price), vol_regime (derived classification: 'quiet', 'normal', 'high'), ret_pct (N-bar percentage return, controlled by lookback_bars), gap_pct (percentage gap from prior close, typically used with session_phase), dist_from_vwap_pct (distance from anchored VWAP as percentage, requires vwap_anchor), session_phase (session window classification: 'open', 'close', 'overnight', requires session), risk_event_prob (probability of risk events)."
+          "description": "Regime metric type: trend_ma_relation (spread of fast MA - slow MA, positive = uptrend), trend_adx (Average Directional Index, >25 = strong trend), trend_regime (derived classification: 'up', 'down', 'range'), vol_bb_width_pctile (percentile rank of BB width vs lookback), vol_atr_pct (ATR as % of price), vol_regime (derived classification: 'quiet', 'normal', 'high'), ret_pct (N-bar percentage return, controlled by lookback_bars), gap_pct (percentage gap from prior close, typically used with session_phase), dist_from_vwap_pct (distance from anchored VWAP as percentage, requires vwap_anchor), session_phase (session window classification: 'open', 'close', 'overnight', requires session), risk_event_prob (probability of risk events), price_level_touch (price touches a specified level, requires level_price or level_reference), price_level_cross (price crosses a specified level, requires level_price or level_reference and direction), liquidity_sweep (detects break-below-then-reclaim pattern for stop hunts, requires level_reference and reclaim_within_bars), flag_pattern (detects flag consolidation pattern: initial momentum + narrowing range + breakout continuation, requires flag_momentum_bars, flag_consolidation_bars, flag_breakout_direction), pennant_pattern (detects pennant consolidation pattern: initial momentum + triangular narrowing + breakout continuation, requires pennant_momentum_bars, pennant_consolidation_bars, pennant_breakout_direction), volume_pctile (percentile rank of volume vs lookback), volume_spike (volume exceeds threshold, requires volume_threshold_pctile), volume_dip (volume below threshold, requires volume_threshold_pctile)."
         },
         "tf": {
           "$ref": "#/$defs/Timeframe",
@@ -681,6 +676,81 @@
         "vol_threshold_high": {
           "type": "number",
           "description": "Upper threshold for vol_regime classification (percentile). If omitted, uses default thresholds (pctile < 25 = 'quiet', pctile > 75 = 'high', else 'normal')."
+        },
+        "level_price": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Fixed price level for price_level_touch or price_level_cross metrics. Use this OR level_reference (not both). Required when metric is price_level_touch or price_level_cross and level_reference is not provided."
+        },
+        "level_reference": {
+          "enum": [
+            "previous_low",
+            "previous_high",
+            "recent_support",
+            "recent_resistance",
+            "session_low",
+            "session_high"
+          ],
+          "description": "Dynamic level reference for price_level_touch, price_level_cross, or liquidity_sweep metrics. Use this OR level_price (not both). 'previous_low'/'previous_high' = lowest/highest price in lookback_bars. 'recent_support'/'recent_resistance' = support/resistance level detected in lookback_bars. 'session_low'/'session_high' = lowest/highest price in current session (requires session). Required when metric is liquidity_sweep or when using dynamic levels with price_level_touch/price_level_cross."
+        },
+        "level_direction": {
+          "enum": [
+            "up",
+            "down"
+          ],
+          "description": "Direction for price_level_cross metric: 'up' means price crosses above level, 'down' means price crosses below level. Required when metric is price_level_cross."
+        },
+        "reclaim_within_bars": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "For liquidity_sweep metric: maximum bars allowed between break-below and reclaim. Required when metric is liquidity_sweep."
+        },
+        "flag_momentum_bars": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 100,
+          "description": "For flag_pattern metric: lookback bars to detect initial momentum move. Required when metric is flag_pattern."
+        },
+        "flag_consolidation_bars": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 100,
+          "description": "For flag_pattern metric: bars to detect consolidation period with narrowing range. Required when metric is flag_pattern."
+        },
+        "flag_breakout_direction": {
+          "enum": [
+            "up",
+            "down",
+            "same"
+          ],
+          "description": "For flag_pattern metric: expected breakout direction. 'same' means continuation in direction of initial momentum. Required when metric is flag_pattern."
+        },
+        "pennant_momentum_bars": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 100,
+          "description": "For pennant_pattern metric: lookback bars to detect initial momentum move. Required when metric is pennant_pattern."
+        },
+        "pennant_consolidation_bars": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 100,
+          "description": "For pennant_pattern metric: bars to detect triangular consolidation period. Required when metric is pennant_pattern."
+        },
+        "pennant_breakout_direction": {
+          "enum": [
+            "up",
+            "down",
+            "same"
+          ],
+          "description": "For pennant_pattern metric: expected breakout direction. 'same' means continuation in direction of initial momentum. Required when metric is pennant_pattern."
+        },
+        "volume_threshold_pctile": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Volume percentile threshold for volume_spike (e.g., 90 = top 10% of volume) or volume_dip (e.g., 10 = bottom 10% of volume). Required when metric is volume_spike or volume_dip."
         },
         "notes": {
           "type": "string",
@@ -760,8 +830,502 @@
               "session"
             ]
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "enum": [
+                  "price_level_touch",
+                  "price_level_cross"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "level_price"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "const": "price_level_cross"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "level_direction"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "enum": [
+                  "volume_spike",
+                  "volume_dip"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "volume_threshold_pctile"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "const": "liquidity_sweep"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "level_reference",
+              "reclaim_within_bars"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "const": "flag_pattern"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "flag_momentum_bars",
+              "flag_consolidation_bars",
+              "flag_breakout_direction"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "const": "pennant_pattern"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "pennant_momentum_bars",
+              "pennant_consolidation_bars",
+              "pennant_breakout_direction"
+            ]
+          }
         }
       ]
+    },
+    "ExecutionSpec": {
+      "type": "object",
+      "description": "Execution instructions for placing an order. Purely how to execute, not why.",
+      "properties": {
+        "order_type": {
+          "enum": [
+            "market",
+            "limit",
+            "stop",
+            "stop_limit"
+          ],
+          "default": "market"
+        },
+        "limit_price": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Absolute limit price. Required when order_type is limit or stop_limit unless limit_offset_pct is provided."
+        },
+        "limit_offset_pct": {
+          "type": "number",
+          "minimum": -50.0,
+          "maximum": 50.0,
+          "description": "Limit price as an offset percent from the reference price at order time. Example: -0.2 means 0.2% below reference."
+        },
+        "stop_price": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Absolute stop trigger price. Required when order_type is stop or stop_limit."
+        },
+        "time_in_force": {
+          "enum": [
+            "gtc",
+            "day",
+            "ioc",
+            "fok"
+          ],
+          "default": "gtc"
+        },
+        "post_only": {
+          "type": "boolean",
+          "default": false
+        },
+        "slippage_bps": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 500,
+          "description": "Optional: assumed slippage in basis points for backtests/sims when order_type=market."
+        },
+        "trailing_limit": {
+          "type": "object",
+          "description": "Trailing limit order configuration. When enabled, the limit price trails behind the current price (for buys) or ahead of the current price (for sells) by a specified offset. Useful for 'trailing buy' or 'trailing sell' strategies.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable trailing limit behavior. When true, limit_price or limit_offset_pct becomes a trailing offset that updates with price movement."
+            },
+            "trail_offset_pct": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 50.0,
+              "description": "Trailing offset as percentage. For buy orders, limit trails below current price by this %. For sell orders, limit trails above current price by this %. Required when trailing_limit.enabled=true."
+            },
+            "update_frequency": {
+              "enum": [
+                "tick",
+                "bar",
+                "bar_close"
+              ],
+              "default": "bar_close",
+              "description": "How often to update the trailing limit price: 'tick' (every price update), 'bar' (every bar update), 'bar_close' (only on bar close)."
+            },
+            "max_trail_distance_pct": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100.0,
+              "description": "Optional: maximum distance the trailing limit can move from entry/initial price. Prevents limit from trailing too far."
+            }
+          },
+          "required": [
+            "enabled"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "order_type"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "order_type": {
+                "const": "limit"
+              }
+            }
+          },
+          "then": {
+            "anyOf": [
+              {
+                "required": [
+                  "limit_price"
+                ]
+              },
+              {
+                "required": [
+                  "limit_offset_pct"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "order_type": {
+                "const": "stop"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "stop_price"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "order_type": {
+                "const": "stop_limit"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "stop_price"
+            ],
+            "anyOf": [
+              {
+                "required": [
+                  "limit_price"
+                ]
+              },
+              {
+                "required": [
+                  "limit_offset_pct"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "SizingSpec": {
+      "type": "object",
+      "description": "Sizing instructions for how much to trade. Independent of signal logic and execution.",
+      "properties": {
+        "type": {
+          "enum": [
+            "fixed_usd",
+            "fixed_units",
+            "pct_equity",
+            "pct_position"
+          ],
+          "description": "Sizing mode."
+        },
+        "usd": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000000000,
+          "description": "Notional USD to buy/sell when type=fixed_usd."
+        },
+        "units": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Number of units/contracts when type=fixed_units."
+        },
+        "pct": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "description": "Percentage used by pct_equity or pct_position."
+        },
+        "min_usd": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Optional floor notional after pct sizing."
+        },
+        "max_usd": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Optional cap notional after pct sizing."
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "fixed_usd"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "usd"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "fixed_units"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "units"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "pct_equity"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "pct"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "pct_position"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "pct"
+            ]
+          }
+        }
+      ]
+    },
+    "ConditionSpec": {
+      "type": "object",
+      "$recursiveAnchor": true,
+      "description": "Composable boolean condition used for triggers and gates. Wraps atomic RegimeSpec and supports logical composition and simple temporal sequences.",
+      "properties": {
+        "type": {
+          "enum": [
+            "regime",
+            "allOf",
+            "anyOf",
+            "not",
+            "sequence"
+          ]
+        },
+        "regime": {
+          "$ref": "#/$defs/RegimeSpec"
+        },
+        "allOf": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$recursiveRef": "#/$defs/ConditionSpec"
+          }
+        },
+        "anyOf": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$recursiveRef": "#/$defs/ConditionSpec"
+          }
+        },
+        "not": {
+          "$recursiveRef": "#/$defs/ConditionSpec"
+        },
+        "sequence": {
+          "type": "array",
+          "minItems": 2,
+          "description": "Ordered steps: cond0 then cond1 then ... . Each step may specify within_bars.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "cond": {
+                "$recursiveRef": "#/$defs/ConditionSpec"
+              },
+              "within_bars": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5000,
+                "description": "Step must occur within N bars after the previous step is satisfied."
+              }
+            },
+            "required": [
+              "cond"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "regime"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "regime"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "allOf"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "allOf"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "anyOf"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "anyOf"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "not"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "not"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "sequence"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "sequence"
+            ]
+          }
+        }
+      ]
+    },
+    "TimeWindowSpec": {
+      "type": "string",
+      "pattern": "^[0-2][0-9][0-5][0-9]-[0-2][0-9][0-5][0-9]$",
+      "description": "CANONICAL time window primitive in HHMM-HHMM format (e.g., '0930-1600' for 9:30 AM to 4:00 PM). This is the single source of truth for time-of-day windows. Used by SessionSpec.window and TimeFilterSpec.time_window. All time window fields MUST reference this canonical spec."
     },
     "PositionRiskSpec": {
       "type": "object",
@@ -804,14 +1368,15 @@
       "type": "object",
       "properties": {
         "tf": {
-          "$ref": "#/$defs/Timeframe"
+          "$ref": "#/$defs/Timeframe",
+          "description": "Timeframe for the strategy. Optional for event-driven entries (e.g., entry.gap_play, entry.event_followthrough) where timing is driven by the event."
         },
         "symbol": {
-          "type": "string"
+          "type": "string",
+          "description": "Trading symbol (e.g., 'BTC-USD', 'AAPL'). Required for MVP: single-asset trading."
         }
       },
       "required": [
-        "tf",
         "symbol"
       ],
       "additionalProperties": false
@@ -826,6 +1391,14 @@
         "confirm": {
           "$ref": "#/$defs/Confirm",
           "default": "none"
+        },
+        "execution": {
+          "$ref": "#/$defs/ExecutionSpec",
+          "description": "Optional execution instructions (e.g., limit vs market). Backward compatible: omit to use engine defaults."
+        },
+        "sizing": {
+          "$ref": "#/$defs/SizingSpec",
+          "description": "Optional explicit sizing instructions. If omitted, engine/card-level defaults apply."
         },
         "cooldown_bars": {
           "type": "integer",
@@ -854,6 +1427,14 @@
             "reduce",
             "reverse"
           ]
+        },
+        "execution": {
+          "$ref": "#/$defs/ExecutionSpec",
+          "description": "Optional execution instructions for the exit leg (e.g., exit with limit)."
+        },
+        "sizing": {
+          "$ref": "#/$defs/SizingSpec",
+          "description": "Optional explicit sizing/scaling instructions for the exit. If omitted, falls back to size_frac or engine defaults."
         },
         "size_frac": {
           "type": "number",
@@ -891,9 +1472,8 @@
           "maxItems": 7
         },
         "time_window": {
-          "type": "string",
-          "pattern": "^[0-2][0-9][0-5][0-9]-[0-2][0-9][0-5][0-9]$",
-          "description": "Time window in HHMM-HHMM format (e.g., '0930-1600' for 9:30 AM to 4:00 PM)"
+          "$ref": "#/$defs/TimeWindowSpec",
+          "description": "Time-of-day window for filtering. References canonical TimeWindowSpec."
         },
         "days_of_month": {
           "type": "array",
@@ -945,7 +1525,8 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Optional: specific card instance IDs to target (e.g., ['card_abc123', 'card_def456']). These are card IDs from cards attached to the strategy, NOT archetype type IDs. Use target_roles or target_tags for broader targeting. If omitted, targets all cards matching target_roles/target_tags."
         },
         "notes": {
           "type": "string"
@@ -994,7 +1575,8 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Optional: specific card instance IDs to target (e.g., ['card_abc123', 'card_def456']). These are card IDs from cards attached to the strategy, NOT archetype type IDs. Use target_roles or target_tags for broader targeting. If omitted, targets all cards matching target_roles/target_tags."
         },
         "notes": {
           "type": "string"
@@ -1002,24 +1584,6 @@
       },
       "required": [
         "target_roles"
-      ],
-      "additionalProperties": false
-    },
-    "TPSLEvent": {
-      "type": "object",
-      "properties": {
-        "tp_enabled": {
-          "type": "boolean",
-          "default": true
-        },
-        "sl_enabled": {
-          "type": "boolean",
-          "default": true
-        }
-      },
-      "required": [
-        "tp_enabled",
-        "sl_enabled"
       ],
       "additionalProperties": false
     }

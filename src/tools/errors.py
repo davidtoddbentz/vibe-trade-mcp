@@ -1,7 +1,7 @@
 """Structured error handling for MCP tools.
 
 This module provides structured error types that agents can parse to make
-better decisions about retries and error recovery.
+better decisions about error recovery.
 """
 
 from enum import Enum
@@ -14,17 +14,17 @@ class ErrorCode(str, Enum):
     """Error codes for structured error responses.
 
     These codes help agents distinguish between different error types
-    and make appropriate retry decisions.
+    and make appropriate recovery decisions.
     """
 
-    # Resource not found errors (non-retryable)
+    # Resource not found errors
     NOT_FOUND = "NOT_FOUND"
     ARCHETYPE_NOT_FOUND = "ARCHETYPE_NOT_FOUND"
     CARD_NOT_FOUND = "CARD_NOT_FOUND"
     STRATEGY_NOT_FOUND = "STRATEGY_NOT_FOUND"
     SCHEMA_NOT_FOUND = "SCHEMA_NOT_FOUND"
 
-    # Validation errors (non-retryable, requires user action)
+    # Validation errors (requires user action)
     VALIDATION_ERROR = "VALIDATION_ERROR"
     SCHEMA_VALIDATION_ERROR = "SCHEMA_VALIDATION_ERROR"
     SCHEMA_ETAG_MISMATCH = "SCHEMA_ETAG_MISMATCH"
@@ -33,24 +33,23 @@ class ErrorCode(str, Enum):
     DUPLICATE_ATTACHMENT = "DUPLICATE_ATTACHMENT"
     ATTACHMENT_NOT_FOUND = "ATTACHMENT_NOT_FOUND"
 
-    # Transient errors (retryable)
+    # Transient errors (should indicate retry in message)
     DATABASE_ERROR = "DATABASE_ERROR"
     NETWORK_ERROR = "NETWORK_ERROR"
     TIMEOUT_ERROR = "TIMEOUT_ERROR"
 
-    # Internal errors (non-retryable, requires investigation)
+    # Internal errors (requires investigation)
     INTERNAL_ERROR = "INTERNAL_ERROR"
 
 
 class StructuredToolError(ToolError):
-    """Structured error for MCP tools with error codes and retryable flags.
+    """Structured error for MCP tools with error codes and recovery hints.
 
     This extends FastMCP's ToolError to provide structured information
-    that agents can parse to make better retry decisions.
+    that agents can parse to make better recovery decisions.
 
     Attributes:
         error_code: Machine-readable error code
-        retryable: Whether this error is retryable
         recovery_hint: Optional hint for how to recover from this error
         details: Optional additional error details
     """
@@ -59,7 +58,6 @@ class StructuredToolError(ToolError):
         self,
         message: str,
         error_code: ErrorCode,
-        retryable: bool = False,
         recovery_hint: str | None = None,
         details: dict[str, Any] | None = None,
     ):
@@ -68,13 +66,11 @@ class StructuredToolError(ToolError):
         Args:
             message: Human-readable error message
             error_code: Machine-readable error code
-            retryable: Whether this error is retryable
             recovery_hint: Optional hint for recovery
             details: Optional additional error details
         """
         super().__init__(message)
         self.error_code = error_code
-        self.retryable = retryable
         self.recovery_hint = recovery_hint
         self.details = details or {}
 
@@ -87,7 +83,6 @@ class StructuredToolError(ToolError):
         return {
             "error_code": self.error_code.value,
             "message": str(self),
-            "retryable": self.retryable,
             "recovery_hint": self.recovery_hint,
             "details": self.details,
         }
@@ -96,9 +91,8 @@ class StructuredToolError(ToolError):
         """Return error message with structured information."""
         msg = super().__str__()
         # Include structured error information in the message
-        # This ensures agents can see error_code, retryable, and recovery_hint
+        # This ensures agents can see error_code and recovery_hint
         msg += f"\nError code: {self.error_code.value}"
-        msg += f"\nRetryable: {self.retryable}"
         if self.recovery_hint:
             msg += f"\nRecovery hint: {self.recovery_hint}"
         if self.details:
@@ -141,7 +135,6 @@ def not_found_error(
     return StructuredToolError(
         message=message,
         error_code=error_code,
-        retryable=False,
         recovery_hint=recovery_hint,
         details={"resource_type": resource_type, "resource_id": resource_id},
     )
@@ -163,7 +156,6 @@ def validation_error(
     return StructuredToolError(
         message=message,
         error_code=ErrorCode.VALIDATION_ERROR,
-        retryable=False,
         recovery_hint=recovery_hint,
         details=details or {},
     )
@@ -191,7 +183,6 @@ def schema_validation_error(
     return StructuredToolError(
         message=message,
         error_code=ErrorCode.SCHEMA_VALIDATION_ERROR,
-        retryable=False,
         recovery_hint=recovery_hint,
         details={"type_id": type_id, "validation_errors": errors},
     )
@@ -220,7 +211,6 @@ def schema_etag_mismatch_error(
     return StructuredToolError(
         message=message,
         error_code=ErrorCode.SCHEMA_ETAG_MISMATCH,
-        retryable=False,
         recovery_hint=recovery_hint,
         details={"provided_etag": provided_etag, "current_etag": current_etag},
     )
@@ -229,20 +219,26 @@ def schema_etag_mismatch_error(
 def transient_error(
     message: str, recovery_hint: str | None = None, details: dict[str, Any] | None = None
 ) -> StructuredToolError:
-    """Create a transient (retryable) error.
+    """Create a transient error that should be retried.
 
     Args:
-        message: Error message
-        recovery_hint: Optional recovery hint
+        message: Error message (should indicate that retry is appropriate)
+        recovery_hint: Optional recovery hint (defaults to retry instruction)
         details: Optional additional details
 
     Returns:
-        StructuredToolError with retryable=True
+        StructuredToolError with appropriate transient error code
     """
+    if not recovery_hint:
+        recovery_hint = "This error may be transient. Please try again."
+
+    # Ensure the message also indicates retry is appropriate
+    if "try again" not in message.lower() and "retry" not in message.lower():
+        message = f"{message} Please try again."
+
     return StructuredToolError(
         message=message,
         error_code=ErrorCode.DATABASE_ERROR,
-        retryable=True,
-        recovery_hint=recovery_hint or "This error may be transient. Please retry.",
+        recovery_hint=recovery_hint,
         details=details or {},
     )

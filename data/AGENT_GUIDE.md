@@ -23,11 +23,18 @@ Each tool's "Recommended workflow" section references this canonical workflow. M
 
 **Entries define signals and direction. Exits and overlays define most risk. Entries can optionally carry a `risk` override.**
 
-- **Entry cards**: Define when to open a position and in which direction. Entry cards can optionally include a `risk` block (shared `PositionRiskSpec`) to override default risk settings (e.g., wider stops for breakouts), but this is not required.
-- **Exit cards**: Define when to close positions. Some exit archetypes **require** a `risk` block because they encode numeric thresholds (e.g. `exit.take_profit_stop`, `exit.trailing_stop`, `exit.time_stop`); others (like band/structure exits) can work structurally with or without explicit `risk`.
+**Rule**: All archetypes (entry and exit) use `PositionRiskSpec` at the top level (`risk` field), NOT under `event`.
+
+- **Entry cards**: Define when to open a position and in which direction. Entry cards can optionally include a `risk` block (shared `PositionRiskSpec`) at the top level to override default risk settings (e.g., wider stops for breakouts), but this is not required.
+- **Exit cards**: Define when to close positions. Some exit archetypes **require** a `risk` block because they encode numeric thresholds (e.g. `exit.trailing_stop`); others (like band/structure exits) can work structurally with or without explicit `risk`. All exit cards use `PositionRiskSpec` at the top level.
 - **Overlay cards**: Modify position sizing/risk dynamically based on conditions (e.g., reduce size in high volatility) using the same shared `risk` spec where applicable.
 
 By default, risk (stops, take profits, time stops) is configured in exit cards. Entry cards can optionally override risk parameters, but they don't have to – you can keep entries "signal-only". Overlays scale or modulate whatever risk the base entries/exits already define.
+
+**Consistency Rule**: 
+- Entry archetypes → `risk: PositionRiskSpec` (top level, optional)
+- Exit archetypes → `risk: PositionRiskSpec` (top level, required for some exits)
+- Risk MUST be at top level, NOT under `event`
 
 ## Archetype Types Overview
 
@@ -41,8 +48,7 @@ There are **4 types of archetypes**, each serving a specific purpose in trading 
 **Examples**:
 - `entry.trend_pullback` - Enter on pullbacks within a trend
 - `entry.breakout_trendfollow` - Enter on breakouts in the direction of the trend
-- `entry.xs_momentum` - Enter based on cross-sectional momentum ranking
-- `entry.rule_trigger` - Enter based on a simple RegimeSpec condition (e.g., "buy if ret_pct <= 1%")
+- `entry.rule_trigger` - Enter based on a ConditionSpec condition (e.g., "buy if ret_pct <= 1%")
 
 **Workflow**:
 1. Use `get_archetypes(kind="entry")` to see available entry archetypes
@@ -56,11 +62,9 @@ There are **4 types of archetypes**, each serving a specific purpose in trading 
 **When to use**: Highly recommended. Most strategies need at least one exit to manage risk and take profits.
 
 **Examples**:
-- `exit.take_profit_stop` - Exit at profit target or stop loss
 - `exit.trailing_stop` - Exit when price reverses by a trailing amount
-- `exit.time_stop` - Exit after a fixed time period
 - `exit.squeeze_compression` - Exit when volatility compresses back into a squeeze
-- `exit.rule_trigger` - Exit based on a simple RegimeSpec condition (e.g., "exit if ret_pct > 5%")
+- `exit.rule_trigger` - Exit based on a ConditionSpec condition (e.g., "exit if ret_pct > 5%" for take profit/stop loss, or time-based exits)
 
 **Workflow**:
 1. Use `get_archetypes(kind="exit")` to see available exit archetypes
@@ -99,8 +103,15 @@ There are **4 types of archetypes**, each serving a specific purpose in trading 
   "context": { "symbol": "BTC-USD", "tf": "1h" },
   "event": {
     "regime": {
-      "trend": "bullish",
-      "volatility": "low"
+      "type": "regime",
+      "regime": {
+        "metric": "trend_regime",
+        "tf": "1h",
+        "op": "==",
+        "value": "up",
+        "ma_fast": 20,
+        "ma_slow": 50
+      }
     }
   },
   "action": {
@@ -138,7 +149,14 @@ There are **4 types of archetypes**, each serving a specific purpose in trading 
   "context": { "symbol": "BTC-USD", "tf": "1h" },
   "event": {
     "regime": {
-      "volatility": "high"
+      "type": "regime",
+      "regime": {
+        "metric": "vol_regime",
+        "tf": "1h",
+        "op": "==",
+        "value": "high",
+        "lookback_bars": 200
+      }
     }
   },
   "action": {
@@ -172,12 +190,12 @@ entry_card = create_card(
 
 ### Step 2: Create Exit Card
 ```python
-# Get example slots for take profit/stop loss exit
-example = get_schema_example("exit.take_profit_stop")
+# Get example slots for rule-based exit (take profit/stop loss)
+example = get_schema_example("exit.rule_trigger")
 
 # Create exit card
 exit_card = create_card(
-    type="exit.take_profit_stop",
+    type="exit.rule_trigger",
     slots=example.slots
 )
 ```
@@ -260,10 +278,10 @@ Different archetypes use `context` in slightly different ways. As an agent, you 
 
 - **Per-symbol / timeframe context** (most chart-based entries and exits)
   - Shape: `{"tf": "...", "symbol": "..."}`.
-  - Used by archetypes like `entry.trend_pullback`, `entry.range_mean_reversion`, `entry.breakout_trendfollow`, `exit.take_profit_stop`, `exit.trailing_stop`, etc.
+  - Used by archetypes like `entry.trend_pullback`, `entry.range_mean_reversion`, `entry.breakout_trendfollow`, `exit.trailing_stop`, `exit.rule_trigger`, etc.
 - **Portfolio / cross-sectional context**
   - Shape: `{}` (empty object, no `tf` or `symbol`).
-  - Timeframe and universe live inside the event block, e.g. `event.rebalance` / `event.rank_drop` (`entry.xs_momentum`, `exit.xs_rank_drop`).
+  - Timeframe and universe live inside the event block (not used in MVP - single asset strategies only).
 - **Event- or session-driven context**
   - Shape: typically `{ "symbol": "..." }` (no `tf`), with timing derived from events or sessions (`entry.event_followthrough`, `entry.gap_play`).
 
@@ -286,11 +304,13 @@ Many archetypes share common band and risk specs via `BandSpec` and `PositionRis
   - Risk–reward TP: `tp_rr` (e.g. 2.0 = TP at 2× stop distance).
   - Time stops: `time_stop_bars` is in **bars**; effective duration is `tf × time_stop_bars` (e.g. 24 bars on 1h ≈ 1 day).
 
-## RegimeSpec metrics
+## ConditionSpec and RegimeSpec metrics
 
-**RegimeSpec = generic condition on a metric (trend, volatility, return, gap, VWAP, session).** It's not just for "regimes" - it's the shared primitive layer for expressing any condition on market metrics.
+**ConditionSpec = composable boolean condition language.** All boolean logic in triggers and gates uses ConditionSpec. For single conditions, use ConditionSpec with `type='regime'` and a RegimeSpec object.
 
-RegimeSpec supports built-in metrics for trend, volatility, return, gap, VWAP distance, and derived regime classifications. These metrics can be used in gates, overlays, and the `entry.rule_trigger` / `exit.rule_trigger` archetypes:
+**RegimeSpec = atomic condition on a metric (trend, volatility, return, gap, VWAP, session).** RegimeSpec is used as a leaf node inside ConditionSpec (via `ConditionSpec(type='regime', regime=RegimeSpec)`). It's not just for "regimes" - it's the shared primitive layer for expressing any condition on market metrics.
+
+RegimeSpec supports built-in metrics for trend, volatility, return, gap, VWAP distance, and derived regime classifications. These metrics are used in gates, overlays, and the `entry.rule_trigger` / `exit.rule_trigger` archetypes via ConditionSpec:
 
 - **Trend metrics**:
   - `trend_ma_relation` - Fast MA vs slow MA spread (positive = uptrend). Requires `ma_fast` and `ma_slow`.
@@ -317,7 +337,7 @@ RegimeSpec supports built-in metrics for trend, volatility, return, gap, VWAP di
 - **Risk metrics**:
   - `risk_event_prob` - Probability of risk events
 
-Use these built-in metrics for all regime conditions. For simple return-based conditions like "day not up more than 1%", use `ret_pct` with appropriate `lookback_bars`. For simple rule-based entries, use `entry.rule_trigger` with any of these metrics.
+Use these built-in metrics for all regime conditions. For simple return-based conditions like "day not up more than 1%", use ConditionSpec with `type='regime'` and a RegimeSpec using `ret_pct` with appropriate `lookback_bars`. For simple rule-based entries, use `entry.rule_trigger` with ConditionSpec wrapping any of these metrics.
 
 ## Architecture: Primitives vs Archetypes
 
@@ -325,16 +345,16 @@ The system is built on two layers:
 
 ### Rule Layer (Primitives)
 Shared building blocks defined in `common_defs.json`:
-- **Return metrics**: `ret_pct` (via RegimeSpec)
-- **Volatility metrics**: `vol_bb_width_pctile`, `vol_atr_pct`, `vol_regime` (via RegimeSpec)
-- **Gap metrics**: `gap_pct` (via RegimeSpec)
-- **VWAP metrics**: `dist_from_vwap_pct` (via RegimeSpec)
-- **Session metrics**: `session_phase` (via RegimeSpec)
+- **Return metrics**: `ret_pct` (via RegimeSpec, wrapped in ConditionSpec)
+- **Volatility metrics**: `vol_bb_width_pctile`, `vol_atr_pct`, `vol_regime` (via RegimeSpec, wrapped in ConditionSpec)
+- **Gap metrics**: `gap_pct` (via RegimeSpec, wrapped in ConditionSpec)
+- **VWAP metrics**: `dist_from_vwap_pct` (via RegimeSpec, wrapped in ConditionSpec)
+- **Session metrics**: `session_phase` (via RegimeSpec, wrapped in ConditionSpec)
 - **Band relationships**: `BandSpec`, `BandEvent`
 - **Breakouts/levels**: `BreakoutSpec`, `RetestSpec`
 - **Distance to anchors**: `VWAPAnchorSpec`
 - **Session boundaries**: `SessionSpec`
-- **Trend conditions**: `MASpec`, `trend_adx`, `trend_regime` (via RegimeSpec)
+- **Trend conditions**: `MASpec`, `trend_adx`, `trend_regime` (via RegimeSpec, wrapped in ConditionSpec)
 - **Confirmations**: `Confirm`
 
 These are the "atoms" - reusable conditions that any archetype can use.
@@ -344,8 +364,8 @@ Patterns built from primitives:
 - `entry.trend_pullback` = uptrend (`MASpec`) + pullback (`BandEvent` + `BandSpec`) + confirm
 - `entry.squeeze_expansion` = vol compression (`SqueezeSpec`) + breakout
 - `entry.breakout_retest` = breakout (`BreakoutSpec`) + pullback depth (`RetestSpec`)
-- `entry.rule_trigger` = single condition (`RegimeSpec`) + action (escape hatch for simple entry cases)
-- `exit.rule_trigger` = single condition (`RegimeSpec`) + action (escape hatch for simple exit cases)
+- `entry.rule_trigger` = ConditionSpec (use `type='regime'` for single conditions) + action (escape hatch for simple entry cases)
+- `exit.rule_trigger` = ConditionSpec (use `type='regime'` for single conditions) + action (escape hatch for simple exit cases)
 
 These are the "molecules" - semantic patterns that express trading ideas.
 
@@ -409,12 +429,15 @@ Here's a complete strategy document showing how cards are composed with target r
     "context": { "tf": "1h", "symbol": "BTC-USD" },
     "event": {
       "regime": {
-        "metric": "trend_ma_relation",
-        "tf": "1h",
-        "op": ">",
-        "value": 0.0,
-        "ma_fast": 20,
-        "ma_slow": 50
+        "type": "regime",
+        "regime": {
+          "metric": "trend_ma_relation",
+          "tf": "1h",
+          "op": ">",
+          "value": 0.0,
+          "ma_fast": 20,
+          "ma_slow": 50
+        }
       }
     },
     "action": {
@@ -460,13 +483,19 @@ Here's a complete strategy document showing how cards are composed with target r
 **Exit card 1** (`exit_card_1` - Take Profit):
 ```json
 {
-  "type": "exit.take_profit_stop",
+  "type": "exit.rule_trigger",
   "slots": {
     "context": { "tf": "1h", "symbol": "BTC-USD" },
     "event": {
-      "tp_sl": {
-        "tp_enabled": true,
-        "sl_enabled": false
+      "condition": {
+        "type": "regime",
+        "regime": {
+          "metric": "ret_pct",
+          "tf": "1h",
+          "op": ">=",
+          "value": 4.0,
+          "lookback_bars": 1
+        }
       }
     },
     "action": {
@@ -482,13 +511,19 @@ Here's a complete strategy document showing how cards are composed with target r
 **Exit card 2** (`exit_card_2` - Stop Loss):
 ```json
 {
-  "type": "exit.take_profit_stop",
+  "type": "exit.rule_trigger",
   "slots": {
     "context": { "tf": "1h", "symbol": "BTC-USD" },
     "event": {
-      "tp_sl": {
-        "tp_enabled": false,
-        "sl_enabled": true
+      "condition": {
+        "type": "regime",
+        "regime": {
+          "metric": "ret_pct",
+          "tf": "1h",
+          "op": "<=",
+          "value": -3.0,
+          "lookback_bars": 1
+        }
       }
     },
     "action": {
@@ -509,11 +544,14 @@ Here's a complete strategy document showing how cards are composed with target r
     "context": { "tf": "1h", "symbol": "BTC-USD" },
     "event": {
       "regime": {
-        "metric": "vol_bb_width_pctile",
-        "tf": "1h",
-        "op": ">",
-        "value": 80,
-        "lookback_bars": 200
+        "type": "regime",
+        "regime": {
+          "metric": "vol_bb_width_pctile",
+          "tf": "1h",
+          "op": ">",
+          "value": 80,
+          "lookback_bars": 200
+        }
       }
     },
     "action": {
@@ -566,11 +604,14 @@ A common pattern is combining a time filter gate with a rule-based entry. For ex
     "context": { "tf": "1d", "symbol": "BTC-USD" },
     "event": {
       "condition": {
-        "metric": "ret_pct",
-        "tf": "1d",
-        "op": "<=",
-        "value": 1.0,
-        "lookback_bars": 1
+        "type": "regime",
+        "regime": {
+          "metric": "ret_pct",
+          "tf": "1d",
+          "op": "<=",
+          "value": 1.0,
+          "lookback_bars": 1
+        }
       }
     },
     "action": {
@@ -585,16 +626,37 @@ A common pattern is combining a time filter gate with a rule-based entry. For ex
 }
 ```
 
-**Exit card** (`exit.take_profit_stop` or `exit.rule_trigger`):
+**Exit card** (`exit.rule_trigger`):
 ```json
 {
-  "type": "exit.take_profit_stop",
+  "type": "exit.rule_trigger",
   "slots": {
     "context": { "tf": "1d", "symbol": "BTC-USD" },
     "event": {
-      "tp_sl": {
-        "tp_enabled": true,
-        "sl_enabled": true
+      "condition": {
+        "type": "anyOf",
+        "anyOf": [
+          {
+            "type": "regime",
+            "regime": {
+              "metric": "ret_pct",
+              "tf": "1d",
+              "op": ">=",
+              "value": 3.0,
+              "lookback_bars": 1
+            }
+          },
+          {
+            "type": "regime",
+            "regime": {
+              "metric": "ret_pct",
+              "tf": "1d",
+              "op": "<=",
+              "value": -2.0,
+              "lookback_bars": 1
+            }
+          }
+        ]
       }
     },
     "action": {
@@ -644,6 +706,21 @@ This pattern (gate.time_filter + entry.rule_trigger) is the recommended approach
 6. **Read schema examples** - Use `get_schema_example` to get valid slot configurations
 7. **Validate slots** - Use `validate_slots_draft` before creating cards to catch errors early
 
+## Agent Decision Rules: What Goes Where
+
+**Critical**: Use these rules to map user intent to the correct schema components.
+
+- **"How to Trade"** → Archetype (entry.*, exit.*, gate.*, overlay.*)
+- **"When"** → ConditionSpec (use `type='regime'` for single conditions)
+- **"How Much" / "How to Execute"** → SizingSpec / ExecutionSpec
+- **"Risk"** → Exits or Overlays
+
+**Examples**:
+- "Buy on pullbacks" → `entry.trend_pullback`
+- "Only trade in uptrend" → `gate.regime` with ConditionSpec(type='regime', regime={metric='trend_regime', ...})
+- "Use limit orders 0.2% below" → `action.execution` with ExecutionSpec
+- "Buy $1000 worth" → `action.sizing` with SizingSpec
+
 ## Tool Reference
 
 - `get_archetypes(kind=None)` - List all archetypes, optionally filtered by kind
@@ -660,13 +737,15 @@ This pattern (gate.time_filter + entry.rule_trigger) is the recommended approach
 
 All tools return structured errors with:
 - `error_code`: Machine-readable error code
-- `retryable`: Whether the error is retryable
-- `recovery_hint`: Actionable guidance
+- `recovery_hint`: Actionable guidance for recovery
 - `details`: Additional context
+
+For transient errors (DATABASE_ERROR, NETWORK_ERROR, TIMEOUT_ERROR), the error message and recovery_hint will explicitly indicate that you should try again.
 
 Common error codes:
 - `ARCHETYPE_NOT_FOUND`: Archetype doesn't exist - use `get_archetypes` to see available types
 - `SCHEMA_VALIDATION_ERROR`: Slot values don't match schema - use `get_schema_example` for valid values
 - `VALIDATION_ERROR`: Invalid parameter - check error message for details
 - `NOT_FOUND`: Resource not found - check ID spelling
+- `DATABASE_ERROR`: Transient database error - the error message will indicate if you should try again
 

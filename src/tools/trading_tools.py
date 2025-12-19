@@ -349,10 +349,10 @@ def register_trading_tools(
             GetArchetypeSchemaResponse containing the full schema definition
 
         Raises:
-            StructuredToolError: With error code SCHEMA_NOT_FOUND if archetype schema not found (non-retryable)
+            StructuredToolError: With error code SCHEMA_NOT_FOUND if archetype schema not found
 
         Error Handling:
-            Errors include structured information with error_code, retryable flag,
+            Errors include structured information with error_code,
             recovery_hint, and details for agentic decision-making.
         """
         # Fetch schema from repository
@@ -362,7 +362,6 @@ def register_trading_tools(
             raise StructuredToolError(
                 message=f"Archetype schema not found: {type}",
                 error_code=ErrorCode.ARCHETYPE_NOT_FOUND,
-                retryable=False,
                 recovery_hint="Use get_archetypes to see available archetypes.",
                 details={"type_id": type},
             )
@@ -441,11 +440,11 @@ def register_trading_tools(
             GetSchemaExampleResponse with ready-to-use example slots
 
         Raises:
-            StructuredToolError: With error code ARCHETYPE_NOT_FOUND if archetype schema not found (non-retryable)
-            StructuredToolError: With error code SCHEMA_VALIDATION_ERROR if example_index is out of range (non-retryable)
+            StructuredToolError: With error code ARCHETYPE_NOT_FOUND if archetype schema not found
+            StructuredToolError: With error code SCHEMA_VALIDATION_ERROR if example_index is out of range
 
         Error Handling:
-            Errors include structured information with error_code, retryable flag,
+            Errors include structured information with error_code,
             recovery_hint, and details for agentic decision-making.
         """
         # Fetch schema from repository

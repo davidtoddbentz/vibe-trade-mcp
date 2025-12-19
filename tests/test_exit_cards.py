@@ -11,13 +11,13 @@ from src.tools.strategy_tools import AttachCardResponse, CreateStrategyResponse
 
 
 def test_create_exit_card_take_profit_stop(card_tools_mcp, schema_repository):
-    """Test creating an exit card with take_profit_stop archetype."""
+    """Test creating an exit card with rule_trigger for take profit/stop loss."""
     # Setup: get exit schema
-    schema = schema_repository.get_by_type_id("exit.take_profit_stop")
+    schema = schema_repository.get_by_type_id("exit.rule_trigger")
     assert schema is not None
 
     # Use example slots from schema
-    example_slots = get_valid_slots_for_archetype(schema_repository, "exit.take_profit_stop")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "exit.rule_trigger")
 
     # Run: create exit card
     result = run_async(
@@ -25,7 +25,7 @@ def test_create_exit_card_take_profit_stop(card_tools_mcp, schema_repository):
             card_tools_mcp,
             "create_card",
             {
-                "type": "exit.take_profit_stop",
+                "type": "exit.rule_trigger",
                 "slots": example_slots,
             },
         )
@@ -34,14 +34,13 @@ def test_create_exit_card_take_profit_stop(card_tools_mcp, schema_repository):
     # Assert: verify response
     response = CreateCardResponse(**result)
     assert response.card_id is not None
-    assert response.type == "exit.take_profit_stop"
+    assert response.type == "exit.rule_trigger"
     assert response.slots == example_slots
     # Verify exit-specific structure
     assert "event" in response.slots
-    assert "tp_sl" in response.slots["event"]
+    assert "condition" in response.slots["event"]
     assert "action" in response.slots
     assert response.slots["action"]["mode"] in ["close", "reduce", "reverse"]
-    assert "risk" in response.slots
 
 
 def test_create_exit_card_trailing_stop(card_tools_mcp, schema_repository):
@@ -73,12 +72,28 @@ def test_create_exit_card_trailing_stop(card_tools_mcp, schema_repository):
 
 
 def test_create_exit_card_time_stop(card_tools_mcp, schema_repository):
-    """Test creating an exit card with time_stop archetype."""
+    """Test creating an exit card with rule_trigger for time-based exit."""
     # Setup: get exit schema
-    schema = schema_repository.get_by_type_id("exit.time_stop")
+    schema = schema_repository.get_by_type_id("exit.rule_trigger")
     assert schema is not None
 
-    example_slots = get_valid_slots_for_archetype(schema_repository, "exit.time_stop")
+    # Create slots for time-based exit using rule_trigger
+    example_slots = {
+        "context": {"tf": "1h", "symbol": "BTC-USD"},
+        "event": {
+            "condition": {
+                "type": "regime",
+                "regime": {
+                    "metric": "ret_pct",
+                    "tf": "1h",
+                    "op": ">",
+                    "value": 0,
+                    "lookback_bars": 24,
+                },
+            }
+        },
+        "action": {"mode": "close"},
+    }
 
     # Run: create exit card
     result = run_async(
@@ -86,7 +101,7 @@ def test_create_exit_card_time_stop(card_tools_mcp, schema_repository):
             card_tools_mcp,
             "create_card",
             {
-                "type": "exit.time_stop",
+                "type": "exit.rule_trigger",
                 "slots": example_slots,
             },
         )
@@ -94,10 +109,9 @@ def test_create_exit_card_time_stop(card_tools_mcp, schema_repository):
 
     # Assert: verify response
     response = CreateCardResponse(**result)
-    assert response.type == "exit.time_stop"
+    assert response.type == "exit.rule_trigger"
     assert "event" in response.slots
-    assert "time_elapsed" in response.slots["event"]
-    assert response.slots["event"]["time_elapsed"] is True
+    assert "condition" in response.slots["event"]
 
 
 def test_attach_exit_card_to_strategy(strategy_tools_mcp, card_tools_mcp, schema_repository):
@@ -116,15 +130,15 @@ def test_attach_exit_card_to_strategy(strategy_tools_mcp, card_tools_mcp, schema
     strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
 
     # Setup: create exit card
-    schema_repository.get_by_type_id("exit.take_profit_stop")
-    exit_slots = get_valid_slots_for_archetype(schema_repository, "exit.take_profit_stop")
+    schema_repository.get_by_type_id("exit.rule_trigger")
+    exit_slots = get_valid_slots_for_archetype(schema_repository, "exit.rule_trigger")
 
     exit_card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "exit.take_profit_stop",
+                "type": "exit.rule_trigger",
                 "slots": exit_slots,
             },
         )
@@ -185,15 +199,15 @@ def test_strategy_with_entry_and_exit_cards(strategy_tools_mcp, card_tools_mcp, 
     entry_card_id = CreateCardResponse(**entry_card_result).card_id
 
     # Setup: create exit card
-    schema_repository.get_by_type_id("exit.take_profit_stop")
-    exit_slots = get_valid_slots_for_archetype(schema_repository, "exit.take_profit_stop")
+    schema_repository.get_by_type_id("exit.rule_trigger")
+    exit_slots = get_valid_slots_for_archetype(schema_repository, "exit.rule_trigger")
 
     exit_card_result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "exit.take_profit_stop",
+                "type": "exit.rule_trigger",
                 "slots": exit_slots,
             },
         )
@@ -242,15 +256,15 @@ def test_strategy_with_entry_and_exit_cards(strategy_tools_mcp, card_tools_mcp, 
 def test_exit_card_uses_exit_action_spec(card_tools_mcp, schema_repository):
     """Test that exit cards use ExitActionSpec (mode: close/reduce/reverse)."""
     # Setup: create exit card
-    schema_repository.get_by_type_id("exit.take_profit_stop")
-    example_slots = get_valid_slots_for_archetype(schema_repository, "exit.take_profit_stop")
+    schema_repository.get_by_type_id("exit.rule_trigger")
+    example_slots = get_valid_slots_for_archetype(schema_repository, "exit.rule_trigger")
 
     result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "exit.take_profit_stop",
+                "type": "exit.rule_trigger",
                 "slots": example_slots,
             },
         )
@@ -267,35 +281,60 @@ def test_exit_card_uses_exit_action_spec(card_tools_mcp, schema_repository):
 
 
 def test_exit_card_tp_sl_event_structure(card_tools_mcp, schema_repository):
-    """Test that exit.take_profit_stop uses TPSLEvent structure correctly."""
-    # Setup: create exit card
-    schema_repository.get_by_type_id("exit.take_profit_stop")
-    example_slots = get_valid_slots_for_archetype(schema_repository, "exit.take_profit_stop")
+    """Test that exit.rule_trigger can express TP/SL conditions."""
+    # Setup: create exit card with TP/SL condition
+    example_slots = {
+        "context": {"tf": "1h", "symbol": "BTC-USD"},
+        "event": {
+            "condition": {
+                "type": "anyOf",
+                "anyOf": [
+                    {
+                        "type": "regime",
+                        "regime": {
+                            "metric": "ret_pct",
+                            "tf": "1h",
+                            "op": ">=",
+                            "value": 3.0,
+                            "lookback_bars": 1,
+                        },
+                    },
+                    {
+                        "type": "regime",
+                        "regime": {
+                            "metric": "ret_pct",
+                            "tf": "1h",
+                            "op": "<=",
+                            "value": -2.0,
+                            "lookback_bars": 1,
+                        },
+                    },
+                ],
+            }
+        },
+        "action": {"mode": "close"},
+        "risk": {"tp_pct": 3.0, "sl_pct": 2.0},
+    }
 
     result = run_async(
         call_tool(
             card_tools_mcp,
             "create_card",
             {
-                "type": "exit.take_profit_stop",
+                "type": "exit.rule_trigger",
                 "slots": example_slots,
             },
         )
     )
 
-    # Assert: verify TPSLEvent structure
+    # Assert: verify condition structure
     response = CreateCardResponse(**result)
     event = response.slots["event"]
-    assert "tp_sl" in event
-    tp_sl = event["tp_sl"]
-    assert "tp_enabled" in tp_sl
-    assert "sl_enabled" in tp_sl
-    assert isinstance(tp_sl["tp_enabled"], bool)
-    assert isinstance(tp_sl["sl_enabled"], bool)
+    assert "condition" in event
+    condition = event["condition"]
+    assert condition["type"] == "anyOf"
+    assert len(condition["anyOf"]) == 2
 
     # Verify risk block has TP/SL thresholds
-    risk = response.slots["risk"]
-    # At least one of these should be present for TP/SL
-    assert any(
-        key in risk for key in ["tp_rr", "tp_pct", "sl_atr", "sl_pct"] if risk.get(key) is not None
-    )
+    risk = response.slots.get("risk", {})
+    assert "tp_pct" in risk or "sl_pct" in risk

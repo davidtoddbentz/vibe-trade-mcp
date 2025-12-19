@@ -79,7 +79,6 @@ def test_create_card_invalid_slots(card_tools_mcp, schema_repository):
     structured_error = get_structured_error(exc_info.value)
     assert structured_error is not None
     assert structured_error.error_code == ErrorCode.SCHEMA_VALIDATION_ERROR
-    assert structured_error.retryable is False
     assert structured_error.recovery_hint is not None
 
 
@@ -411,7 +410,6 @@ def test_list_cards_not_found(card_tools_mcp):
     structured_error = get_structured_error(exc_info.value)
     assert structured_error is not None
     assert structured_error.error_code == ErrorCode.STRATEGY_NOT_FOUND
-    assert structured_error.retryable is False
 
 
 def test_list_cards_empty_strategy(card_tools_mcp, strategy_tools_mcp):
@@ -504,7 +502,6 @@ def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repo
     structured_error = get_structured_error(exc_info.value)
     assert structured_error is not None
     assert structured_error.error_code == ErrorCode.ARCHETYPE_NOT_FOUND
-    assert structured_error.retryable is False
     assert structured_error.recovery_hint is not None
 
     # Test: validation error includes guidance to fetch schema
@@ -530,7 +527,6 @@ def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repo
     structured_error = get_structured_error(exc_info.value)
     assert structured_error is not None
     assert structured_error.error_code == ErrorCode.SCHEMA_VALIDATION_ERROR
-    assert structured_error.retryable is False
     assert structured_error.recovery_hint is not None
     assert "type_id" in structured_error.details
 
@@ -605,7 +601,6 @@ def test_get_card_error_includes_guidance(card_tools_mcp):
     structured_error = get_structured_error(exc_info.value)
     assert structured_error is not None
     assert structured_error.error_code == ErrorCode.CARD_NOT_FOUND
-    assert structured_error.retryable is False
     assert structured_error.recovery_hint is not None
 
 
