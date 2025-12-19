@@ -124,7 +124,7 @@ class UpdateStrategyMetaResponse(BaseModel):
 
 
 class AttachCardResponse(BaseModel):
-    """Response from attach_card tool."""
+    """Response from add_card tool."""
 
     strategy_id: str = Field(..., description="Strategy identifier")
     attachments: list[dict[str, Any]] = Field(..., description="Updated attachments list")
@@ -244,10 +244,9 @@ def register_strategy_tools(
         - If they don't care, default to minimal: 1 entry + 1 exit, no gate/overlay.
 
         Recommended workflow (see "Canonical agent workflow" in AGENT_GUIDE.md):
-        1. Create cards using create_card tool (start with entries and exits)
-        2. Create strategy with create_strategy
-        3. Attach cards to strategy using attach_card with appropriate roles
-        4. Use compile_strategy to validate before marking as ready
+        1. Create strategy with create_strategy
+        2. Add cards to strategy using add_card (start with entries and exits)
+        3. Use compile_strategy to validate before marking as ready
 
         Args:
             name: Strategy name
@@ -392,140 +391,10 @@ def register_strategy_tools(
             updated_at=updated_strategy.updated_at,
         )
 
-    @mcp.tool()
-    def attach_card(
-        strategy_id: str = Field(..., description="Strategy identifier"),
-        card_id: str = Field(..., description="Card identifier to attach"),
-        role: str = Field(
-            ...,
-            description="Card role: entry, gate, exit, or overlay. There are 4 roles that map directly to archetype kinds.",
-        ),
-        overrides: dict[str, Any] = Field(  # noqa: B008
-            default_factory=dict, description="Slot value overrides (optional)"
-        ),
-        follow_latest: bool = Field(
-            default=False,
-            description="If true, use latest card version; if false, pin current version",
-        ),
-        enabled: bool = Field(default=True, description="Whether attachment is enabled"),
-    ) -> AttachCardResponse:
-        """
-        Attach a card to a strategy.
-
-        Cards are attached with a **role** (entry, gate, exit, overlay) that determines execution order:
-        - gate: Conditional filters, execute **first** and can block entries/exits.
-        - entry: Entry signals, execute **after gates**, open positions.
-        - exit: Exit rules, execute **after entries**, close/reduce positions.
-        - overlay: Risk/size modifiers, execute **last**, scale position size.
-
-        Execution order is automatically determined by role - you don't need to specify it.
-
-        **Agent behavior:**
-        - For simple user requests, attach exactly:
-          * 1-2 `entry` cards
-          * 1-2 `exit` cards
-          * optionally 0-2 `gate` or `overlay` cards when the user explicitly describes filters or dynamic sizing.
-
-        Recommended workflow (see "Canonical agent workflow" in AGENT_GUIDE.md):
-        1. Create cards using create_card (start with entries and exits)
-        2. Create strategy using create_strategy
-        3. Attach cards using attach_card with appropriate roles
-        4. Use compile_strategy to validate before marking as ready
-
-        Args:
-            strategy_id: Strategy identifier
-            card_id: Card identifier to attach
-            role: Card role: entry, gate, exit, or overlay. There are 4 roles that map directly to archetype kinds.
-            overrides: Slot value overrides to merge with card slots (optional).
-                Overrides use deep merge: nested objects are merged recursively,
-                not replaced. For example, if card has {"context": {"symbol": "BTC-USD", "tf": "1h"}}
-                and you provide {"context": {"tf": "4h"}}, the result is
-                {"context": {"symbol": "BTC-USD", "tf": "4h"}} (tf is updated, symbol is preserved).
-                To replace an entire nested object, you must provide all its fields.
-            follow_latest: If true, use latest card version; if false, pin current version.
-                Use `follow_latest = true` when user expects ongoing improvements to propagate;
-                use `false` when they want a stable, reproducible configuration for backtests or production runs.
-            enabled: Whether attachment is enabled (default: true)
-
-        Returns:
-            AttachCardResponse with updated attachments list
-
-        Raises:
-            StructuredToolError: With error codes:
-                - INVALID_ROLE: If role is invalid
-                - STRATEGY_NOT_FOUND: If strategy not found
-                - CARD_NOT_FOUND: If card not found
-                - DUPLICATE_ATTACHMENT: If card is already attached
-
-        Error Handling:
-            All errors include structured information with error_code,
-            recovery_hint, and details for agentic decision-making.
-        """
-        # Validate role
-        if role not in VALID_ROLES:
-            raise StructuredToolError(
-                message=f"Invalid role: {role}. Must be one of: {VALID_ROLES}.",
-                error_code=ErrorCode.INVALID_ROLE,
-                recovery_hint=f"Use one of: {', '.join(VALID_ROLES)}. Use get_strategy to see current attachments.",
-                details={"provided_role": role, "valid_roles": VALID_ROLES},
-            )
-
-        # Get strategy
-        strategy = strategy_repo.get_by_id(strategy_id)
-        if strategy is None:
-            raise not_found_error(
-                resource_type="Strategy",
-                resource_id=strategy_id,
-                recovery_hint="Use list_strategies to see all available strategies.",
-            )
-
-        # Verify card exists
-        card = card_repo.get_by_id(card_id)
-        if card is None:
-            raise not_found_error(
-                resource_type="Card",
-                resource_id=card_id,
-                recovery_hint="Use get_strategy to see cards attached to a strategy, or list_strategies to see all strategies.",
-            )
-
-        # Check if card is already attached
-        for att in strategy.attachments:
-            if att.card_id == card_id:
-                raise validation_error(
-                    message=f"Card {card_id} is already attached to strategy {strategy_id}.",
-                    recovery_hint="Use delete_card first to remove it, or update the attachment manually.",
-                    details={"card_id": card_id, "strategy_id": strategy_id},
-                )
-
-        # Determine card_revision_id (use updated_at as simple revision identifier for MVP)
-        card_revision_id = None
-        if not follow_latest:
-            card_revision_id = card.updated_at  # Simple revision ID for MVP
-
-        # Create attachment
-        attachment = Attachment(
-            card_id=card_id,
-            role=role,
-            enabled=enabled,
-            overrides=overrides,
-            follow_latest=follow_latest,
-            card_revision_id=card_revision_id,
-        )
-
-        # Add attachment to strategy
-        strategy.attachments.append(attachment)
-        updated_strategy = strategy_repo.update(strategy)
-
-        return AttachCardResponse(
-            strategy_id=updated_strategy.id,
-            attachments=[att.model_dump() for att in updated_strategy.attachments],
-            version=updated_strategy.version,
-            updated_at=updated_strategy.updated_at,
-        )
 
     @mcp.tool()
     def add_card(
-        strategy_id: str = Field(..., description="Strategy identifier"),
+        strategy_id: str = Field(..., description="Strategy identifier (required)"),
         type: str = Field(..., description="Archetype identifier (e.g., 'entry.trend_pullback')"),
         slots: dict[str, Any] = Field(..., description="Slot values to validate and store"),  # noqa: B008
         role: str | None = Field(
@@ -542,10 +411,10 @@ def register_strategy_tools(
         enabled: bool = Field(default=True, description="Whether attachment is enabled"),
     ) -> AttachCardResponse:
         """
-        Add a card to a strategy (creates the card and attaches it).
+        Add a card to a strategy (creates the card and automatically attaches it).
 
-        This is the primary way to add cards to a strategy. It creates a new card and
-        automatically attaches it to the specified strategy. The role is automatically
+        This is the primary way to create and add cards to a strategy. It creates a new card
+        and automatically attaches it to the specified strategy. The role is automatically
         determined from the archetype type if not provided.
 
         Cards are added with a **role** (entry, gate, exit, overlay) that determines execution order:
@@ -562,7 +431,7 @@ def register_strategy_tools(
         3. Use compile_strategy to validate before marking as ready
 
         Args:
-            strategy_id: Strategy identifier
+            strategy_id: Strategy identifier (required - card will be automatically attached to this strategy)
             type: Archetype identifier (e.g., 'entry.trend_pullback', 'exit.take_profit_stop', 'gate.regime', 'overlay.regime_scaler')
             slots: Slot values to validate and store. Must match the archetype's JSON schema.
             role: Optional card role (entry, gate, exit, overlay). If not provided, role will be
@@ -694,57 +563,6 @@ def register_strategy_tools(
             updated_at=updated_strategy.updated_at,
         )
 
-    @mcp.tool()
-    def delete_card(
-        strategy_id: str = Field(..., description="Strategy identifier"),
-        card_id: str = Field(..., description="Card identifier to delete from strategy"),
-    ) -> DeleteCardResponse:
-        """
-        Delete a card from a strategy.
-
-        Removes the card from the strategy's attachments. The card entity itself is not deleted
-        and can still be used by other strategies or re-added to this strategy.
-
-        Args:
-            strategy_id: Strategy identifier
-            card_id: Card identifier to delete from strategy
-
-        Returns:
-            DeleteCardResponse with updated attachments list
-
-        Raises:
-            StructuredToolError: With error codes:
-                - STRATEGY_NOT_FOUND: If strategy not found
-                - ATTACHMENT_NOT_FOUND: If card is not attached
-        """
-        # Get strategy
-        strategy = strategy_repo.get_by_id(strategy_id)
-        if strategy is None:
-            raise not_found_error(
-                resource_type="Strategy",
-                resource_id=strategy_id,
-                recovery_hint="Use list_strategies to see all available strategies.",
-            )
-
-        # Find and remove attachment
-        original_count = len(strategy.attachments)
-        strategy.attachments = [att for att in strategy.attachments if att.card_id != card_id]
-
-        if len(strategy.attachments) == original_count:
-            raise validation_error(
-                message=f"Card {card_id} is not attached to strategy {strategy_id}.",
-                recovery_hint="Use get_strategy to see current attachments.",
-                details={"card_id": card_id, "strategy_id": strategy_id},
-            )
-
-        updated_strategy = strategy_repo.update(strategy)
-
-        return DeleteCardResponse(
-            strategy_id=updated_strategy.id,
-            attachments=[att.model_dump() for att in updated_strategy.attachments],
-            version=updated_strategy.version,
-            updated_at=updated_strategy.updated_at,
-        )
 
     @mcp.tool()
     def list_strategies() -> ListStrategiesResponse:
@@ -1081,12 +899,11 @@ def register_strategy_tools(
         - If they don't care, default to minimal: 1 entry + 1 exit, no gate/overlay.
 
         Recommended workflow:
-        1. Create cards using create_card
-        2. Create strategy using create_strategy
-        3. Attach cards using attach_card
-        4. Compile strategy using compile_strategy to validate and get data requirements
-        5. Fix any issues reported
-        6. Re-compile until status_hint is "ready"
+        1. Create strategy using create_strategy
+        2. Add cards to strategy using add_card
+        3. Compile strategy using compile_strategy to validate and get data requirements
+        4. Fix any issues reported
+        5. Re-compile until status_hint is "ready"
 
         Args:
             strategy_id: Strategy identifier

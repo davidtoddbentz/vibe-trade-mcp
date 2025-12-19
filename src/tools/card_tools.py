@@ -13,34 +13,10 @@ from src.db.archetype_schema_repository import ArchetypeSchemaRepository
 from src.db.card_repository import CardRepository
 from src.db.strategy_repository import StrategyRepository
 from src.models.card import Card
-from src.models.strategy import Attachment
 from src.tools.errors import (
-    ErrorCode,
-    StructuredToolError,
     not_found_error,
     schema_validation_error,
-    validation_error,
 )
-
-
-class CreateCardRequest(BaseModel):
-    """Request for create_card tool (internal use only).
-
-    Note: schema_etag is handled internally by MCP and not exposed in the public API.
-    """
-
-    type: str = Field(..., description="Archetype identifier (e.g., 'entry.trend_pullback')")
-    slots: dict[str, Any] = Field(..., description="Slot values to validate and store")
-
-
-class CreateCardResponse(BaseModel):
-    """Response from create_card tool."""
-
-    card_id: str = Field(..., description="Generated card identifier")
-    type: str = Field(..., description="Archetype identifier")
-    slots: dict[str, Any] = Field(..., description="Validated slot values")
-    schema_etag: str = Field(..., description="Schema ETag used for validation")
-    created_at: str = Field(..., description="ISO8601 timestamp of creation")
 
 
 class GetCardRequest(BaseModel):
@@ -204,180 +180,6 @@ def register_card_tools(
     repositories (and therefore which databases/backends) are used.
     """
 
-    @mcp.tool()
-    def create_card(
-        type: str = Field(..., description="Archetype identifier (e.g., 'entry.trend_pullback')"),
-        slots: dict[str, Any] = Field(..., description="Slot values to validate and store"),  # noqa: B008
-        strategy_id: str | None = Field(
-            None,
-            description="Optional strategy identifier. If provided, card will be automatically attached to the strategy.",
-        ),
-        role: str | None = Field(
-            None,
-            description="Optional card role (entry, gate, exit, overlay). If strategy_id is provided but role is not, role will be automatically determined from the archetype type (e.g., 'entry.trend_pullback' → 'entry').",
-        ),
-        overrides: dict[str, Any] = Field(  # noqa: B008
-            default_factory=dict,
-            description="Optional slot value overrides for attachment (only used if strategy_id is provided)",
-        ),
-        follow_latest: bool = Field(
-            default=False,
-            description="If true, use latest card version; if false, pin current version (only used if strategy_id is provided)",
-        ),
-        enabled: bool = Field(
-            default=True,
-            description="Whether attachment is enabled (only used if strategy_id is provided)",
-        ),
-    ) -> CreateCardResponse:
-        """
-        Create a new trading strategy card.
-
-        Validates the provided slots against the archetype's JSON schema and stores
-        the card in Firestore. The schema_etag is automatically set to the current
-        schema version for version tracking (this is handled internally by MCP).
-
-        **Automatic Attachment**: If `strategy_id` is provided, the card will be automatically
-        attached to the strategy. The `role` will be automatically determined from the archetype
-        type if not provided (e.g., 'entry.trend_pullback' → 'entry', 'exit.take_profit_stop' → 'exit').
-
-        Recommended workflow:
-        1. Browse archetypes://{kind} resources to find available archetypes
-        2. Use get_schema_example(type) to get ready-to-use example slots
-        3. Optionally modify the example slots to fit your needs
-        4. Call create_card with type and slots to create the card
-        5. Optionally provide strategy_id to automatically attach the card (role will be inferred from type)
-
-        **Terminology:**
-        - **type**: specific archetype identifier (e.g. `entry.trend_pullback`).
-        - **kind**: broad archetype category extracted from type (e.g., `entry.trend_pullback` → `entry`).
-
-        Args:
-            type: Archetype identifier (e.g., 'entry.trend_pullback', 'exit.take_profit_stop', 'gate.regime', 'overlay.regime_scaler')
-            slots: Slot values to validate and store. Must match the archetype's JSON schema.
-            strategy_id: Optional strategy identifier. If provided, card will be automatically attached to the strategy.
-            role: Optional card role (entry, gate, exit, overlay). If strategy_id is provided but role is not,
-                role will be automatically determined from the archetype type (first part before the dot).
-            overrides: Optional slot value overrides for attachment (only used if strategy_id is provided).
-                Overrides use deep merge: nested objects are merged recursively, not replaced.
-            follow_latest: If true, use latest card version; if false, pin current version (only used if strategy_id is provided).
-            enabled: Whether attachment is enabled (only used if strategy_id is provided).
-
-        Returns:
-            CreateCardResponse with generated card_id and validated data
-
-        Raises:
-            StructuredToolError: With error codes:
-                - ARCHETYPE_NOT_FOUND: If archetype schema not found
-                - SCHEMA_VALIDATION_ERROR: If slot validation fails
-                - STRATEGY_NOT_FOUND: If strategy_id is provided but strategy not found
-                - INVALID_ROLE: If role is provided but invalid
-                - DUPLICATE_ATTACHMENT: If card is already attached to the strategy
-
-        Error Handling:
-            All errors include structured information:
-            - error_code: Machine-readable error code for conditional logic
-            - recovery_hint: Actionable guidance for recovery
-            - details: Additional context (resource IDs, validation errors, etc.)
-        """
-        # Fetch schema for validation
-        schema = schema_repo.get_by_type_id(type)
-        if schema is None:
-            raise not_found_error(
-                resource_type="Archetype",
-                resource_id=type,
-                recovery_hint="Browse archetypes://all resource to see available archetypes.",
-            )
-
-        # Always use current schema etag - this is internal to MCP
-        schema_etag = schema.etag
-
-        # Validate slots against JSON schema
-        validation_errors = _validate_slots_against_schema(slots, schema.json_schema, schema_repo)
-        if validation_errors:
-            raise schema_validation_error(
-                type_id=type,
-                errors=validation_errors,
-                recovery_hint=f"Browse archetype-schemas://{type.split('.', 1)[0]} resource to see valid values, constraints, and examples.",
-            )
-
-        # Create card
-        card = Card(
-            id="",  # Will be generated by Firestore
-            type=type,
-            slots=slots,
-            schema_etag=schema_etag,
-            created_at="",  # Will be set by repository
-            updated_at="",  # Will be set by repository
-        )
-
-        created_card = card_repo.create(card)
-
-        # If strategy_id is provided, automatically attach the card
-        if strategy_id is not None:
-            # Determine role from type if not provided
-            if role is None:
-                # Extract role from type (first part before dot)
-                # e.g., 'entry.trend_pullback' -> 'entry', 'exit.take_profit_stop' -> 'exit'
-                role = type.split(".", 1)[0] if "." in type else type
-
-            # Validate role
-            VALID_ROLES = ["entry", "gate", "exit", "overlay"]
-            if role not in VALID_ROLES:
-                raise StructuredToolError(
-                    message=f"Invalid role: {role}. Must be one of: {VALID_ROLES}. Role was inferred from type '{type}'. Provide an explicit role if the type doesn't match a valid role.",
-                    error_code=ErrorCode.INVALID_ROLE,
-                    recovery_hint=f"Use one of: {', '.join(VALID_ROLES)}. Provide an explicit role parameter if the archetype type doesn't start with a valid role.",
-                    details={
-                        "provided_role": role,
-                        "valid_roles": VALID_ROLES,
-                        "inferred_from_type": type,
-                    },
-                )
-
-            # Get strategy
-            strategy = strategy_repo.get_by_id(strategy_id)
-            if strategy is None:
-                raise not_found_error(
-                    resource_type="Strategy",
-                    resource_id=strategy_id,
-                    recovery_hint="Use list_strategies to see all available strategies.",
-                )
-
-            # Check if card is already attached
-            for att in strategy.attachments:
-                if att.card_id == created_card.id:
-                    raise validation_error(
-                        message=f"Card {created_card.id} is already attached to strategy {strategy_id}.",
-                        recovery_hint="Use delete_card first to remove it, or update the attachment manually.",
-                        details={"card_id": created_card.id, "strategy_id": strategy_id},
-                    )
-
-            # Determine card_revision_id (use updated_at as simple revision identifier for MVP)
-            card_revision_id = None
-            if not follow_latest:
-                card_revision_id = created_card.updated_at  # Simple revision ID for MVP
-
-            # Create attachment
-            attachment = Attachment(
-                card_id=created_card.id,
-                role=role,
-                enabled=enabled,
-                overrides=overrides,
-                follow_latest=follow_latest,
-                card_revision_id=card_revision_id,
-            )
-
-            # Add attachment to strategy
-            strategy.attachments.append(attachment)
-            strategy_repo.update(strategy)
-
-        return CreateCardResponse(
-            card_id=created_card.id,
-            type=created_card.type,
-            slots=created_card.slots,
-            schema_etag=created_card.schema_etag,
-            created_at=created_card.created_at,
-        )
 
     @mcp.tool()
     def get_card(card_id: str = Field(..., description="Card identifier")) -> GetCardResponse:
@@ -557,6 +359,9 @@ def register_card_tools(
         """
         Delete a card by ID.
 
+        This will automatically remove the card from all strategies that have it attached.
+        The card entity itself is deleted and cannot be recovered.
+
         Args:
             card_id: Card identifier
 
@@ -566,6 +371,16 @@ def register_card_tools(
         Raises:
             StructuredToolError: With error code CARD_NOT_FOUND if card not found
         """
+        # First, remove the card from all strategies that have it attached
+        all_strategies = strategy_repo.get_all()
+        for strategy in all_strategies:
+            original_count = len(strategy.attachments)
+            strategy.attachments = [att for att in strategy.attachments if att.card_id != card_id]
+            # If we removed an attachment, update the strategy
+            if len(strategy.attachments) < original_count:
+                strategy_repo.update(strategy)
+
+        # Now delete the card itself
         try:
             card_repo.delete(card_id)
             return DeleteCardResponse(card_id=card_id, success=True)
@@ -591,7 +406,7 @@ def register_card_tools(
         1. Use get_schema_example(type) to get a starting point
         2. Modify the example slots as needed
         3. Use validate_slots_draft(type, slots) to check validity
-        4. If valid, use create_card with the slots (schema_etag is handled automatically)
+        4. If valid, use add_card with the slots to create and add the card to a strategy
 
         **Agent behavior:**
         - Use this when you're iterating with the user and want to check if the configuration
