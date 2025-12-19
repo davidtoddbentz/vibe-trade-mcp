@@ -64,43 +64,37 @@ def test_get_strategy_with_cards_success(api_mcp, schema_repository):
     )
     strategy_id = create_strategy_result["strategy_id"]
 
-    # Create entry card
+    # Add entry card to strategy
     entry_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
-    create_entry_result = run_async(
+    add_entry_result = run_async(
         call_tool(
             api_mcp,
-            "create_card",
-            {"type": "entry.trend_pullback", "slots": entry_slots},
+            "add_card",
+            {
+                "strategy_id": strategy_id,
+                "type": "entry.trend_pullback",
+                "slots": entry_slots,
+                "role": "entry",
+            },
         )
     )
-    entry_card_id = create_entry_result["card_id"]
+    entry_card_id = add_entry_result["attachments"][-1]["card_id"]
 
-    # Create exit card
+    # Add exit card to strategy
     exit_slots = get_valid_slots_for_archetype(schema_repository, "exit.rule_trigger")
-    create_exit_result = run_async(
+    add_exit_result = run_async(
         call_tool(
             api_mcp,
-            "create_card",
-            {"type": "exit.rule_trigger", "slots": exit_slots},
+            "add_card",
+            {
+                "strategy_id": strategy_id,
+                "type": "exit.rule_trigger",
+                "slots": exit_slots,
+                "role": "exit",
+            },
         )
     )
-    exit_card_id = create_exit_result["card_id"]
-
-    # Attach cards to strategy
-    run_async(
-        call_tool(
-            api_mcp,
-            "attach_card",
-            {"strategy_id": strategy_id, "card_id": entry_card_id, "role": "entry"},
-        )
-    )
-    run_async(
-        call_tool(
-            api_mcp,
-            "attach_card",
-            {"strategy_id": strategy_id, "card_id": exit_card_id, "role": "exit"},
-        )
-    )
+    exit_card_id = add_exit_result["attachments"][-1]["card_id"]
 
     # Run: call API endpoint
     app = api_mcp.streamable_http_app()
