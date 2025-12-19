@@ -7,10 +7,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
+from src.api import create_auth_middleware, get_strategy_with_cards
 from src.db.archetype_repository import ArchetypeRepository
 from src.db.archetype_schema_repository import ArchetypeSchemaRepository
 from src.db.card_repository import CardRepository
@@ -63,45 +61,34 @@ auth_token = os.getenv("MCP_AUTH_TOKEN")
 # which sends GET requests without establishing a session first
 mcp = FastMCP("vibe-trade-server", port=port, host="0.0.0.0", stateless_http=True)
 
-# Add authentication middleware if token is configured
+# Wrap streamable_http_app to add custom endpoints and optional auth middleware
 # We need to wrap streamable_http_app() because it creates a new app each time
-if auth_token:
-    # Store the original method
-    original_streamable_http_app = mcp.streamable_http_app
+original_streamable_http_app = mcp.streamable_http_app
 
-    def wrapped_streamable_http_app():
-        """Wrap streamable_http_app to add auth middleware."""
-        app = original_streamable_http_app()
 
-        @app.middleware("http")
-        async def auth_middleware(request: Request, call_next):
-            """Middleware to check Authorization header for static token."""
-            # Skip auth for health checks and OPTIONS requests
-            if request.url.path in ["/", "/health", "/ready"] or request.method == "OPTIONS":
-                return await call_next(request)
+def wrapped_streamable_http_app():
+    """Wrap streamable_http_app to add custom endpoints and auth middleware."""
+    from starlette.requests import Request
 
-            # Check Authorization header for all MCP requests (GET and POST)
-            # stateless_http=True handles GET requests properly, so we just need auth
-            auth_header = request.headers.get("Authorization", "")
-            if not auth_header.startswith("Bearer "):
-                return JSONResponse(
-                    status_code=HTTP_401_UNAUTHORIZED,
-                    content={"error": "Missing or invalid Authorization header"},
-                )
+    app = original_streamable_http_app()
 
-            token = auth_header.replace("Bearer ", "").strip()
-            if token != auth_token:
-                return JSONResponse(
-                    status_code=HTTP_403_FORBIDDEN,
-                    content={"error": "Invalid authentication token"},
-                )
+    # Create route handler with repositories injected
+    async def strategy_with_cards_handler(request: Request):
+        """Route handler wrapper that injects repositories."""
+        return await get_strategy_with_cards(request, strategy_repo, card_repo)
 
-            return await call_next(request)
+    app.add_route("/api/strategies/{strategy_id}", strategy_with_cards_handler, methods=["GET"])
 
-        return app
+    # Add authentication middleware if token is configured
+    if auth_token:
+        auth_middleware_func = create_auth_middleware(auth_token)
+        app.middleware("http")(auth_middleware_func)
 
-    # Replace the method with our wrapped version
-    mcp.streamable_http_app = wrapped_streamable_http_app
+    return app
+
+
+# Replace the method with our wrapped version
+mcp.streamable_http_app = wrapped_streamable_http_app
 
 # Register tools with injected repositories
 register_trading_tools(mcp, archetype_repo, schema_repo)
@@ -117,6 +104,11 @@ def main():
     print("🚀 Starting Vibe Trade MCP Server...", file=sys.stderr, flush=True)
     print(f"📡 Server running on port {port}", file=sys.stderr, flush=True)
     print(f"🔗 MCP endpoint: http://0.0.0.0:{port}/mcp", file=sys.stderr, flush=True)
+    print(
+        f"📋 API endpoint: http://0.0.0.0:{port}/api/strategies/{{strategy_id}}",
+        file=sys.stderr,
+        flush=True,
+    )
     if auth_token:
         print("🔒 Authentication enabled (static token)", file=sys.stderr, flush=True)
     else:
