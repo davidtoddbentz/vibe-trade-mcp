@@ -20,5 +20,6 @@ ENV PORT=8080
 EXPOSE 8080
 
 # Run the server
-CMD ["uv", "run", "python", "-m", "src.main"]
+# Use the same entry point as make run for consistency
+CMD ["uv", "run", "main"]
 
