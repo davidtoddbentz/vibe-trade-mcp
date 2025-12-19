@@ -28,58 +28,34 @@ def test_validate_strategy_ready(strategy_tools_mcp, card_tools_mcp, schema_repo
     )
     strategy_id = strategy_result["strategy_id"]
 
-    # Create entry card
+    # Add entry card (automatically attached)
     entry_schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert entry_schema is not None
     entry_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
-    entry_card_result = run_async(
+    run_async(
         call_tool(
-            card_tools_mcp,
-            "create_card",
+            strategy_tools_mcp,
+            "add_card",
             {
+                "strategy_id": strategy_id,
                 "type": "entry.trend_pullback",
                 "slots": entry_slots,
             },
         )
     )
-    entry_card_id = entry_card_result["card_id"]
 
-    # Create exit card
+    # Add exit card (automatically attached)
     exit_schema = schema_repository.get_by_type_id("exit.rule_trigger")
     assert exit_schema is not None
     exit_slots = get_valid_slots_for_archetype(schema_repository, "exit.rule_trigger")
-    exit_card_result = run_async(
+    run_async(
         call_tool(
-            card_tools_mcp,
-            "create_card",
+            strategy_tools_mcp,
+            "add_card",
             {
+                "strategy_id": strategy_id,
                 "type": "exit.rule_trigger",
                 "slots": exit_slots,
-            },
-        )
-    )
-    exit_card_id = exit_card_result["card_id"]
-
-    # Attach cards
-    run_async(
-        call_tool(
-            strategy_tools_mcp,
-            "attach_card",
-            {
-                "strategy_id": strategy_id,
-                "card_id": entry_card_id,
-                "role": "entry",
-            },
-        )
-    )
-    run_async(
-        call_tool(
-            strategy_tools_mcp,
-            "attach_card",
-            {
-                "strategy_id": strategy_id,
-                "card_id": exit_card_id,
-                "role": "exit",
             },
         )
     )
@@ -119,27 +95,16 @@ def test_validate_strategy_fix_required(strategy_tools_mcp, card_tools_mcp, sche
 
     schema_repository.get_by_type_id("entry.trend_pullback")
     entry_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
-    entry_card_result = run_async(
-        call_tool(
-            card_tools_mcp,
-            "create_card",
-            {
-                "type": "entry.trend_pullback",
-                "slots": entry_slots,
-            },
-        )
-    )
-    entry_card_id = entry_card_result["card_id"]
 
-    # Attach with invalid override
+    # Add card with invalid override
     run_async(
         call_tool(
             strategy_tools_mcp,
-            "attach_card",
+            "add_card",
             {
                 "strategy_id": strategy_id,
-                "card_id": entry_card_id,
-                "role": "entry",
+                "type": "entry.trend_pullback",
+                "slots": entry_slots,
                 "overrides": {
                     "event": {"dip_band": {"mult": 10.0}},  # Max is 5.0
                 },

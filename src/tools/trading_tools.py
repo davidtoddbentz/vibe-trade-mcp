@@ -423,7 +423,7 @@ def register_trading_tools(
         2. Browse archetype-schemas://{kind} resources to see full schema details and available examples
         3. Only then use get_schema_example(type) to get a ready-to-use example for a specific archetype
         4. Optionally modify the example slots to fit your needs
-        5. Use create_card with the slots and schema_etag from this response
+        5. Use add_card with the slots to create and add the card to a strategy
 
         **Agent behavior:**
         - Use this to propose a concrete starting configuration to the user.

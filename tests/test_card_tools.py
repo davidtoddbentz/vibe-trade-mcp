@@ -12,18 +12,30 @@ from test_helpers import (
 )
 
 from src.tools.card_tools import (
-    CreateCardResponse,
     DeleteCardResponse,
     GetCardResponse,
     ListCardsResponse,
     UpdateCardResponse,
 )
 from src.tools.errors import ErrorCode
-from src.tools.strategy_tools import CreateStrategyResponse
+from src.tools.strategy_tools import AttachCardResponse, CreateStrategyResponse
 
 
-def test_create_card_valid(card_tools_mcp, schema_repository):
-    """Test creating a card with valid slots."""
+def test_create_card_valid(strategy_tools_mcp, schema_repository):
+    """Test creating a card with valid slots using add_card."""
+    # Setup: create a strategy first
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
+
     # Setup: get a valid schema and its etag
     schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
@@ -31,12 +43,13 @@ def test_create_card_valid(card_tools_mcp, schema_repository):
     # Use example slots from schema (now includes context, event, action, risk)
     example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
-    # Run: create card
+    # Run: add card to strategy (creates card and attaches)
     result = run_async(
         call_tool(
-            card_tools_mcp,
-            "create_card",
+            strategy_tools_mcp,
+            "add_card",
             {
+                "strategy_id": strategy_id,
                 "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
@@ -44,16 +57,29 @@ def test_create_card_valid(card_tools_mcp, schema_repository):
     )
 
     # Assert: verify response
-    response = CreateCardResponse(**result)
-    assert response.card_id is not None
-    assert response.type == "entry.trend_pullback"
-    assert response.slots == example_slots
-    assert response.schema_etag == schema.etag
-    assert response.created_at is not None
+    response = AttachCardResponse(**result)
+    assert response.strategy_id == strategy_id
+    assert len(response.attachments) == 1
+    attachment = response.attachments[0]
+    assert attachment["card_id"] is not None
+    assert attachment["role"] == "entry"
 
 
-def test_create_card_invalid_slots(card_tools_mcp, schema_repository):
+def test_create_card_invalid_slots(strategy_tools_mcp, schema_repository):
     """Test creating a card with invalid slots fails validation."""
+    # Setup: create a strategy first
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
+
     # Setup: get a valid schema
     schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
@@ -62,9 +88,10 @@ def test_create_card_invalid_slots(card_tools_mcp, schema_repository):
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
-                card_tools_mcp,
-                "create_card",
+                strategy_tools_mcp,
+                "add_card",
                 {
+                    "strategy_id": strategy_id,
                     "type": "entry.trend_pullback",
                     "slots": {
                         "context": {"tf": "1h"}
@@ -82,8 +109,21 @@ def test_create_card_invalid_slots(card_tools_mcp, schema_repository):
     assert structured_error.recovery_hint is not None
 
 
-def test_create_card_invalid_range_values(card_tools_mcp, schema_repository):
+def test_create_card_invalid_range_values(strategy_tools_mcp, schema_repository):
     """Test creating a card with values outside allowed ranges fails validation."""
+    # Setup: create a strategy first
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
+
     # Setup: get a valid schema and valid slots
     schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
@@ -97,9 +137,10 @@ def test_create_card_invalid_range_values(card_tools_mcp, schema_repository):
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
-                card_tools_mcp,
-                "create_card",
+                strategy_tools_mcp,
+                "add_card",
                 {
+                    "strategy_id": strategy_id,
                     "type": "entry.trend_pullback",
                     "slots": invalid_slots,
                 },
@@ -115,9 +156,10 @@ def test_create_card_invalid_range_values(card_tools_mcp, schema_repository):
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
-                card_tools_mcp,
-                "create_card",
+                strategy_tools_mcp,
+                "add_card",
                 {
+                    "strategy_id": strategy_id,
                     "type": "entry.trend_pullback",
                     "slots": invalid_slots2,
                 },
@@ -127,8 +169,21 @@ def test_create_card_invalid_range_values(card_tools_mcp, schema_repository):
     assert "20.0" in str(exc_info.value) or "maximum" in str(exc_info.value).lower()
 
 
-def test_create_card_invalid_enum_values(card_tools_mcp, schema_repository):
+def test_create_card_invalid_enum_values(strategy_tools_mcp, schema_repository):
     """Test creating a card with invalid enum values fails validation."""
+    # Setup: create a strategy first
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
+
     # Setup: get a valid schema and valid slots
     schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
@@ -142,9 +197,10 @@ def test_create_card_invalid_enum_values(card_tools_mcp, schema_repository):
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
-                card_tools_mcp,
-                "create_card",
+                strategy_tools_mcp,
+                "add_card",
                 {
+                    "strategy_id": strategy_id,
                     "type": "entry.trend_pullback",
                     "slots": invalid_slots,
                 },
@@ -160,9 +216,10 @@ def test_create_card_invalid_enum_values(card_tools_mcp, schema_repository):
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
-                card_tools_mcp,
-                "create_card",
+                strategy_tools_mcp,
+                "add_card",
                 {
+                    "strategy_id": strategy_id,
                     "type": "entry.trend_pullback",
                     "slots": invalid_slots2,
                 },
@@ -172,8 +229,21 @@ def test_create_card_invalid_enum_values(card_tools_mcp, schema_repository):
     assert "direction" in str(exc_info.value).lower() or "enum" in str(exc_info.value).lower()
 
 
-def test_create_card_invalid_nested_structure(card_tools_mcp, schema_repository):
+def test_create_card_invalid_nested_structure(strategy_tools_mcp, schema_repository):
     """Test creating a card with invalid nested object structures fails validation."""
+    # Setup: create a strategy first
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
+
     # Setup: get a valid schema and valid slots
     schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
@@ -191,9 +261,10 @@ def test_create_card_invalid_nested_structure(card_tools_mcp, schema_repository)
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
-                card_tools_mcp,
-                "create_card",
+                strategy_tools_mcp,
+                "add_card",
                 {
+                    "strategy_id": strategy_id,
                     "type": "entry.trend_pullback",
                     "slots": invalid_slots,
                 },
@@ -208,9 +279,10 @@ def test_create_card_invalid_nested_structure(card_tools_mcp, schema_repository)
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
-                card_tools_mcp,
-                "create_card",
+                strategy_tools_mcp,
+                "add_card",
                 {
+                    "strategy_id": strategy_id,
                     "type": "entry.trend_pullback",
                     "slots": invalid_slots2,
                 },
@@ -219,8 +291,21 @@ def test_create_card_invalid_nested_structure(card_tools_mcp, schema_repository)
     assert "validation" in str(exc_info.value).lower()
 
 
-def test_create_card_additional_properties(card_tools_mcp, schema_repository):
+def test_create_card_additional_properties(strategy_tools_mcp, schema_repository):
     """Test creating a card with additional properties fails validation."""
+    # Setup: create a strategy first
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
+
     # Setup: get a valid schema and valid slots
     schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
@@ -233,9 +318,10 @@ def test_create_card_additional_properties(card_tools_mcp, schema_repository):
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
-                card_tools_mcp,
-                "create_card",
+                strategy_tools_mcp,
+                "add_card",
                 {
+                    "strategy_id": strategy_id,
                     "type": "entry.trend_pullback",
                     "slots": invalid_slots,
                 },
@@ -247,23 +333,37 @@ def test_create_card_additional_properties(card_tools_mcp, schema_repository):
     )
 
 
-def test_update_card_invalid_range_values(card_tools_mcp, schema_repository):
+def test_update_card_invalid_range_values(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test updating a card with values outside allowed ranges fails validation."""
+    # Setup: create a strategy first
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
+
     # Setup: create a valid card first
     schema_repository.get_by_type_id("entry.trend_pullback")
     example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     create_result = run_async(
         call_tool(
-            card_tools_mcp,
-            "create_card",
+            strategy_tools_mcp,
+            "add_card",
             {
+                "strategy_id": strategy_id,
                 "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
     )
-    card_id = CreateCardResponse(**create_result).card_id
+    card_id = AttachCardResponse(**create_result).attachments[0]["card_id"]
 
     # Test: update with event.dip_band.mult above maximum (5.0)
     # This corresponds to the old dip_threshold field that had max 5.0
@@ -285,23 +385,37 @@ def test_update_card_invalid_range_values(card_tools_mcp, schema_repository):
     assert "5.0" in str(exc_info.value) or "maximum" in str(exc_info.value).lower()
 
 
-def test_get_card(card_tools_mcp, schema_repository):
+def test_get_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test getting a card by ID."""
+    # Setup: create a strategy first
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
+
     # Setup: create a card first
     schema_repository.get_by_type_id("entry.trend_pullback")
     example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     create_result = run_async(
         call_tool(
-            card_tools_mcp,
-            "create_card",
+            strategy_tools_mcp,
+            "add_card",
             {
+                "strategy_id": strategy_id,
                 "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
     )
-    card_id = CreateCardResponse(**create_result).card_id
+    card_id = AttachCardResponse(**create_result).attachments[0]["card_id"]
 
     # Run: get card
     result = run_async(call_tool(card_tools_mcp, "get_card", {"card_id": card_id}))
@@ -340,51 +454,32 @@ def test_list_cards(card_tools_mcp, strategy_tools_mcp, schema_repository):
 
     card1_result = run_async(
         call_tool(
-            card_tools_mcp,
-            "create_card",
+            strategy_tools_mcp,
+            "add_card",
             {
+                "strategy_id": strategy_id,
                 "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
     )
-    card1_id = CreateCardResponse(**card1_result).card_id
+    card1_id = AttachCardResponse(**card1_result).attachments[0]["card_id"]
 
     card2_result = run_async(
         call_tool(
-            card_tools_mcp,
-            "create_card",
+            strategy_tools_mcp,
+            "add_card",
             {
+                "strategy_id": strategy_id,
                 "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
     )
-    card2_id = CreateCardResponse(**card2_result).card_id
+    # Second card is the last attachment in the response
+    card2_id = AttachCardResponse(**card2_result).attachments[-1]["card_id"]
 
-    # Attach cards to strategy
-    run_async(
-        call_tool(
-            strategy_tools_mcp,
-            "attach_card",
-            {
-                "strategy_id": strategy_id,
-                "card_id": card1_id,
-                "role": "entry",
-            },
-        )
-    )
-    run_async(
-        call_tool(
-            strategy_tools_mcp,
-            "attach_card",
-            {
-                "strategy_id": strategy_id,
-                "card_id": card2_id,
-                "role": "exit",
-            },
-        )
-    )
+    # Cards are automatically attached when created with add_card
 
     # Run: list cards for strategy
     result = run_async(call_tool(card_tools_mcp, "list_cards", {"strategy_id": strategy_id}))
@@ -435,23 +530,37 @@ def test_list_cards_empty_strategy(card_tools_mcp, strategy_tools_mcp):
     assert len(response.cards) == 0
 
 
-def test_update_card(card_tools_mcp, schema_repository):
+def test_update_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test updating a card."""
+    # Setup: create a strategy first
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
+
     # Setup: create a card first
     schema_repository.get_by_type_id("entry.trend_pullback")
     example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     create_result = run_async(
         call_tool(
-            card_tools_mcp,
-            "create_card",
+            strategy_tools_mcp,
+            "add_card",
             {
+                "strategy_id": strategy_id,
                 "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
     )
-    card_id = CreateCardResponse(**create_result).card_id
+    card_id = AttachCardResponse(**create_result).attachments[0]["card_id"]
 
     # Run: update card with new slots
     updated_slots = copy.deepcopy(example_slots)
@@ -475,8 +584,21 @@ def test_update_card(card_tools_mcp, schema_repository):
     assert response.updated_at is not None
 
 
-def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repository):
+def test_create_card_error_messages_include_guidance(strategy_tools_mcp, schema_repository):
     """Test that error messages include helpful guidance for agents."""
+    # Setup: create a strategy first
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
+
     schema = schema_repository.get_by_type_id("entry.trend_pullback")
     assert schema is not None
 
@@ -484,9 +606,10 @@ def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repo
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
-                card_tools_mcp,
-                "create_card",
+                strategy_tools_mcp,
+                "add_card",
                 {
+                    "strategy_id": strategy_id,
                     "type": "entry.nonexistent",
                     "slots": {"context": {"tf": "1h"}},
                 },
@@ -512,9 +635,10 @@ def test_create_card_error_messages_include_guidance(card_tools_mcp, schema_repo
     with pytest.raises(ToolError) as exc_info:
         run_async(
             call_tool(
-                card_tools_mcp,
-                "create_card",
+                strategy_tools_mcp,
+                "add_card",
                 {
+                    "strategy_id": strategy_id,
                     "type": "entry.trend_pullback",
                     "slots": invalid_slots,
                 },
@@ -538,23 +662,39 @@ def test_update_card_invalid_etag(card_tools_mcp, schema_repository):
     pass
 
 
-def test_update_card_error_messages_include_guidance(card_tools_mcp, schema_repository):
+def test_update_card_error_messages_include_guidance(
+    strategy_tools_mcp, card_tools_mcp, schema_repository
+):
     """Test that update_card error messages include helpful guidance."""
+    # Setup: create a strategy first
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
+
     schema_repository.get_by_type_id("entry.trend_pullback")
     example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     # Create a card first
     create_result = run_async(
         call_tool(
-            card_tools_mcp,
-            "create_card",
+            strategy_tools_mcp,
+            "add_card",
             {
+                "strategy_id": strategy_id,
                 "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
     )
-    card_id = CreateCardResponse(**create_result).card_id
+    card_id = AttachCardResponse(**create_result).attachments[0]["card_id"]
 
     # Test: validation error includes guidance
     updated_slots = copy.deepcopy(example_slots)
@@ -604,23 +744,37 @@ def test_get_card_error_includes_guidance(card_tools_mcp):
     assert structured_error.recovery_hint is not None
 
 
-def test_delete_card(card_tools_mcp, schema_repository):
+def test_delete_card(strategy_tools_mcp, card_tools_mcp, schema_repository):
     """Test deleting a card."""
+    # Setup: create a strategy first
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = CreateStrategyResponse(**strategy_result).strategy_id
+
     # Setup: create a card first
     schema_repository.get_by_type_id("entry.trend_pullback")
     example_slots = get_valid_slots_for_archetype(schema_repository, "entry.trend_pullback")
 
     create_result = run_async(
         call_tool(
-            card_tools_mcp,
-            "create_card",
+            strategy_tools_mcp,
+            "add_card",
             {
+                "strategy_id": strategy_id,
                 "type": "entry.trend_pullback",
                 "slots": example_slots,
             },
         )
     )
-    card_id = CreateCardResponse(**create_result).card_id
+    card_id = AttachCardResponse(**create_result).attachments[0]["card_id"]
 
     # Run: delete card
     result = run_async(call_tool(card_tools_mcp, "delete_card", {"card_id": card_id}))
