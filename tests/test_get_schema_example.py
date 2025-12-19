@@ -103,8 +103,21 @@ def test_get_schema_example_invalid_index(trading_tools_mcp):
         assert structured_error.error_code == ErrorCode.SCHEMA_VALIDATION_ERROR
 
 
-def test_get_schema_example_can_create_card(trading_tools_mcp, card_tools_mcp):
-    """Test that example slots can be used directly to create a card."""
+def test_get_schema_example_can_add_card(trading_tools_mcp, strategy_tools_mcp):
+    """Test that example slots can be used directly to add a card to a strategy."""
+    # Setup: create a strategy
+    strategy_result = run_async(
+        call_tool(
+            strategy_tools_mcp,
+            "create_strategy",
+            {
+                "name": "Test Strategy",
+                "universe": ["BTC-USD"],
+            },
+        )
+    )
+    strategy_id = strategy_result["strategy_id"]
+
     # Setup: get example
     example_result = run_async(
         call_tool(
@@ -117,18 +130,20 @@ def test_get_schema_example_can_create_card(trading_tools_mcp, card_tools_mcp):
     )
     example = GetSchemaExampleResponse(**example_result)
 
-    # Run: create card with example slots (schema_etag is now internal)
+    # Run: add card with example slots
     card_result = run_async(
         call_tool(
-            card_tools_mcp,
-            "create_card",
+            strategy_tools_mcp,
+            "add_card",
             {
+                "strategy_id": strategy_id,
                 "type": example.type_id,
                 "slots": example.example_slots,
             },
         )
     )
 
-    # Assert: card created successfully
-    assert card_result["card_id"] is not None
-    assert card_result["type"] == "entry.trend_pullback"
+    # Assert: card created and attached successfully
+    assert len(card_result["attachments"]) == 1
+    assert card_result["attachments"][0]["card_id"] is not None
+    assert card_result["attachments"][0]["role"] == "entry"

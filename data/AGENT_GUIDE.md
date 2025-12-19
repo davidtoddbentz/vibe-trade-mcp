@@ -10,12 +10,11 @@ The recommended workflow for creating a trading strategy is:
 2. **Choose one** - Select an archetype that matches the user's intent
 3. **Get example slots** - Use `get_schema_example(type)` to get ready-to-use example slots
 4. **Negotiate/modify slots** - Present key slots to the user in plain language, confirm or adjust, optionally validate with `validate_slots_draft`
-5. **Create card** - Use `create_card(type, slots)` to create the card
-6. **Create strategy** - Use `create_strategy(name, universe)` to create a new strategy
-7. **Attach cards** - Use `attach_card(strategy_id, card_id, role)` to attach cards. Execution order is automatically determined by role.
-8. **Validate/compile** - Use `validate_strategy` or `compile_strategy` to check for issues
-9. **Fix issues** - Address any issues reported, then re-compile
-10. **Mark ready** - Once `compile_strategy` returns `status_hint='ready'`, optionally use `update_strategy_meta` to set `status='ready'`
+5. **Create strategy** - Use `create_strategy(name, universe)` to create a new strategy
+6. **Add cards** - Use `add_card(strategy_id, type, slots)` to create and add cards to the strategy. The role is automatically determined from the archetype type. Execution order is automatically determined by role.
+7. **Validate/compile** - Use `validate_strategy` or `compile_strategy` to check for issues
+8. **Fix issues** - Address any issues reported, then re-compile
+9. **Mark ready** - Once `compile_strategy` returns `status_hint='ready'`, optionally use `update_strategy_meta` to set `status='ready'`
 
 Each tool's "Recommended workflow" section references this canonical workflow. Most strategies only need steps 1-5 (entries and exits). Gates and overlays are optional additions.
 
@@ -53,8 +52,7 @@ There are **4 types of archetypes**, each serving a specific purpose in trading 
 **Workflow**:
 1. Use `get_archetypes(kind="entry")` to see available entry archetypes
 2. Use `get_schema_example(type_id)` to get example slot values
-3. Create a card with `create_card(type=type_id, slots=...)`
-4. Attach to strategy with `attach_card(strategy_id, card_id, role="entry")`
+3. Add card to strategy with `add_card(strategy_id, type=type_id, slots=...)` - the card is automatically created and attached
 
 ### 2. **Exit**
 **Purpose**: Define when to **close** a position.
@@ -68,9 +66,8 @@ There are **4 types of archetypes**, each serving a specific purpose in trading 
 
 **Workflow**:
 1. Use `get_archetypes(kind="exit")` to see available exit archetypes
-2. Create exit cards similar to entry cards
-3. Attach to strategy with `attach_card(strategy_id, card_id, role="exit")`
-4. Multiple exits can be attached - they execute in order
+2. Add exit cards to strategy with `add_card(strategy_id, type=type_id, slots=...)` - similar to entry cards
+3. Multiple exits can be added - they execute in order
 
 **Important**: Exits are evaluated **after** entries. A strategy can have multiple exits (e.g., one for profit taking, one for stop loss).
 
@@ -93,9 +90,8 @@ There are **4 types of archetypes**, each serving a specific purpose in trading 
 
 **Workflow**:
 1. Use `get_archetypes(kind="gate")` to see available gates
-2. Create a gate card with `action.target_roles` set to the roles you want to guard
-3. Attach to strategy with `attach_card(strategy_id, card_id, role="gate")`
-4. Gates automatically execute before the cards they guard (execution order is determined by role)
+2. Add a gate card to strategy with `add_card(strategy_id, type=type_id, slots=...)` - set `action.target_roles` to the roles you want to guard
+3. Gates automatically execute before the cards they guard (execution order is determined by role)
 
 **Example gate configuration**:
 ```json
@@ -139,9 +135,8 @@ There are **4 types of archetypes**, each serving a specific purpose in trading 
 
 **Workflow**:
 1. Use `get_archetypes(kind="overlay")` to see available overlays
-2. Create an overlay card with `action.target_roles` set to the roles you want to modify
-3. Attach to strategy with `attach_card(strategy_id, card_id, role="overlay")`
-4. Overlays automatically execute after the cards they modify (execution order is determined by role)
+2. Add an overlay card to strategy with `add_card(strategy_id, type=type_id, slots=...)` - set `action.target_roles` to the roles you want to modify
+3. Overlays automatically execute after the cards they modify (execution order is determined by role)
 
 **Example overlay configuration**:
 ```json
@@ -181,26 +176,41 @@ archetypes = get_archetypes(kind="entry")
 # Get example slots for trend pullback entry
 example = get_schema_example("entry.trend_pullback")
 
-# Create entry card
-entry_card = create_card(
+### Step 1: Create Strategy
+```python
+strategy = create_strategy(
+    name="Trend Pullback Strategy",
+    universe=["BTC-USD", "ETH-USD"]
+)
+```
+
+### Step 2: Add Entry Card
+```python
+# Get example slots for trend pullback entry
+example = get_schema_example("entry.trend_pullback")
+
+# Add entry card to strategy (automatically creates and attaches)
+add_card(
+    strategy_id=strategy.strategy_id,
     type="entry.trend_pullback",
     slots=example.slots  # Use example or modify as needed
 )
 ```
 
-### Step 2: Create Exit Card
+### Step 3: Add Exit Card
 ```python
 # Get example slots for rule-based exit (take profit/stop loss)
 example = get_schema_example("exit.rule_trigger")
 
-# Create exit card
-exit_card = create_card(
+# Add exit card to strategy
+add_card(
+    strategy_id=strategy.strategy_id,
     type="exit.rule_trigger",
     slots=example.slots
 )
 ```
 
-### Step 3: (Optional) Create Gate Card
+### Step 4: (Optional) Add Gate Card
 ```python
 # Only if you need conditional filtering
 example = get_schema_example("gate.regime")
@@ -209,41 +219,11 @@ example = get_schema_example("gate.regime")
 slots = example.slots.copy()
 slots["action"]["target_roles"] = ["entry"]
 
-gate_card = create_card(
+# Add gate card to strategy
+add_card(
+    strategy_id=strategy.strategy_id,
     type="gate.regime",
     slots=slots
-)
-```
-
-### Step 4: Create Strategy
-```python
-strategy = create_strategy(
-    name="Trend Pullback Strategy",
-    universe=["BTC-USD", "ETH-USD"]
-)
-```
-
-### Step 5: Attach Cards to Strategy
-```python
-# Attach gate - gates automatically execute before entries
-attach_card(
-    strategy_id=strategy.strategy_id,
-    card_id=gate_card.card_id,
-    role="gate"
-)
-
-# Attach entry - entries automatically execute after gates
-attach_card(
-    strategy_id=strategy.strategy_id,
-    card_id=entry_card.card_id,
-    role="entry"
-)
-
-# Attach exit - exits automatically execute after entries
-attach_card(
-    strategy_id=strategy.strategy_id,
-    card_id=exit_card.card_id,
-    role="exit"
 )
 ```
 
@@ -727,9 +707,9 @@ This pattern (gate.time_filter + entry.rule_trigger) is the recommended approach
 - `get_archetype_schema(type_id)` - Get full schema for an archetype
 - `get_schema_example(type_id)` - Get ready-to-use example slots
 - `validate_slots_draft(type_id, slots)` - Validate slots before creating card
-- `create_card(type, slots)` - Create a card from an archetype
 - `create_strategy(name, universe)` - Create a new strategy
-- `attach_card(strategy_id, card_id, role)` - Attach card to strategy (execution order determined by role)
+- `add_card(strategy_id, type, slots)` - Create and add a card to a strategy (role automatically determined from type)
+- `delete_card(card_id)` - Delete a card (automatically removes it from all strategies)
 - `compile_strategy(strategy_id)` - Compile and validate strategy
 - `validate_strategy(strategy_id)` - Check if strategy is ready to run
 
