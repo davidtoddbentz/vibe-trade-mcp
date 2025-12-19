@@ -637,7 +637,11 @@ def register_strategy_tools(
                 message=f"Invalid role: {role}. Must be one of: {VALID_ROLES}. Role was inferred from type '{type}'. Provide an explicit role if the type doesn't match a valid role.",
                 error_code=ErrorCode.INVALID_ROLE,
                 recovery_hint=f"Use one of: {', '.join(VALID_ROLES)}. Provide an explicit role parameter if the archetype type doesn't start with a valid role.",
-                details={"provided_role": role, "valid_roles": VALID_ROLES, "inferred_from_type": type},
+                details={
+                    "provided_role": role,
+                    "valid_roles": VALID_ROLES,
+                    "inferred_from_type": type,
+                },
             )
 
         # Always use current schema etag - this is internal to MCP

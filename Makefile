@@ -1,8 +1,12 @@
-.PHONY: install run emulator test lint format format-check check ci clean \
+.PHONY: install locally run emulator test lint format format-check check ci clean \
 	docker-build docker-push docker-build-push deploy deploy-image deploy-info force-revision
 
 install:
 	uv sync --all-groups
+
+# Setup for local development: install deps, fix linting, and format code
+locally: install lint-fix format
+	@echo "✅ Local setup complete!"
 
 # Start Firestore emulator using Docker (no Java/Xcode needed)
 emulator:

@@ -209,21 +209,24 @@ def register_card_tools(
         type: str = Field(..., description="Archetype identifier (e.g., 'entry.trend_pullback')"),
         slots: dict[str, Any] = Field(..., description="Slot values to validate and store"),  # noqa: B008
         strategy_id: str | None = Field(
-            None, description="Optional strategy identifier. If provided, card will be automatically attached to the strategy."
+            None,
+            description="Optional strategy identifier. If provided, card will be automatically attached to the strategy.",
         ),
         role: str | None = Field(
             None,
             description="Optional card role (entry, gate, exit, overlay). If strategy_id is provided but role is not, role will be automatically determined from the archetype type (e.g., 'entry.trend_pullback' → 'entry').",
         ),
         overrides: dict[str, Any] = Field(  # noqa: B008
-            default_factory=dict, description="Optional slot value overrides for attachment (only used if strategy_id is provided)"
+            default_factory=dict,
+            description="Optional slot value overrides for attachment (only used if strategy_id is provided)",
         ),
         follow_latest: bool = Field(
             default=False,
             description="If true, use latest card version; if false, pin current version (only used if strategy_id is provided)",
         ),
         enabled: bool = Field(
-            default=True, description="Whether attachment is enabled (only used if strategy_id is provided)"
+            default=True,
+            description="Whether attachment is enabled (only used if strategy_id is provided)",
         ),
     ) -> CreateCardResponse:
         """
@@ -324,7 +327,11 @@ def register_card_tools(
                     message=f"Invalid role: {role}. Must be one of: {VALID_ROLES}. Role was inferred from type '{type}'. Provide an explicit role if the type doesn't match a valid role.",
                     error_code=ErrorCode.INVALID_ROLE,
                     recovery_hint=f"Use one of: {', '.join(VALID_ROLES)}. Provide an explicit role parameter if the archetype type doesn't start with a valid role.",
-                    details={"provided_role": role, "valid_roles": VALID_ROLES, "inferred_from_type": type},
+                    details={
+                        "provided_role": role,
+                        "valid_roles": VALID_ROLES,
+                        "inferred_from_type": type,
+                    },
                 )
 
             # Get strategy
