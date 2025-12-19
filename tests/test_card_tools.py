@@ -662,7 +662,9 @@ def test_update_card_invalid_etag(card_tools_mcp, schema_repository):
     pass
 
 
-def test_update_card_error_messages_include_guidance(strategy_tools_mcp, card_tools_mcp, schema_repository):
+def test_update_card_error_messages_include_guidance(
+    strategy_tools_mcp, card_tools_mcp, schema_repository
+):
     """Test that update_card error messages include helpful guidance."""
     # Setup: create a strategy first
     strategy_result = run_async(

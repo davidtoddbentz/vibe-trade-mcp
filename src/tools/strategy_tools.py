@@ -391,7 +391,6 @@ def register_strategy_tools(
             updated_at=updated_strategy.updated_at,
         )
 
-
     @mcp.tool()
     def add_card(
         strategy_id: str = Field(..., description="Strategy identifier (required)"),
@@ -562,7 +561,6 @@ def register_strategy_tools(
             version=updated_strategy.version,
             updated_at=updated_strategy.updated_at,
         )
-
 
     @mcp.tool()
     def list_strategies() -> ListStrategiesResponse:

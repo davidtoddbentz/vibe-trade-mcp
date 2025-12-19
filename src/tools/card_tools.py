@@ -180,7 +180,6 @@ def register_card_tools(
     repositories (and therefore which databases/backends) are used.
     """
 
-
     @mcp.tool()
     def get_card(card_id: str = Field(..., description="Card identifier")) -> GetCardResponse:
         """
