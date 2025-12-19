@@ -73,4 +73,3 @@ async def get_strategy_with_cards(
             "card_count": len(cards),
         }
     )
-

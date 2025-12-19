@@ -14,6 +14,7 @@ def create_auth_middleware(auth_token: str):
     Returns:
         Middleware function that validates Bearer token in Authorization header
     """
+
     async def auth_middleware(request: Request, call_next):
         """Middleware to check Authorization header for static token."""
         # Skip auth for health checks and OPTIONS requests
@@ -39,4 +40,3 @@ def create_auth_middleware(auth_token: str):
         return await call_next(request)
 
     return auth_middleware
-

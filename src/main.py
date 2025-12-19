@@ -104,7 +104,11 @@ def main():
     print("🚀 Starting Vibe Trade MCP Server...", file=sys.stderr, flush=True)
     print(f"📡 Server running on port {port}", file=sys.stderr, flush=True)
     print(f"🔗 MCP endpoint: http://0.0.0.0:{port}/mcp", file=sys.stderr, flush=True)
-    print(f"📋 API endpoint: http://0.0.0.0:{port}/api/strategies/{{strategy_id}}", file=sys.stderr, flush=True)
+    print(
+        f"📋 API endpoint: http://0.0.0.0:{port}/api/strategies/{{strategy_id}}",
+        file=sys.stderr,
+        flush=True,
+    )
     if auth_token:
         print("🔒 Authentication enabled (static token)", file=sys.stderr, flush=True)
     else:

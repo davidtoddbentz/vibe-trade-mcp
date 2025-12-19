@@ -175,4 +175,3 @@ def test_get_strategy_with_no_cards(api_mcp):
     assert data["card_count"] == 0
     assert data["cards"] == []
     assert data["strategy"]["id"] == strategy_id
-
