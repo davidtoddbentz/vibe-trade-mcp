@@ -10,15 +10,14 @@ from test_helpers import (
     get_valid_slots_for_archetype,
     run_async,
 )
-
-from src.tools.card_tools import (
+from vibe_trade_mcp.tools.card_tools import (
     DeleteCardResponse,
     GetCardResponse,
     ListCardsResponse,
     UpdateCardResponse,
 )
-from src.tools.errors import ErrorCode
-from src.tools.strategy_tools import AttachCardResponse, CreateStrategyResponse
+from vibe_trade_mcp.tools.errors import ErrorCode
+from vibe_trade_mcp.tools.strategy_tools import AttachCardResponse, CreateStrategyResponse
 
 
 def test_create_card_valid(strategy_tools_mcp, schema_repository):

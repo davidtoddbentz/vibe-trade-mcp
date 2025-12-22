@@ -6,7 +6,7 @@ The repository owns the conversion from Firestore documents to domain models.
 
 from google.cloud.firestore import Client
 
-from src.models.card import Card
+from ..models.card import Card
 
 
 class CardRepository:

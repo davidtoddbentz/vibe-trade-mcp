@@ -5,15 +5,14 @@ import socket
 
 import pytest
 from mcp.server.fastmcp import FastMCP
-
-from src.db.archetype_repository import ArchetypeRepository
-from src.db.archetype_schema_repository import ArchetypeSchemaRepository
-from src.db.card_repository import CardRepository
-from src.db.firestore_client import FirestoreClient
-from src.db.strategy_repository import StrategyRepository
-from src.tools.card_tools import register_card_tools
-from src.tools.strategy_tools import register_strategy_tools
-from src.tools.trading_tools import register_trading_tools
+from vibe_trade_mcp.db.archetype_repository import ArchetypeRepository
+from vibe_trade_mcp.db.archetype_schema_repository import ArchetypeSchemaRepository
+from vibe_trade_mcp.db.card_repository import CardRepository
+from vibe_trade_mcp.db.firestore_client import FirestoreClient
+from vibe_trade_mcp.db.strategy_repository import StrategyRepository
+from vibe_trade_mcp.tools.card_tools import register_card_tools
+from vibe_trade_mcp.tools.strategy_tools import register_strategy_tools
+from vibe_trade_mcp.tools.trading_tools import register_trading_tools
 
 
 @pytest.fixture

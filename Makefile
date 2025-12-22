@@ -1,5 +1,6 @@
 .PHONY: install locally run emulator test lint format format-check check ci clean \
-	docker-build docker-push docker-build-push deploy deploy-image deploy-info force-revision
+	docker-build docker-push docker-build-push deploy deploy-image deploy-info force-revision \
+	build-package publish
 
 install:
 	uv sync --all-groups
@@ -87,6 +88,48 @@ clean:
 	find . -type f -name "*.pyc" -delete
 	rm -rf .pytest_cache .coverage htmlcov/ coverage.xml
 	rm -rf *.egg-info build/ dist/
+
+# Package building and publishing
+build-package:
+	@echo "📦 Building Python package..."
+	uv build
+	@echo "✅ Package built in dist/"
+	@echo "   Files:"
+	@ls -lh dist/ || true
+
+# Publish to GCP Artifact Registry
+# Uses environment variables or defaults
+publish:
+	@echo "📤 Publishing to GCP Artifact Registry..."
+	@REGION=$${REGION:-us-central1} && \
+		PROJECT_ID=$${PROJECT_ID:-vibe-trade-475704} && \
+		REPO=$${PYTHON_REPO:-vibe-trade-python} && \
+		REPO_URL="https://$${REGION}-python.pkg.dev/$${PROJECT_ID}/$${REPO}" && \
+		echo "   Building package first..." && \
+		uv build && \
+		echo "   Repository: $$REPO_URL" && \
+		echo "   Installing twine if needed..." && \
+		uv pip install twine > /dev/null 2>&1 || true && \
+		echo "   Getting GCP access token..." && \
+		ACCESS_TOKEN=$$(gcloud auth print-access-token) && \
+		echo "   Uploading package..." && \
+		OUTPUT=$$(uv run twine upload --verbose \
+			--repository-url $$REPO_URL/ \
+			--username oauth2accesstoken \
+			--password "$$ACCESS_TOKEN" \
+			dist/* 2>&1) || EXIT_CODE=$$?; \
+		echo "$$OUTPUT" | grep -v "^INFO" | grep -v "^Uploading" | grep -v "^100%"; \
+		if echo "$$OUTPUT" | grep -qi "already exists\|Requested entity already exists"; then \
+			echo "⚠️  Package version already exists in repository (this is OK)"; \
+			echo "✅ Package is available at: $$REPO_URL/simple/"; \
+		elif [ -n "$$EXIT_CODE" ] && [ $$EXIT_CODE -ne 0 ]; then \
+			echo "❌ Upload failed. Check error above."; \
+			exit 1; \
+		else \
+			echo "✅ Published to GCP Artifact Registry"; \
+			echo "   Repository: $$REPO_URL/simple/"; \
+			echo "   Install with: pip install --index-url $$REPO_URL/simple/ vibe-trade-mcp"; \
+		fi
 
 # Docker commands - use environment variable or default
 # Set ARTIFACT_REGISTRY_URL env var or it will use the default

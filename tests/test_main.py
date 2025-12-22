@@ -2,7 +2,7 @@
 
 import os
 
-from src.main import mcp
+from vibe_trade_mcp.main import mcp
 
 
 def test_server_initialization():
@@ -19,9 +19,9 @@ def test_server_port_configuration():
         # Re-import to get new port value
         import importlib
 
-        import src.main
+        import vibe_trade_mcp.main
 
-        importlib.reload(src.main)
+        importlib.reload(vibe_trade_mcp.main)
         # Server should use the port from env
         assert int(os.getenv("PORT", "8080")) == 9000
     finally:
@@ -33,6 +33,6 @@ def test_server_port_configuration():
 
 def test_main_function_exists():
     """Test that main function exists and is callable."""
-    from src.main import main
+    from vibe_trade_mcp.main import main
 
     assert callable(main)

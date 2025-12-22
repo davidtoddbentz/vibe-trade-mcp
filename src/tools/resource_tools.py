@@ -11,9 +11,9 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from src.db.archetype_repository import ArchetypeRepository
-from src.db.archetype_schema_repository import ArchetypeSchemaRepository
-from src.tools.trading_tools import _resolve_schema_references
+from ..db.archetype_repository import ArchetypeRepository
+from ..db.archetype_schema_repository import ArchetypeSchemaRepository
+from ..tools.trading_tools import _resolve_schema_references
 
 
 def register_archetype_resources(

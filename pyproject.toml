@@ -1,7 +1,8 @@
 [project]
 name = "vibe-trade-mcp"
-version = "0.1.0"
+version = "0.1.2"
 description = "MCP server for trading strategy creation"
+readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "mcp>=1.0.0",
@@ -10,13 +11,35 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "jsonschema>=4.20.0",
 ]
+authors = [
+    {name = "Vibe Trade", email = "dev@vibe-trade.com"},
+]
+license = {text = "MIT"}
+keywords = ["mcp", "trading", "strategy", "firestore"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
 
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["src"]
+# Map src/ subdirectories to vibe_trade_mcp/ namespace
+packages = [
+    "vibe_trade_mcp",
+    "vibe_trade_mcp.api",
+    "vibe_trade_mcp.db",
+    "vibe_trade_mcp.models",
+    "vibe_trade_mcp.scripts",
+    "vibe_trade_mcp.tools",
+]
+package-dir = {"vibe_trade_mcp" = "src"}
 
 [dependency-groups]
 dev = [
@@ -26,7 +49,7 @@ dev = [
 ]
 
 [project.scripts]
-main = "src.main:main"
+main = "vibe_trade_mcp.main:main"
 
 [tool.ruff]
 line-length = 100
