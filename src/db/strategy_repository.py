@@ -132,32 +132,32 @@ class StrategyRepository:
 
     def get_by_thread_id(self, thread_id: str) -> Strategy | None:
         """Get a strategy by thread_id.
-        
+
         Args:
             thread_id: Thread identifier
-            
+
         Returns:
             Strategy if found, None otherwise
         """
         query = self.client.collection(self.collection).where("thread_id", "==", thread_id).limit(1)
         docs = list(query.stream())
-        
+
         if not docs:
             return None
-        
+
         doc = docs[0]
         data = doc.to_dict()
         if data is None:
             return None
-        
+
         return Strategy.from_dict(data, strategy_id=doc.id)
 
     def get_by_owner_id(self, owner_id: str) -> list[Strategy]:
         """Get all strategies for a specific owner.
-        
+
         Args:
             owner_id: Owner identifier
-            
+
         Returns:
             List of strategies owned by the user
         """

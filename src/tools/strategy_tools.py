@@ -222,7 +222,9 @@ def register_strategy_tools(
     def create_strategy(
         name: str = Field(..., description="Strategy name"),
         owner_id: str | None = Field(None, description="Owner identifier (optional)"),
-        thread_id: str | None = Field(None, description="Thread identifier that created this strategy"),
+        thread_id: str | None = Field(
+            None, description="Thread identifier that created this strategy"
+        ),
         universe: list[str] = Field(  # noqa: B008
             default_factory=list, description="Trading universe symbols"
         ),
