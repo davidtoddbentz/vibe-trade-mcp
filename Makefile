@@ -1,5 +1,6 @@
 .PHONY: install locally run emulator test lint format format-check check ci clean \
-	docker-build docker-push docker-build-push deploy deploy-image deploy-info force-revision
+	docker-build docker-push docker-build-push deploy deploy-image deploy-info force-revision \
+	build-package publish-test publish
 
 install:
 	uv sync --all-groups
@@ -87,6 +88,40 @@ clean:
 	find . -type f -name "*.pyc" -delete
 	rm -rf .pytest_cache .coverage htmlcov/ coverage.xml
 	rm -rf *.egg-info build/ dist/
+
+# Package building and publishing
+build-package:
+	@echo "📦 Building Python package..."
+	uv build
+	@echo "✅ Package built in dist/"
+	@echo "   Files:"
+	@ls -lh dist/ || true
+
+publish-test:
+	@echo "📤 Publishing to TestPyPI..."
+	@if [ -z "$$TESTPYPI_TOKEN" ]; then \
+		echo "❌ Error: TESTPYPI_TOKEN environment variable required"; \
+		echo "   Get token from: https://test.pypi.org/manage/account/token/"; \
+		exit 1; \
+	fi
+	@echo "   Building package first..."
+	uv build
+	uv publish --publish-url https://test.pypi.org/legacy/ --token $$TESTPYPI_TOKEN
+	@echo "✅ Published to TestPyPI"
+	@echo "   Install with: pip install -i https://test.pypi.org/simple/ vibe-trade-mcp"
+
+publish:
+	@echo "📤 Publishing to PyPI..."
+	@if [ -z "$$PYPI_TOKEN" ]; then \
+		echo "❌ Error: PYPI_TOKEN environment variable required"; \
+		echo "   Get token from: https://pypi.org/manage/account/token/"; \
+		exit 1; \
+	fi
+	@echo "   Building package first..."
+	uv build
+	uv publish --token $$PYPI_TOKEN
+	@echo "✅ Published to PyPI"
+	@echo "   Install with: pip install vibe-trade-mcp"
 
 # Docker commands - use environment variable or default
 # Set ARTIFACT_REGISTRY_URL env var or it will use the default
