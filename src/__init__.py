@@ -12,19 +12,20 @@ class SrcModuleFinder:
     """Import hook to create 'src' module that aliases to 'vibe_trade_mcp'."""
 
     def find_spec(self, name, path, target=None):
-        if name == 'src':
-            return find_spec('vibe_trade_mcp')
+        if name == "src":
+            return find_spec("vibe_trade_mcp")
         return None
 
 
 # Install the import hook
-if 'src' not in sys.modules:
+if "src" not in sys.modules:
     sys.meta_path.insert(0, SrcModuleFinder())
 
     # Create the 'src' module by importing vibe_trade_mcp submodules
     # This must happen before any submodule tries to import 'src'
     import types
-    src_module = types.ModuleType('src')
+
+    src_module = types.ModuleType("src")
 
     # Import submodules and attach to src
     import vibe_trade_mcp.api
@@ -37,4 +38,4 @@ if 'src' not in sys.modules:
     src_module.tools = vibe_trade_mcp.tools
     src_module.api = vibe_trade_mcp.api
 
-    sys.modules['src'] = src_module
+    sys.modules["src"] = src_module
