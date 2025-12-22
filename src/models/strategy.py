@@ -43,6 +43,7 @@ class Strategy(BaseModel):
 
     id: str = Field(..., description="Strategy identifier (Firestore document ID)")
     owner_id: str | None = Field(None, description="Owner identifier (optional for MVP)")
+    thread_id: str | None = Field(None, description="Thread that created this strategy")
     name: str = Field(..., description="Strategy name")
     status: str = Field(
         default="draft",
@@ -85,6 +86,7 @@ class Strategy(BaseModel):
         """Convert Strategy to dictionary for Firestore storage."""
         return {
             "owner_id": self.owner_id,
+            "thread_id": self.thread_id,
             "name": self.name,
             "status": self.status,
             "universe": self.universe,
