@@ -3,7 +3,6 @@
 import pytest
 from mcp.server.fastmcp.exceptions import ToolError
 from test_helpers import call_tool, get_structured_error, run_async
-
 from vibe_trade_mcp.tools.errors import ErrorCode
 from vibe_trade_mcp.tools.trading_tools import GetSchemaExampleResponse
 

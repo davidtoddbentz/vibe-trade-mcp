@@ -3,7 +3,6 @@
 import pytest
 from starlette.testclient import TestClient
 from test_helpers import get_valid_slots_for_archetype, run_async
-
 from vibe_trade_mcp.tools.card_tools import register_card_tools
 from vibe_trade_mcp.tools.resource_tools import register_archetype_resources
 from vibe_trade_mcp.tools.strategy_tools import register_strategy_tools
@@ -35,7 +34,6 @@ def api_mcp(
     def wrapped_streamable_http_app():
         """Wrap streamable_http_app to add API endpoints."""
         from starlette.requests import Request
-
         from vibe_trade_mcp.api import get_strategy_with_cards
 
         app = original_streamable_http_app()

@@ -5,7 +5,6 @@ import socket
 
 import pytest
 from mcp.server.fastmcp import FastMCP
-
 from vibe_trade_mcp.db.archetype_repository import ArchetypeRepository
 from vibe_trade_mcp.db.archetype_schema_repository import ArchetypeSchemaRepository
 from vibe_trade_mcp.db.card_repository import CardRepository

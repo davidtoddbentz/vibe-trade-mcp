@@ -5,7 +5,6 @@ import json
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
-
 from vibe_trade_mcp.tools.errors import StructuredToolError
 
 
