@@ -10,9 +10,9 @@ from jsonschema import RefResolver
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
-from src.db.archetype_repository import ArchetypeRepository
-from src.db.archetype_schema_repository import ArchetypeSchemaRepository
-from src.tools.errors import ErrorCode, StructuredToolError, not_found_error
+from ..db.archetype_repository import ArchetypeRepository
+from ..db.archetype_schema_repository import ArchetypeSchemaRepository
+from ..tools.errors import ErrorCode, StructuredToolError, not_found_error
 
 
 class ArchetypeInfo(BaseModel):
@@ -289,7 +289,7 @@ def register_trading_tools(
         if kind is not None:
             valid_kinds = {"entry", "exit", "gate", "overlay"}
             if kind not in valid_kinds:
-                from src.tools.errors import validation_error
+                from ..tools.errors import validation_error
 
                 raise validation_error(
                     message=f"Invalid kind '{kind}'. Valid values are: {', '.join(sorted(valid_kinds))}",
@@ -459,7 +459,7 @@ def register_trading_tools(
 
         # Check if example_index is valid
         if example_index < 0 or example_index >= len(schema.examples):
-            from src.tools.errors import schema_validation_error
+            from ..tools.errors import schema_validation_error
 
             raise schema_validation_error(
                 type_id=type,

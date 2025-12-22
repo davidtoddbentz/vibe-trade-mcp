@@ -6,7 +6,7 @@ from test_helpers import (
     run_async,
 )
 
-from src.tools.strategy_tools import AttachCardResponse, CreateStrategyResponse
+from vibe_trade_mcp.tools.strategy_tools import AttachCardResponse, CreateStrategyResponse
 
 
 def test_create_exit_card_take_profit_stop(strategy_tools_mcp, schema_repository):

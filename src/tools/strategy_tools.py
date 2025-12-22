@@ -5,13 +5,13 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
-from src.db.archetype_schema_repository import ArchetypeSchemaRepository
-from src.db.card_repository import CardRepository
-from src.db.strategy_repository import StrategyRepository
-from src.models.card import Card
-from src.models.strategy import Attachment, Strategy
-from src.tools.card_tools import _validate_slots_against_schema
-from src.tools.errors import (
+from ..db.archetype_schema_repository import ArchetypeSchemaRepository
+from ..db.card_repository import CardRepository
+from ..db.strategy_repository import StrategyRepository
+from ..models.card import Card
+from ..models.strategy import Attachment, Strategy
+from ..tools.card_tools import _validate_slots_against_schema
+from ..tools.errors import (
     ErrorCode,
     StructuredToolError,
     not_found_error,
@@ -462,7 +462,7 @@ def register_strategy_tools(
             recovery_hint, and details for agentic decision-making.
         """
         # Import card creation logic (avoid circular import)
-        from src.tools.card_tools import _validate_slots_against_schema
+        from ..tools.card_tools import _validate_slots_against_schema
 
         # Get strategy first to validate it exists
         strategy = strategy_repo.get_by_id(strategy_id)
@@ -485,7 +485,7 @@ def register_strategy_tools(
         # Validate slots against JSON schema
         validation_errors = _validate_slots_against_schema(slots, schema.json_schema, schema_repo)
         if validation_errors:
-            from src.tools.errors import schema_validation_error
+            from ..tools.errors import schema_validation_error
 
             raise schema_validation_error(
                 type_id=type,

@@ -9,8 +9,8 @@ from test_helpers import (
     run_async,
 )
 
-from src.tools.errors import ErrorCode
-from src.tools.strategy_tools import (
+from vibe_trade_mcp.tools.errors import ErrorCode
+from vibe_trade_mcp.tools.strategy_tools import (
     AttachCardResponse,
     CompileStrategyResponse,
     CreateStrategyResponse,

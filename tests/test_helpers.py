@@ -6,7 +6,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from src.tools.errors import StructuredToolError
+from vibe_trade_mcp.tools.errors import StructuredToolError
 
 
 def extract_tool_result(result: Any) -> dict:

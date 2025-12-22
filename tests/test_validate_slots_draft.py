@@ -4,8 +4,8 @@ import pytest
 from mcp.server.fastmcp.exceptions import ToolError
 from test_helpers import call_tool, get_structured_error, get_valid_slots_for_archetype, run_async
 
-from src.tools.card_tools import ValidateSlotsDraftResponse
-from src.tools.errors import ErrorCode
+from vibe_trade_mcp.tools.card_tools import ValidateSlotsDraftResponse
+from vibe_trade_mcp.tools.errors import ErrorCode
 
 
 def test_validate_slots_draft_valid(card_tools_mcp, schema_repository):

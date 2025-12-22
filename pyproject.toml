@@ -1,6 +1,6 @@
 [project]
 name = "vibe-trade-mcp"
-version = "0.1.0"
+version = "0.1.2"
 description = "MCP server for trading strategy creation"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -49,7 +49,7 @@ dev = [
 ]
 
 [project.scripts]
-main = "src.main:main"
+main = "vibe_trade_mcp.main:main"
 
 [tool.ruff]
 line-length = 100

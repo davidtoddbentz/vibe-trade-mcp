@@ -1,6 +1,6 @@
 .PHONY: install locally run emulator test lint format format-check check ci clean \
 	docker-build docker-push docker-build-push deploy deploy-image deploy-info force-revision \
-	build-package publish-test publish
+	build-package publish
 
 install:
 	uv sync --all-groups
@@ -97,31 +97,39 @@ build-package:
 	@echo "   Files:"
 	@ls -lh dist/ || true
 
-publish-test:
-	@echo "📤 Publishing to TestPyPI..."
-	@if [ -z "$$TESTPYPI_TOKEN" ]; then \
-		echo "❌ Error: TESTPYPI_TOKEN environment variable required"; \
-		echo "   Get token from: https://test.pypi.org/manage/account/token/"; \
-		exit 1; \
-	fi
-	@echo "   Building package first..."
-	uv build
-	uv publish --publish-url https://test.pypi.org/legacy/ --token $$TESTPYPI_TOKEN
-	@echo "✅ Published to TestPyPI"
-	@echo "   Install with: pip install -i https://test.pypi.org/simple/ vibe-trade-mcp"
-
+# Publish to GCP Artifact Registry
+# Uses environment variables or defaults
 publish:
-	@echo "📤 Publishing to PyPI..."
-	@if [ -z "$$PYPI_TOKEN" ]; then \
-		echo "❌ Error: PYPI_TOKEN environment variable required"; \
-		echo "   Get token from: https://pypi.org/manage/account/token/"; \
-		exit 1; \
-	fi
-	@echo "   Building package first..."
-	uv build
-	uv publish --token $$PYPI_TOKEN
-	@echo "✅ Published to PyPI"
-	@echo "   Install with: pip install vibe-trade-mcp"
+	@echo "📤 Publishing to GCP Artifact Registry..."
+	@REGION=$${REGION:-us-central1} && \
+		PROJECT_ID=$${PROJECT_ID:-vibe-trade-475704} && \
+		REPO=$${PYTHON_REPO:-vibe-trade-python} && \
+		REPO_URL="https://$${REGION}-python.pkg.dev/$${PROJECT_ID}/$${REPO}" && \
+		echo "   Building package first..." && \
+		uv build && \
+		echo "   Repository: $$REPO_URL" && \
+		echo "   Installing twine if needed..." && \
+		uv pip install twine > /dev/null 2>&1 || true && \
+		echo "   Getting GCP access token..." && \
+		ACCESS_TOKEN=$$(gcloud auth print-access-token) && \
+		echo "   Uploading package..." && \
+		OUTPUT=$$(uv run twine upload --verbose \
+			--repository-url $$REPO_URL/ \
+			--username oauth2accesstoken \
+			--password "$$ACCESS_TOKEN" \
+			dist/* 2>&1) || EXIT_CODE=$$?; \
+		echo "$$OUTPUT" | grep -v "^INFO" | grep -v "^Uploading" | grep -v "^100%"; \
+		if echo "$$OUTPUT" | grep -qi "already exists\|Requested entity already exists"; then \
+			echo "⚠️  Package version already exists in repository (this is OK)"; \
+			echo "✅ Package is available at: $$REPO_URL/simple/"; \
+		elif [ -n "$$EXIT_CODE" ] && [ $$EXIT_CODE -ne 0 ]; then \
+			echo "❌ Upload failed. Check error above."; \
+			exit 1; \
+		else \
+			echo "✅ Published to GCP Artifact Registry"; \
+			echo "   Repository: $$REPO_URL/simple/"; \
+			echo "   Install with: pip install --index-url $$REPO_URL/simple/ vibe-trade-mcp"; \
+		fi
 
 # Docker commands - use environment variable or default
 # Set ARTIFACT_REGISTRY_URL env var or it will use the default

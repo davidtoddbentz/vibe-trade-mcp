@@ -1,17 +1,26 @@
-# Publishing vibe-trade-mcp to PyPI
+# Publishing vibe-trade-mcp to GCP Artifact Registry
 
-This guide explains how to publish `vibe-trade-mcp` as a Python package so other projects (like `vibe-trade-api`) can install it as a dependency.
+This guide explains how to publish `vibe-trade-mcp` as a Python package to GCP Artifact Registry so other projects (like `vibe-trade-api`) can install it as a dependency.
 
 ## Prerequisites
 
-1. **PyPI Account**: Create an account at https://pypi.org/account/register/
-2. **API Token**: Generate a token at https://pypi.org/manage/account/token/
-   - For production: Use a project-scoped token
-   - For testing: Use TestPyPI at https://test.pypi.org/manage/account/token/
+1. **GCP Project**: Ensure you have access to the GCP project
+2. **Artifact Registry Repository**: The Python repository must be created in Terraform (see `vibe-trade-terraform`)
+3. **gcloud CLI**: Authenticated with `gcloud auth login` and `gcloud auth application-default login`
+4. **twine**: Will be installed automatically if not present
 
 ## Publishing Steps
 
-### 1. Build the Package
+### 1. Ensure Python Repository Exists
+
+The Python package repository is created via Terraform:
+
+```bash
+cd vibe-trade-terraform
+terraform apply  # Creates vibe-trade-python repository
+```
+
+### 2. Build the Package
 
 ```bash
 make build-package
@@ -23,37 +32,30 @@ This creates distribution files in `dist/`:
 - `vibe_trade_mcp-0.1.0.tar.gz` (source distribution)
 - `vibe_trade_mcp-0.1.0-py3-none-any.whl` (wheel)
 
-### 2. Test on TestPyPI (Recommended First)
+### 3. Publish to GCP Artifact Registry
 
 ```bash
-# Set your TestPyPI token
-export TESTPYPI_TOKEN="pypi-..."
-
-# Build and publish to TestPyPI
-make publish-test
-```
-
-### 3. Install from TestPyPI to Verify
-
-```bash
-pip install -i https://test.pypi.org/simple/ vibe-trade-mcp
-python -c "from vibe_trade_mcp.db.firestore_client import FirestoreClient; print('✅ Import works!')"
-```
-
-### 4. Publish to Production PyPI
-
-```bash
-# Set your PyPI token
-export PYPI_TOKEN="pypi-..."
-
-# Build and publish to PyPI
+# With defaults (us-central1, vibe-trade-475704, vibe-trade-python)
 make publish
+
+# Or with custom settings
+REGION=us-central1 PROJECT_ID=your-project PYTHON_REPO=vibe-trade-python make publish
 ```
 
-### 5. Install from PyPI
+The command will:
+1. Build the package
+2. Authenticate with GCP using `gcloud auth configure-docker`
+3. Upload to Artifact Registry using `twine`
+
+### 4. Install from GCP Artifact Registry
 
 ```bash
-pip install vibe-trade-mcp
+# Get the repository URL from Terraform
+cd vibe-trade-terraform
+terraform output python_package_repo_url
+
+# Install using the URL
+pip install --index-url https://us-central1-python.pkg.dev/vibe-trade-475704/vibe-trade-python/simple/ vibe-trade-mcp
 ```
 
 ## Version Management
@@ -79,20 +81,33 @@ Before publishing a new version:
 
 ## Using in Other Projects
 
-Once published, other projects can install it:
+Once published, other projects can install it by configuring the GCP Artifact Registry index:
 
 ```toml
 # In pyproject.toml
 dependencies = [
     "vibe-trade-mcp>=0.1.0",
 ]
+
+[[tool.uv.index]]
+name = "gcp-artifact-registry"
+url = "https://us-central1-python.pkg.dev/vibe-trade-475704/vibe-trade-python/simple/"
+explicit = false
 ```
 
 Then install:
 ```bash
 uv sync
-# or
-pip install vibe-trade-mcp
+# or with pip
+pip install --index-url https://us-central1-python.pkg.dev/vibe-trade-475704/vibe-trade-python/simple/ vibe-trade-mcp
+```
+
+**For Cloud Run/Docker**: Authentication is automatic via service account credentials.
+
+**For local development**: Authenticate with:
+```bash
+gcloud auth application-default login
+gcloud auth configure-docker us-central1-python.pkg.dev
 ```
 
 Import in code:
