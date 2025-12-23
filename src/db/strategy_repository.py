@@ -6,7 +6,7 @@ The repository owns the conversion from Firestore documents to domain models.
 
 from google.cloud.firestore import Client
 
-from src.models.strategy import Strategy
+from ..models.strategy import Strategy
 
 
 class StrategyRepository:

@@ -7,7 +7,7 @@ The repository owns the conversion from raw JSON format to domain models.
 import json
 from pathlib import Path
 
-from src.models.archetype import Archetype
+from ..models.archetype import Archetype
 
 
 class ArchetypeRepository:

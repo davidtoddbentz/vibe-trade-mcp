@@ -4,8 +4,8 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.status import HTTP_404_NOT_FOUND
 
-from src.db.card_repository import CardRepository
-from src.db.strategy_repository import StrategyRepository
+from .. db.card_repository import CardRepository
+from .. db.strategy_repository import StrategyRepository
 
 
 async def get_strategy_with_cards(

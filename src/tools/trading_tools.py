@@ -10,9 +10,9 @@ from jsonschema import RefResolver
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
-from src.db.archetype_repository import ArchetypeRepository
-from src.db.archetype_schema_repository import ArchetypeSchemaRepository
-from src.tools.errors import ErrorCode, StructuredToolError, not_found_error
+from .. db.archetype_repository import ArchetypeRepository
+from .. db.archetype_schema_repository import ArchetypeSchemaRepository
+from .. tools.errors import ErrorCode, StructuredToolError, not_found_error
 
 
 class ArchetypeInfo(BaseModel):

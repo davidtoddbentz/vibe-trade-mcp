@@ -1,6 +1,6 @@
 [project]
 name = "vibe-trade-mcp"
-version = "0.1.0"
+version = "0.1.3"
 description = "MCP server for trading strategy creation"
 requires-python = ">=3.10"
 dependencies = [
@@ -16,7 +16,10 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["src"]
+# Explicitly specify packages to include
+# The package-dir maps vibe_trade_mcp to the src directory
+package-dir = {"vibe_trade_mcp" = "src"}
+packages = ["vibe_trade_mcp", "vibe_trade_mcp.api", "vibe_trade_mcp.db", "vibe_trade_mcp.models", "vibe_trade_mcp.tools", "vibe_trade_mcp.scripts"]
 
 [dependency-groups]
 dev = [
